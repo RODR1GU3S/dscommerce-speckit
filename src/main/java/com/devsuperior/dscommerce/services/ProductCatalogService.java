@@ -4,6 +4,7 @@ import com.devsuperior.dscommerce.dto.PageResponseDTO;
 import com.devsuperior.dscommerce.dto.ProductCatalogItemDTO;
 import com.devsuperior.dscommerce.repositories.ProductRepository;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,7 +19,11 @@ public class ProductCatalogService {
 
     @Transactional(readOnly = true)
     public PageResponseDTO<ProductCatalogItemDTO> listProducts(int page, int size) {
-        var products = productRepository.findAll(PageRequest.of(page, size));
+        var sort = Sort.by(
+                Sort.Order.asc("name"),
+                Sort.Order.asc("id")
+        );
+        var products = productRepository.findAll(PageRequest.of(page, size, sort));
         var content = products.getContent().stream()
                 .map(ProductCatalogItemDTO::new)
                 .toList();

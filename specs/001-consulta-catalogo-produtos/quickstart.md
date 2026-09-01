@@ -81,6 +81,12 @@ Expected outcome:
 mvn test
 ```
 
+User Story 3 targeted verification:
+
+```bash
+mvn test "-Dtest=ProductControllerTest,ProductCatalogServiceTest,ProductRepositoryTest"
+```
+
 Expected test coverage:
 
 - Controller/API tests for default pagination, explicit pagination, invalid pagination, empty results, and response field shape.

@@ -12,6 +12,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -49,6 +50,30 @@ class ProductCatalogServiceTest {
         assertThat(response.totalElements()).isEqualTo(1);
         assertThat(response.totalPages()).isEqualTo(1);
         assertThat(response.content()).hasSize(1);
+    }
+
+    @Test
+    void listProductsShouldCreatePageRequestSortedByNameAscThenIdAsc() {
+        when(productRepository.findAll(any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(), PageRequest.of(2, 5), 52));
+
+        productCatalogService.listProducts(2, 5);
+
+        ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+        verify(productRepository).findAll(pageableCaptor.capture());
+        Pageable pageable = pageableCaptor.getValue();
+
+        assertThat(pageable.getPageNumber()).isEqualTo(2);
+        assertThat(pageable.getPageSize()).isEqualTo(5);
+        assertThat(pageable.getSort().getOrderFor("name"))
+                .extracting(Sort.Order::getDirection)
+                .isEqualTo(Sort.Direction.ASC);
+        assertThat(pageable.getSort().getOrderFor("id"))
+                .extracting(Sort.Order::getDirection)
+                .isEqualTo(Sort.Direction.ASC);
+        assertThat(pageable.getSort().stream())
+                .map(Sort.Order::getProperty)
+                .containsExactly("name", "id");
     }
 
     @Test

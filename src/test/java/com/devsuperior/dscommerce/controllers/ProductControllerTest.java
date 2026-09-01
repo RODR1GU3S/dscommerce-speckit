@@ -149,4 +149,49 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.content[0].keys()", containsInAnyOrder("id", "name", "image", "price")))
                 .andExpect(jsonPath("$.content[1].keys()", containsInAnyOrder("id", "name", "image", "price")));
     }
+
+    @Test
+    void listProductsShouldPreserveNameAscThenIdAscOrderAcrossPageBoundaries() throws Exception {
+        PageResponseDTO<ProductCatalogItemDTO> firstPage = new PageResponseDTO<>(
+                List.of(
+                        new ProductCatalogItemDTO(51L, "Duplicate", "https://cdn.example.com/products/duplicate-a.jpg", new BigDecimal("99.90")),
+                        new ProductCatalogItemDTO(52L, "Duplicate", "https://cdn.example.com/products/duplicate-b.jpg", new BigDecimal("109.90"))
+                ),
+                0,
+                2,
+                52,
+                26
+        );
+        PageResponseDTO<ProductCatalogItemDTO> secondPage = new PageResponseDTO<>(
+                List.of(
+                        new ProductCatalogItemDTO(50L, "Product 01", "https://cdn.example.com/products/01.jpg", new BigDecimal("10.00")),
+                        new ProductCatalogItemDTO(49L, "Product 02", "https://cdn.example.com/products/02.jpg", new BigDecimal("20.00"))
+                ),
+                1,
+                2,
+                52,
+                26
+        );
+
+        when(productCatalogService.listProducts(0, 2)).thenReturn(firstPage);
+        when(productCatalogService.listProducts(1, 2)).thenReturn(secondPage);
+
+        mockMvc.perform(get("/products")
+                        .param("page", "0")
+                        .param("size", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].name").value("Duplicate"))
+                .andExpect(jsonPath("$.content[0].id").value(51))
+                .andExpect(jsonPath("$.content[1].name").value("Duplicate"))
+                .andExpect(jsonPath("$.content[1].id").value(52));
+
+        mockMvc.perform(get("/products")
+                        .param("page", "1")
+                        .param("size", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].name").value("Product 01"))
+                .andExpect(jsonPath("$.content[0].id").value(50))
+                .andExpect(jsonPath("$.content[1].name").value("Product 02"))
+                .andExpect(jsonPath("$.content[1].id").value(49));
+    }
 }

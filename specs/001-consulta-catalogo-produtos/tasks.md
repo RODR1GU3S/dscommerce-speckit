@@ -108,15 +108,15 @@ description: "Task list for Consulta do Catalogo de Produtos"
 
 > Write these tests first and confirm they fail before implementation.
 
-- [ ] T026 [P] [US3] Add repository ordering tests for `name ASC, id ASC` with duplicate product names in src/test/java/com/devsuperior/dscommerce/repositories/ProductRepositoryTest.java
-- [ ] T027 [P] [US3] Add MockMvc ordering tests across page boundaries for GET /products in src/test/java/com/devsuperior/dscommerce/controllers/ProductControllerTest.java
-- [ ] T028 [P] [US3] Add service tests verifying PageRequest sort uses name ascending then id ascending in src/test/java/com/devsuperior/dscommerce/services/ProductCatalogServiceTest.java
+- [X] T026 [P] [US3] Add repository ordering tests for `name ASC, id ASC` with duplicate product names in src/test/java/com/devsuperior/dscommerce/repositories/ProductRepositoryTest.java
+- [X] T027 [P] [US3] Add MockMvc ordering tests across page boundaries for GET /products in src/test/java/com/devsuperior/dscommerce/controllers/ProductControllerTest.java
+- [X] T028 [P] [US3] Add service tests verifying PageRequest sort uses name ascending then id ascending in src/test/java/com/devsuperior/dscommerce/services/ProductCatalogServiceTest.java
 
 ### Implementation for User Story 3
 
-- [ ] T029 [US3] Update ProductCatalogService PageRequest construction to sort by name ascending and id ascending in src/main/java/com/devsuperior/dscommerce/services/ProductCatalogService.java
-- [ ] T030 [US3] Ensure ProductRepository pagination delegates sorting to Spring Data JPA without in-memory slicing in src/main/java/com/devsuperior/dscommerce/repositories/ProductRepository.java
-- [ ] T031 [US3] Verify US3 behavior with `mvn test -Dtest=ProductControllerTest,ProductCatalogServiceTest,ProductRepositoryTest` documented in specs/001-consulta-catalogo-produtos/quickstart.md
+- [X] T029 [US3] Update ProductCatalogService PageRequest construction to sort by name ascending and id ascending in src/main/java/com/devsuperior/dscommerce/services/ProductCatalogService.java
+- [X] T030 [US3] Ensure ProductRepository pagination delegates sorting to Spring Data JPA without in-memory slicing in src/main/java/com/devsuperior/dscommerce/repositories/ProductRepository.java
+- [X] T031 [US3] Verify US3 behavior with `mvn test -Dtest=ProductControllerTest,ProductCatalogServiceTest,ProductRepositoryTest` documented in specs/001-consulta-catalogo-produtos/quickstart.md
 
 **Checkpoint**: All user stories are independently functional.
 

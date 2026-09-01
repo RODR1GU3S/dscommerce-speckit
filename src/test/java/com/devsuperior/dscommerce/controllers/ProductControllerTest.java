@@ -1,0 +1,152 @@
+package com.devsuperior.dscommerce.controllers;
+
+import com.devsuperior.dscommerce.dto.PageResponseDTO;
+import com.devsuperior.dscommerce.dto.ProductCatalogItemDTO;
+import com.devsuperior.dscommerce.entities.Product;
+import com.devsuperior.dscommerce.fixtures.ProductFactory;
+import com.devsuperior.dscommerce.services.ProductCatalogService;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.web.servlet.MockMvc;
+
+import java.math.BigDecimal;
+import java.util.List;
+
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.hasSize;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@WebMvcTest(ProductController.class)
+class ProductControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @MockBean
+    private ProductCatalogService productCatalogService;
+
+    @Test
+    void listProductsShouldUseDefaultPaginationWhenQueryParametersAreMissing() throws Exception {
+        Product product = ProductFactory.createProduct(1L, "Notebook");
+        PageResponseDTO<ProductCatalogItemDTO> response = new PageResponseDTO<>(
+                List.of(new ProductCatalogItemDTO(product)),
+                0,
+                12,
+                1,
+                1
+        );
+
+        when(productCatalogService.listProducts(0, 12)).thenReturn(response);
+
+        mockMvc.perform(get("/products"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(12))
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.totalPages").value(1))
+                .andExpect(jsonPath("$.content", hasSize(1)));
+    }
+
+    @Test
+    void listProductsShouldUseExplicitPaginationWhenQueryParametersAreProvided() throws Exception {
+        PageResponseDTO<ProductCatalogItemDTO> response = new PageResponseDTO<>(
+                List.of(),
+                1,
+                10,
+                52,
+                6
+        );
+
+        when(productCatalogService.listProducts(1, 10)).thenReturn(response);
+
+        mockMvc.perform(get("/products")
+                        .param("page", "1")
+                        .param("size", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page").value(1))
+                .andExpect(jsonPath("$.size").value(10))
+                .andExpect(jsonPath("$.totalElements").value(52))
+                .andExpect(jsonPath("$.totalPages").value(6))
+                .andExpect(jsonPath("$.content", hasSize(0)));
+    }
+
+    @Test
+    void listProductsShouldReturnEmptyContentForOutOfRangePage() throws Exception {
+        PageResponseDTO<ProductCatalogItemDTO> response = new PageResponseDTO<>(
+                List.of(),
+                999,
+                12,
+                52,
+                5
+        );
+
+        when(productCatalogService.listProducts(999, 12)).thenReturn(response);
+
+        mockMvc.perform(get("/products")
+                        .param("page", "999")
+                        .param("size", "12"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page").value(999))
+                .andExpect(jsonPath("$.size").value(12))
+                .andExpect(jsonPath("$.totalElements").value(52))
+                .andExpect(jsonPath("$.totalPages").value(5))
+                .andExpect(jsonPath("$.content", hasSize(0)));
+    }
+
+    @Test
+    void listProductsShouldExposeOnlyCatalogItemFields() throws Exception {
+        ProductCatalogItemDTO product = new ProductCatalogItemDTO(
+                7L,
+                "Mechanical Keyboard",
+                "https://cdn.example.com/products/7.jpg",
+                new BigDecimal("349.90")
+        );
+        PageResponseDTO<ProductCatalogItemDTO> response = new PageResponseDTO<>(
+                List.of(product),
+                0,
+                12,
+                1,
+                1
+        );
+
+        when(productCatalogService.listProducts(0, 12)).thenReturn(response);
+
+        mockMvc.perform(get("/products"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(1)))
+                .andExpect(jsonPath("$.content[0].*", hasSize(4)))
+                .andExpect(jsonPath("$.content[0].id").value(7))
+                .andExpect(jsonPath("$.content[0].name").value("Mechanical Keyboard"))
+                .andExpect(jsonPath("$.content[0].image").value("https://cdn.example.com/products/7.jpg"))
+                .andExpect(jsonPath("$.content[0].price").value(349.90))
+                .andExpect(jsonPath("$.content[0].description").doesNotExist())
+                .andExpect(jsonPath("$.content[0].categories").doesNotExist());
+    }
+
+    @Test
+    void listProductsShouldExposeOnlyCatalogItemFieldsForEveryProduct() throws Exception {
+        PageResponseDTO<ProductCatalogItemDTO> response = new PageResponseDTO<>(
+                List.of(
+                        new ProductCatalogItemDTO(1L, "Notebook", "https://cdn.example.com/products/1.jpg", new BigDecimal("10.00")),
+                        new ProductCatalogItemDTO(2L, "Mouse", "https://cdn.example.com/products/2.jpg", new BigDecimal("20.00"))
+                ),
+                0,
+                12,
+                2,
+                1
+        );
+
+        when(productCatalogService.listProducts(0, 12)).thenReturn(response);
+
+        mockMvc.perform(get("/products"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(2)))
+                .andExpect(jsonPath("$.content[0].keys()", containsInAnyOrder("id", "name", "image", "price")))
+                .andExpect(jsonPath("$.content[1].keys()", containsInAnyOrder("id", "name", "image", "price")));
+    }
+}

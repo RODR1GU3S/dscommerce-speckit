@@ -23,7 +23,9 @@ public class ProductCatalogService {
                 Sort.Order.asc("name"),
                 Sort.Order.asc("id")
         );
-        var products = productRepository.findAll(PageRequest.of(page, size, sort));
+        var products =
+                productRepository.findAll(
+                        PageRequest.of(page, size, sort));
         var content = products.getContent().stream()
                 .map(ProductCatalogItemDTO::new)
                 .toList();

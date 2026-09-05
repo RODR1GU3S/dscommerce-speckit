@@ -45,7 +45,10 @@ class ProductRepositoryTest {
                 Sort.Order.asc("id")
         );
 
-        var page = productRepository.findAll(PageRequest.of(0, 4, sort));
+        var page =
+                productRepository.findAll(
+                    PageRequest.of(0, 4, sort)
+                );
 
         assertThat(page.getContent())
                 .extracting("name")
@@ -62,8 +65,12 @@ class ProductRepositoryTest {
                 Sort.Order.asc("id")
         );
 
-        var firstPage = productRepository.findAll(PageRequest.of(0, 1, sort));
-        var secondPage = productRepository.findAll(PageRequest.of(1, 1, sort));
+        var firstPage =
+                productRepository.findAll(
+                        PageRequest.of(0, 1, sort));
+        var secondPage =
+                productRepository.findAll(
+                        PageRequest.of(1, 1, sort));
 
         assertThat(firstPage.getContent()).hasSize(1);
         assertThat(firstPage.getContent().getFirst().getName()).isEqualTo("Duplicate");

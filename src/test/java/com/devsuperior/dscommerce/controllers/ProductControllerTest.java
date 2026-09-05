@@ -194,4 +194,40 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.content[1].name").value("Product 02"))
                 .andExpect(jsonPath("$.content[1].id").value(49));
     }
+
+    @Test
+    void listProductsShouldReturnBadRequestWhenPageIsNegative() throws Exception {
+        mockMvc.perform(get("/products")
+                        .param("page", "-1")
+                        .param("size", "12"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message").value("page must be greater than or equal to 0"))
+                .andExpect(jsonPath("$.path").value("/products"));
+    }
+
+    @Test
+    void listProductsShouldReturnBadRequestWhenSizeIsBelowMinimum() throws Exception {
+        mockMvc.perform(get("/products")
+                        .param("page", "0")
+                        .param("size", "0"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message").value("size must be between 1 and 50"))
+                .andExpect(jsonPath("$.path").value("/products"));
+    }
+
+    @Test
+    void listProductsShouldReturnBadRequestWhenSizeIsAboveMaximum() throws Exception {
+        mockMvc.perform(get("/products")
+                        .param("page", "0")
+                        .param("size", "51"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message").value("size must be between 1 and 50"))
+                .andExpect(jsonPath("$.path").value("/products"));
+    }
 }

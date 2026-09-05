@@ -126,12 +126,12 @@ description: "Task list for Consulta do Catalogo de Produtos"
 
 **Purpose**: Validate contract compliance, documentation, and full feature behavior.
 
-- [ ] T032 [P] Add validation tests for page < 0, size < 1, and size > 50 returning 400 Bad Request in src/test/java/com/devsuperior/dscommerce/controllers/ProductControllerTest.java
-- [ ] T033 Implement @Min and @Max query parameter validation for ProductController pagination inputs in src/main/java/com/devsuperior/dscommerce/controllers/ProductController.java
-- [ ] T034 Align error response body fields with the OpenAPI ErrorResponse schema in src/main/java/com/devsuperior/dscommerce/controllers/handlers/GlobalExceptionHandler.java
-- [ ] T035 [P] Update endpoint documentation and validation commands in README.md
-- [ ] T036 Run full test suite with `mvn test` and record any remaining test gaps in specs/001-consulta-catalogo-produtos/quickstart.md
-- [ ] T037 Validate GET /products manually against all quickstart curl scenarios and record results in specs/001-consulta-catalogo-produtos/quickstart.md
+- [X] T032 [P] Add validation tests for page < 0, size < 1, and size > 50 returning 400 Bad Request in src/test/java/com/devsuperior/dscommerce/controllers/ProductControllerTest.java
+- [X] T033 Implement @Min and @Max query parameter validation for ProductController pagination inputs in src/main/java/com/devsuperior/dscommerce/controllers/ProductController.java
+- [X] T034 Align error response body fields with the OpenAPI ErrorResponse schema in src/main/java/com/devsuperior/dscommerce/controllers/handlers/GlobalExceptionHandler.java
+- [X] T035 [P] Update endpoint documentation and validation commands in README.md
+- [X] T036 Run full test suite with `mvn test` and record any remaining test gaps in specs/001-consulta-catalogo-produtos/quickstart.md
+- [X] T037 Validate GET /products manually against all quickstart curl scenarios and record results in specs/001-consulta-catalogo-produtos/quickstart.md
 
 ---
 

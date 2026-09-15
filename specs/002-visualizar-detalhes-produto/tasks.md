@@ -29,10 +29,10 @@ description: "Task list for Visualizar Detalhes do Produto"
 
 **Purpose**: Prepare the existing Spring Boot backend and test data baseline for product detail work.
 
-- [ ] T001 Review current Maven dependencies and confirm Spring Web, Spring Data JPA, Validation, H2, Spring Boot Test, MockMvc, Mockito, and JUnit 5 remain available in pom.xml
-- [ ] T002 [P] Review existing catalog listing tests to identify preserved feature 001 assertions in src/test/java/com/devsuperior/dscommerce/controllers/ProductControllerTest.java
-- [ ] T003 [P] Review existing service and repository catalog tests to identify fixture and seed assumptions in src/test/java/com/devsuperior/dscommerce/services/ProductCatalogServiceTest.java and src/test/java/com/devsuperior/dscommerce/repositories/ProductRepositoryTest.java
-- [ ] T004 [P] Review product fixture construction points before adding description/categories in src/test/java/com/devsuperior/dscommerce/fixtures/ProductFactory.java
+- [X] T001 Review current Maven dependencies and confirm Spring Web, Spring Data JPA, Validation, H2, Spring Boot Test, MockMvc, Mockito, and JUnit 5 remain available in pom.xml
+- [X] T002 [P] Review existing catalog listing tests to identify preserved feature 001 assertions in src/test/java/com/devsuperior/dscommerce/controllers/ProductControllerTest.java
+- [X] T003 [P] Review existing service and repository catalog tests to identify fixture and seed assumptions in src/test/java/com/devsuperior/dscommerce/services/ProductCatalogServiceTest.java and src/test/java/com/devsuperior/dscommerce/repositories/ProductRepositoryTest.java
+- [X] T004 [P] Review product fixture construction points before adding description/categories in src/test/java/com/devsuperior/dscommerce/fixtures/ProductFactory.java
 
 ---
 

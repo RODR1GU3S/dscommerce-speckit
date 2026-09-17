@@ -42,13 +42,13 @@ description: "Task list for Visualizar Detalhes do Produto"
 
 **CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T005 Add required description field, constructor support, and getter to Product entity in src/main/java/com/devsuperior/dscommerce/entities/Product.java
-- [ ] T006 [P] Create Category JPA entity with id, name, equality by id, and validation annotations in src/main/java/com/devsuperior/dscommerce/entities/Category.java
-- [ ] T007 Add many-to-many Product.categories mapping through a product-category join table in src/main/java/com/devsuperior/dscommerce/entities/Product.java
-- [ ] T008 Update ProductFactory constructors and helpers for description and category-ready products in src/test/java/com/devsuperior/dscommerce/fixtures/ProductFactory.java
-- [ ] T009 Update test seed products with description values and add tb_category plus tb_product_category seed data in src/test/resources/import.sql
-- [ ] T010 [P] Add ProductNotFoundException service exception for missing products in src/main/java/com/devsuperior/dscommerce/services/exceptions/ProductNotFoundException.java
-- [ ] T011 Review and confirm the existing GlobalExceptionHandler extension point and ErrorResponseDTO shape for future ProductNotFoundException handling, without implementing HTTP 404 behavior, in src/main/java/com/devsuperior/dscommerce/controllers/handlers/GlobalExceptionHandler.java and src/main/java/com/devsuperior/dscommerce/dto/ErrorResponseDTO.java
+- [X] T005 Add required description field, constructor support, and getter to Product entity in src/main/java/com/devsuperior/dscommerce/entities/Product.java
+- [X] T006 [P] Create Category JPA entity with id, name, equality by id, and validation annotations in src/main/java/com/devsuperior/dscommerce/entities/Category.java
+- [X] T007 Add many-to-many Product.categories mapping through a product-category join table in src/main/java/com/devsuperior/dscommerce/entities/Product.java
+- [X] T008 Update ProductFactory constructors and helpers for description and category-ready products in src/test/java/com/devsuperior/dscommerce/fixtures/ProductFactory.java
+- [X] T009 Update test seed products with description values and add tb_category plus tb_product_category seed data in src/test/resources/import.sql
+- [X] T010 [P] Add ProductNotFoundException service exception for missing products in src/main/java/com/devsuperior/dscommerce/services/exceptions/ProductNotFoundException.java
+- [X] T011 Review and confirm the existing GlobalExceptionHandler extension point and ErrorResponseDTO shape for future ProductNotFoundException handling, without implementing HTTP 404 behavior, in src/main/java/com/devsuperior/dscommerce/controllers/handlers/GlobalExceptionHandler.java and src/main/java/com/devsuperior/dscommerce/dto/ErrorResponseDTO.java
 
 **Checkpoint**: Product description, category persistence, seed data, and centralized not-found handling are ready for user stories.
 

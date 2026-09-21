@@ -33,6 +33,15 @@ class ProductRepositoryTest {
     }
 
     @Test
+    void findByIdWithCategoriesShouldReturnEmptyWhenProductDoesNotExist() {
+        Long id = 99999L;
+
+        var result = productRepository.findByIdWithCategories(id);
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
     void findAllShouldReturnRequestedPageSizeAndTotalMetadata() {
         var page = productRepository.findAll(PageRequest.of(1, 10));
 

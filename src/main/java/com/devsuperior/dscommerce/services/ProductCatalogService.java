@@ -4,6 +4,7 @@ import com.devsuperior.dscommerce.dto.PageResponseDTO;
 import com.devsuperior.dscommerce.dto.ProductCatalogItemDTO;
 import com.devsuperior.dscommerce.dto.ProductDetailDTO;
 import com.devsuperior.dscommerce.repositories.ProductRepository;
+import com.devsuperior.dscommerce.services.exceptions.ProductNotFoundException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -22,7 +23,7 @@ public class ProductCatalogService {
     public ProductDetailDTO findProductDetails(Long id) {
         return productRepository.findByIdWithCategories(id)
                 .map(ProductDetailDTO::new)
-                .orElseThrow();
+                .orElseThrow(() -> new ProductNotFoundException("Product not found"));
     }
 
     @Transactional(readOnly = true)

@@ -4,6 +4,7 @@ import com.devsuperior.dscommerce.entities.Category;
 import com.devsuperior.dscommerce.entities.Product;
 import com.devsuperior.dscommerce.fixtures.ProductFactory;
 import com.devsuperior.dscommerce.repositories.ProductRepository;
+import com.devsuperior.dscommerce.services.exceptions.ProductNotFoundException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -20,6 +21,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -60,6 +62,18 @@ class ProductCatalogServiceTest {
         assertThat(response.price().scale()).isEqualTo(price.scale());
         assertThat(response.categories()).containsExactly("Computers", "Electronics");
         verify(productRepository).findByIdWithCategories(42L);
+    }
+
+    @Test
+    void findProductDetailsShouldThrowProductNotFoundExceptionWhenProductDoesNotExist() {
+        Long id = 99999L;
+        when(productRepository.findByIdWithCategories(id))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> productCatalogService.findProductDetails(id))
+                .isInstanceOf(ProductNotFoundException.class);
+
+        verify(productRepository).findByIdWithCategories(id);
     }
 
     @Test

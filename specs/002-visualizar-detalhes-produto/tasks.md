@@ -91,14 +91,14 @@ description: "Task list for Visualizar Detalhes do Produto"
 
 > Write these tests FIRST and ensure they fail before implementation.
 
-- [ ] T021 [P] [US2] Add repository test proving detail lookup returns Optional.empty for absent ids in src/test/java/com/devsuperior/dscommerce/repositories/ProductRepositoryTest.java
-- [ ] T022 [P] [US2] Add service test proving findProductDetails throws ProductNotFoundException for absent ids in src/test/java/com/devsuperior/dscommerce/services/ProductCatalogServiceTest.java
-- [ ] T023 [P] [US2] Add controller test for GET /products/{id} returning 404 ErrorResponseDTO and no product fields in src/test/java/com/devsuperior/dscommerce/controllers/ProductControllerTest.java
+- [X] T021 [P] [US2] Add repository test proving detail lookup returns Optional.empty for absent ids in src/test/java/com/devsuperior/dscommerce/repositories/ProductRepositoryTest.java
+- [X] T022 [P] [US2] Add service test proving findProductDetails throws ProductNotFoundException for absent ids in src/test/java/com/devsuperior/dscommerce/services/ProductCatalogServiceTest.java
+- [X] T023 [P] [US2] Add controller test for GET /products/{id} returning 404 ErrorResponseDTO and no product fields in src/test/java/com/devsuperior/dscommerce/controllers/ProductControllerTest.java
 
 ### Implementation for User Story 2
 
-- [ ] T024 [US2] Wire ProductCatalogService.findProductDetails(Long id) to throw ProductNotFoundException when ProductRepository returns empty in src/main/java/com/devsuperior/dscommerce/services/ProductCatalogService.java
-- [ ] T025 [US2] Add centralized ProductNotFoundException handling in GlobalExceptionHandler returning HTTP 404 with status, error, message, and path in src/main/java/com/devsuperior/dscommerce/controllers/handlers/GlobalExceptionHandler.java
+- [X] T024 [US2] Wire ProductCatalogService.findProductDetails(Long id) to throw ProductNotFoundException when ProductRepository returns empty in src/main/java/com/devsuperior/dscommerce/services/ProductCatalogService.java
+- [X] T025 [US2] Add centralized ProductNotFoundException handling in GlobalExceptionHandler returning HTTP 404 with status, error, message, and path in src/main/java/com/devsuperior/dscommerce/controllers/handlers/GlobalExceptionHandler.java
 
 **Checkpoint**: User Story 2 is fully functional and testable independently through GET /products/{id} for a missing product.
 

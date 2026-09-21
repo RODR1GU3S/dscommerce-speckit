@@ -6,6 +6,7 @@ import com.devsuperior.dscommerce.dto.ProductDetailDTO;
 import com.devsuperior.dscommerce.entities.Product;
 import com.devsuperior.dscommerce.fixtures.ProductFactory;
 import com.devsuperior.dscommerce.services.ProductCatalogService;
+import com.devsuperior.dscommerce.services.exceptions.ProductNotFoundException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -56,6 +57,30 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.categories", hasSize(2)))
                 .andExpect(jsonPath("$.categories[0]").value("Computers"))
                 .andExpect(jsonPath("$.categories[1]").value("Electronics"));
+    }
+
+    @Test
+    void getProductDetailsShouldReturnNotFoundErrorWhenProductDoesNotExist() throws Exception {
+        Long id = 99999L;
+        String message = "Product not found";
+        when(productCatalogService.findProductDetails(id))
+                .thenThrow(new ProductNotFoundException(message));
+
+        mockMvc.perform(get("/products/{id}", id))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.*", hasSize(4)))
+                .andExpect(jsonPath("$.keys()", containsInAnyOrder(
+                        "status", "error", "message", "path")))
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.error").value("Not Found"))
+                .andExpect(jsonPath("$.message").value(message))
+                .andExpect(jsonPath("$.path").value("/products/99999"))
+                .andExpect(jsonPath("$.id").doesNotExist())
+                .andExpect(jsonPath("$.name").doesNotExist())
+                .andExpect(jsonPath("$.description").doesNotExist())
+                .andExpect(jsonPath("$.image").doesNotExist())
+                .andExpect(jsonPath("$.price").doesNotExist())
+                .andExpect(jsonPath("$.categories").doesNotExist());
     }
 
     @Test

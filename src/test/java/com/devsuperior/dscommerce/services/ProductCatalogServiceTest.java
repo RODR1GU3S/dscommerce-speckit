@@ -1,5 +1,6 @@
 package com.devsuperior.dscommerce.services;
 
+import com.devsuperior.dscommerce.entities.Category;
 import com.devsuperior.dscommerce.entities.Product;
 import com.devsuperior.dscommerce.fixtures.ProductFactory;
 import com.devsuperior.dscommerce.repositories.ProductRepository;
@@ -16,6 +17,7 @@ import org.springframework.data.domain.Sort;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -30,6 +32,35 @@ class ProductCatalogServiceTest {
 
     @InjectMocks
     private ProductCatalogService productCatalogService;
+
+    @Test
+    void findProductDetailsShouldMapFieldsPreservePriceAndReturnUniqueSortedCategoryNames() {
+        BigDecimal price = new BigDecimal("1234.5670");
+        Product product = new Product(
+                42L,
+                "Mechanical Keyboard",
+                "Hot-swappable mechanical keyboard",
+                "https://cdn.example.com/products/42.jpg",
+                price
+        );
+        product.getCategories().add(new Category(3L, "Electronics"));
+        product.getCategories().add(new Category(1L, "Computers"));
+        product.getCategories().add(new Category(2L, "Electronics"));
+        when(productRepository.findByIdWithCategories(42L))
+                .thenReturn(Optional.of(product));
+
+        var response = productCatalogService.findProductDetails(42L);
+
+        assertThat(response.id()).isEqualTo(product.getId());
+        assertThat(response.name()).isEqualTo(product.getName());
+        assertThat(response.description()).isEqualTo(product.getDescription());
+        assertThat(response.image()).isEqualTo(product.getImage());
+        assertThat(response.price()).isEqualByComparingTo(price);
+        assertThat(response.price().precision()).isEqualTo(price.precision());
+        assertThat(response.price().scale()).isEqualTo(price.scale());
+        assertThat(response.categories()).containsExactly("Computers", "Electronics");
+        verify(productRepository).findByIdWithCategories(42L);
+    }
 
     @Test
     void listProductsShouldCreatePageRequestAndMapPageMetadata() {

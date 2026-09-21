@@ -2,6 +2,7 @@ package com.devsuperior.dscommerce.controllers;
 
 import com.devsuperior.dscommerce.dto.PageResponseDTO;
 import com.devsuperior.dscommerce.dto.ProductCatalogItemDTO;
+import com.devsuperior.dscommerce.dto.ProductDetailDTO;
 import com.devsuperior.dscommerce.entities.Product;
 import com.devsuperior.dscommerce.fixtures.ProductFactory;
 import com.devsuperior.dscommerce.services.ProductCatalogService;
@@ -29,6 +30,33 @@ class ProductControllerTest {
 
     @MockBean
     private ProductCatalogService productCatalogService;
+
+    @Test
+    void getProductDetailsShouldReturnSelectedProductWithCompleteDetailJson() throws Exception {
+        ProductDetailDTO response = new ProductDetailDTO(
+                42L,
+                "Mechanical Keyboard",
+                "Hot-swappable mechanical keyboard",
+                "https://cdn.example.com/products/42.jpg",
+                new BigDecimal("349.90"),
+                List.of("Computers", "Electronics")
+        );
+        when(productCatalogService.findProductDetails(42L)).thenReturn(response);
+
+        mockMvc.perform(get("/products/{id}", 42L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.*", hasSize(6)))
+                .andExpect(jsonPath("$.keys()", containsInAnyOrder(
+                        "id", "name", "description", "image", "price", "categories")))
+                .andExpect(jsonPath("$.id").value(42))
+                .andExpect(jsonPath("$.name").value("Mechanical Keyboard"))
+                .andExpect(jsonPath("$.description").value("Hot-swappable mechanical keyboard"))
+                .andExpect(jsonPath("$.image").value("https://cdn.example.com/products/42.jpg"))
+                .andExpect(jsonPath("$.price").value(349.90))
+                .andExpect(jsonPath("$.categories", hasSize(2)))
+                .andExpect(jsonPath("$.categories[0]").value("Computers"))
+                .andExpect(jsonPath("$.categories[1]").value("Electronics"));
+    }
 
     @Test
     void listProductsShouldUseDefaultPaginationWhenQueryParametersAreMissing() throws Exception {

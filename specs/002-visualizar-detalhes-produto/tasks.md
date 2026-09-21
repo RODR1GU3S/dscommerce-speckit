@@ -64,18 +64,18 @@ description: "Task list for Visualizar Detalhes do Produto"
 
 > Write these tests FIRST and ensure they fail before implementation.
 
-- [ ] T012 [P] [US1] Add repository test for finding an existing product by id with categories loaded in src/test/java/com/devsuperior/dscommerce/repositories/ProductRepositoryTest.java
-- [ ] T013 [P] [US1] Add service test for mapping product details, preserving price, and returning deterministic unique category names in src/test/java/com/devsuperior/dscommerce/services/ProductCatalogServiceTest.java
-- [ ] T014 [P] [US1] Add controller test for GET /products/{id} returning 200 and ProductDetail JSON fields in src/test/java/com/devsuperior/dscommerce/controllers/ProductControllerTest.java
-- [ ] T015 [P] [US1] Add regression test proving GET /products still omits description and categories in src/test/java/com/devsuperior/dscommerce/controllers/ProductControllerTest.java
+- [X] T012 [P] [US1] Add repository test for finding an existing product by id with categories loaded in src/test/java/com/devsuperior/dscommerce/repositories/ProductRepositoryTest.java
+- [X] T013 [P] [US1] Add service test for mapping product details, preserving price, and returning deterministic unique category names in src/test/java/com/devsuperior/dscommerce/services/ProductCatalogServiceTest.java
+- [X] T014 [P] [US1] Add controller test for GET /products/{id} returning 200 and ProductDetail JSON fields in src/test/java/com/devsuperior/dscommerce/controllers/ProductControllerTest.java
+- [X] T015 [P] [US1] Add regression test proving GET /products still omits description and categories in src/test/java/com/devsuperior/dscommerce/controllers/ProductControllerTest.java
 
 ### Implementation for User Story 1
 
-- [ ] T016 [P] [US1] Create ProductDetailDTO record with entity mapping and unique sorted category names in src/main/java/com/devsuperior/dscommerce/dto/ProductDetailDTO.java
-- [ ] T017 [US1] Add ProductRepository detail lookup query returning Optional<Product> with fetched categories in src/main/java/com/devsuperior/dscommerce/repositories/ProductRepository.java
-- [ ] T018 [US1] Implement ProductCatalogService.findProductDetails(Long id) with read-only transaction and ProductDetailDTO mapping in src/main/java/com/devsuperior/dscommerce/services/ProductCatalogService.java
-- [ ] T019 [US1] Add GET /products/{id} endpoint returning ProductDetailDTO in src/main/java/com/devsuperior/dscommerce/controllers/ProductController.java
-- [ ] T020 [US1] Verify ProductCatalogItemDTO still maps only id, name, image, and price in src/main/java/com/devsuperior/dscommerce/dto/ProductCatalogItemDTO.java
+- [X] T016 [P] [US1] Create ProductDetailDTO record with entity mapping and unique sorted category names in src/main/java/com/devsuperior/dscommerce/dto/ProductDetailDTO.java
+- [X] T017 [US1] Add ProductRepository detail lookup query returning Optional<Product> with fetched categories in src/main/java/com/devsuperior/dscommerce/repositories/ProductRepository.java
+- [X] T018 [US1] Implement ProductCatalogService.findProductDetails(Long id) with read-only transaction and ProductDetailDTO mapping in src/main/java/com/devsuperior/dscommerce/services/ProductCatalogService.java
+- [X] T019 [US1] Add GET /products/{id} endpoint returning ProductDetailDTO in src/main/java/com/devsuperior/dscommerce/controllers/ProductController.java
+- [X] T020 [US1] Verify ProductCatalogItemDTO still maps only id, name, image, and price in src/main/java/com/devsuperior/dscommerce/dto/ProductCatalogItemDTO.java
 
 **Checkpoint**: User Story 1 is fully functional and testable independently through GET /products/{id} for an existing product.
 

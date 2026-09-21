@@ -1,5 +1,6 @@
 package com.devsuperior.dscommerce.repositories;
 
+import jakarta.persistence.Persistence;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
@@ -15,6 +16,21 @@ class ProductRepositoryTest {
 
     @Autowired
     private ProductRepository productRepository;
+
+    @Test
+    void findByIdWithCategoriesShouldReturnRequestedProductWithCategoriesLoaded() {
+        var result = productRepository.findByIdWithCategories(1L);
+
+        assertThat(result).isPresent();
+
+        var product = result.orElseThrow();
+        assertThat(product.getId()).isEqualTo(1L);
+        assertThat(product.getName()).isEqualTo("Product 50");
+        assertThat(Persistence.getPersistenceUtil().isLoaded(product, "categories")).isTrue();
+        assertThat(product.getCategories())
+                .extracting("name")
+                .containsExactlyInAnyOrder("Computers", "Electronics");
+    }
 
     @Test
     void findAllShouldReturnRequestedPageSizeAndTotalMetadata() {

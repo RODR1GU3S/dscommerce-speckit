@@ -2,6 +2,7 @@ package com.devsuperior.dscommerce.services;
 
 import com.devsuperior.dscommerce.dto.PageResponseDTO;
 import com.devsuperior.dscommerce.dto.ProductCatalogItemDTO;
+import com.devsuperior.dscommerce.dto.ProductDetailDTO;
 import com.devsuperior.dscommerce.repositories.ProductRepository;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -15,6 +16,13 @@ public class ProductCatalogService {
 
     public ProductCatalogService(ProductRepository productRepository) {
         this.productRepository = productRepository;
+    }
+
+    @Transactional(readOnly = true)
+    public ProductDetailDTO findProductDetails(Long id) {
+        return productRepository.findByIdWithCategories(id)
+                .map(ProductDetailDTO::new)
+                .orElseThrow();
     }
 
     @Transactional(readOnly = true)

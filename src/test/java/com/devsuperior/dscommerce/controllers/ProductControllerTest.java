@@ -2,9 +2,11 @@ package com.devsuperior.dscommerce.controllers;
 
 import com.devsuperior.dscommerce.dto.PageResponseDTO;
 import com.devsuperior.dscommerce.dto.ProductCatalogItemDTO;
+import com.devsuperior.dscommerce.dto.ProductDetailDTO;
 import com.devsuperior.dscommerce.entities.Product;
 import com.devsuperior.dscommerce.fixtures.ProductFactory;
 import com.devsuperior.dscommerce.services.ProductCatalogService;
+import com.devsuperior.dscommerce.services.exceptions.ProductNotFoundException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -29,6 +31,57 @@ class ProductControllerTest {
 
     @MockBean
     private ProductCatalogService productCatalogService;
+
+    @Test
+    void getProductDetailsShouldReturnSelectedProductWithCompleteDetailJson() throws Exception {
+        ProductDetailDTO response = new ProductDetailDTO(
+                42L,
+                "Mechanical Keyboard",
+                "Hot-swappable mechanical keyboard",
+                "https://cdn.example.com/products/42.jpg",
+                new BigDecimal("349.90"),
+                List.of("Computers", "Electronics")
+        );
+        when(productCatalogService.findProductDetails(42L)).thenReturn(response);
+
+        mockMvc.perform(get("/products/{id}", 42L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.*", hasSize(6)))
+                .andExpect(jsonPath("$.keys()", containsInAnyOrder(
+                        "id", "name", "description", "image", "price", "categories")))
+                .andExpect(jsonPath("$.id").value(42))
+                .andExpect(jsonPath("$.name").value("Mechanical Keyboard"))
+                .andExpect(jsonPath("$.description").value("Hot-swappable mechanical keyboard"))
+                .andExpect(jsonPath("$.image").value("https://cdn.example.com/products/42.jpg"))
+                .andExpect(jsonPath("$.price").value(349.90))
+                .andExpect(jsonPath("$.categories", hasSize(2)))
+                .andExpect(jsonPath("$.categories[0]").value("Computers"))
+                .andExpect(jsonPath("$.categories[1]").value("Electronics"));
+    }
+
+    @Test
+    void getProductDetailsShouldReturnNotFoundErrorWhenProductDoesNotExist() throws Exception {
+        Long id = 99999L;
+        String message = "Product not found";
+        when(productCatalogService.findProductDetails(id))
+                .thenThrow(new ProductNotFoundException(message));
+
+        mockMvc.perform(get("/products/{id}", id))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.*", hasSize(4)))
+                .andExpect(jsonPath("$.keys()", containsInAnyOrder(
+                        "status", "error", "message", "path")))
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.error").value("Not Found"))
+                .andExpect(jsonPath("$.message").value(message))
+                .andExpect(jsonPath("$.path").value("/products/99999"))
+                .andExpect(jsonPath("$.id").doesNotExist())
+                .andExpect(jsonPath("$.name").doesNotExist())
+                .andExpect(jsonPath("$.description").doesNotExist())
+                .andExpect(jsonPath("$.image").doesNotExist())
+                .andExpect(jsonPath("$.price").doesNotExist())
+                .andExpect(jsonPath("$.categories").doesNotExist());
+    }
 
     @Test
     void listProductsShouldUseDefaultPaginationWhenQueryParametersAreMissing() throws Exception {

@@ -25,8 +25,10 @@ mvn test
 Run the application for manual HTTP validation:
 
 ```bash
-mvn spring-boot:run
+mvn spring-boot:test-run -Dspring-boot.run.profiles=test
 ```
+
+The manual scenarios use the test data seeded by `src/test/resources/import.sql`, so the application must run with the test classpath. Running `mvn spring-boot:run` alone does not load this seed.
 
 ## Manual Validation Scenarios
 

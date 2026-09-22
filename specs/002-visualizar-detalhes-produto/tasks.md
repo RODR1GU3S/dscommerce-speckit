@@ -108,10 +108,10 @@ description: "Task list for Visualizar Detalhes do Produto"
 
 **Purpose**: Final validation, regression protection, and documentation consistency.
 
-- [ ] T026 [P] Run the full automated test suite and fix any failures without altering feature 001 behavior
-- [ ] T027 [P] Validate quickstart scenarios for existing product details, product not found, and catalog listing preserved in specs/002-visualizar-detalhes-produto/quickstart.md
-- [ ] T028 [P] Confirm implementation remains aligned with the OpenAPI detail contract in specs/002-visualizar-detalhes-produto/contracts/product-detail-openapi.yaml
-- [ ] T029 Review constitution compliance for layered architecture, DTO boundaries, JPA persistence, and centralized error handling in .specify/memory/constitution.md
+- [X] T026 [P] Run the full automated test suite and fix any failures without altering feature 001 behavior
+- [X] T027 [P] Validate quickstart scenarios for existing product details, product not found, and catalog listing preserved in specs/002-visualizar-detalhes-produto/quickstart.md
+- [X] T028 [P] Confirm implementation remains aligned with the OpenAPI detail contract in specs/002-visualizar-detalhes-produto/contracts/product-detail-openapi.yaml
+- [X] T029 Review constitution compliance for layered architecture, DTO boundaries, JPA persistence, and centralized error handling in .specify/memory/constitution.md
 
 ---
 

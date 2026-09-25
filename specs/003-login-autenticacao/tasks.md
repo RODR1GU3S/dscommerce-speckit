@@ -27,9 +27,9 @@ description: "Tests-first implementation tasks for login and authentication"
 
 **Independent Test**: With the pre-security application, anonymous requests to `GET /products` and `GET /products/{id}` preserve pagination, validation, success, and not-found behavior.
 
-- [ ] T001 [P] [US3] Add full-context anonymous characterization coverage for `GET /products`, including default/explicit pagination, ordering, out-of-range pages, and validation errors, in `src/test/java/com/devsuperior/dscommerce/controllers/PublicCatalogSecurityIntegrationTest.java`
-- [ ] T002 [P] [US3] Add full-context anonymous characterization coverage for existing and missing `GET /products/{id}` responses in `src/test/java/com/devsuperior/dscommerce/controllers/PublicProductDetailSecurityIntegrationTest.java`
-- [ ] T003 [US3] Execute `mvn -Dtest=PublicCatalogSecurityIntegrationTest,PublicProductDetailSecurityIntegrationTest,ProductControllerTest test` and confirm the pre-security anonymous baseline is GREEN using `src/test/java/com/devsuperior/dscommerce/controllers/PublicCatalogSecurityIntegrationTest.java`, `src/test/java/com/devsuperior/dscommerce/controllers/PublicProductDetailSecurityIntegrationTest.java`, and `src/test/java/com/devsuperior/dscommerce/controllers/ProductControllerTest.java`
+- [X] T001 [P] [US3] Add full-context anonymous characterization coverage for `GET /products`, including default/explicit pagination, ordering, out-of-range pages, and validation errors, in `src/test/java/com/devsuperior/dscommerce/controllers/PublicCatalogSecurityIntegrationTest.java`
+- [X] T002 [P] [US3] Add full-context anonymous characterization coverage for existing and missing `GET /products/{id}` responses in `src/test/java/com/devsuperior/dscommerce/controllers/PublicProductDetailSecurityIntegrationTest.java`
+- [X] T003 [US3] Execute `mvn -Dtest=PublicCatalogSecurityIntegrationTest,PublicProductDetailSecurityIntegrationTest,ProductControllerTest test` and confirm the pre-security anonymous baseline is GREEN using `src/test/java/com/devsuperior/dscommerce/controllers/PublicCatalogSecurityIntegrationTest.java`, `src/test/java/com/devsuperior/dscommerce/controllers/PublicProductDetailSecurityIntegrationTest.java`, and `src/test/java/com/devsuperior/dscommerce/controllers/ProductControllerTest.java`
 
 **Checkpoint**: The public baseline is recorded and GREEN before any Spring Security dependency or `SecurityFilterChain` exists.
 
@@ -39,9 +39,9 @@ description: "Tests-first implementation tasks for login and authentication"
 
 **Purpose**: Add dependencies and externalized properties required to compile executable tests without implementing authentication, JWT, BCrypt, or HTTP-security behavior.
 
-- [ ] T004 Add Spring Security and Spring Security OAuth2 JOSE dependencies, without Authorization Server or Resource Server starters, in `pom.xml`
-- [ ] T005 [P] Add externally supplied `security.jwt.secret-base64=${JWT_SECRET_BASE64}` and default `security.jwt.ttl=PT15M` properties without committing a secret in `src/main/resources/application.properties`
-- [ ] T006 [P] Add a disposable 32-byte Base64 JWT key and `security.jwt.ttl=PT15M` only for automated tests in `src/test/resources/application-test.properties`
+- [X] T004 Add Spring Security and Spring Security OAuth2 JOSE dependencies, without Authorization Server or Resource Server starters, in `pom.xml`
+- [X] T005 [P] Add externally supplied `security.jwt.secret-base64=${JWT_SECRET_BASE64}` and default `security.jwt.ttl=PT15M` properties without committing a secret in `src/main/resources/application.properties`
+- [X] T006 [P] Add a disposable 32-byte Base64 JWT key and `security.jwt.ttl=PT15M` only for automated tests in `src/test/resources/application-test.properties`
 
 **Checkpoint**: Tests can compile against Spring Security/JOSE APIs, but no production security behavior has been implemented.
 
@@ -53,24 +53,24 @@ description: "Tests-first implementation tasks for login and authentication"
 
 ### HTTP Policy RED → Implementation → GREEN
 
-- [ ] T007 Execute `mvn -Dtest=PublicCatalogSecurityIntegrationTest,PublicProductDetailSecurityIntegrationTest test` after T004 and confirm a valid RED caused by Spring Security's default authentication requirement, not compilation or startup failure, using `src/test/java/com/devsuperior/dscommerce/controllers/PublicCatalogSecurityIntegrationTest.java` and `src/test/java/com/devsuperior/dscommerce/controllers/PublicProductDetailSecurityIntegrationTest.java`
-- [ ] T008 Implement only the stateless, CSRF-disabled, permit-all `SecurityFilterChain` with no bearer-token or Resource Server configuration in `src/main/java/com/devsuperior/dscommerce/config/SecurityConfig.java`
-- [ ] T009 Execute `mvn -Dtest=PublicCatalogSecurityIntegrationTest,PublicProductDetailSecurityIntegrationTest,ProductControllerTest test` and confirm the post-`SecurityFilterChain` public regression gate is GREEN using `src/test/java/com/devsuperior/dscommerce/controllers/PublicCatalogSecurityIntegrationTest.java`, `src/test/java/com/devsuperior/dscommerce/controllers/PublicProductDetailSecurityIntegrationTest.java`, and `src/test/java/com/devsuperior/dscommerce/controllers/ProductControllerTest.java`
+- [X] T007 Execute `mvn -Dtest=PublicCatalogSecurityIntegrationTest,PublicProductDetailSecurityIntegrationTest test` after T004 and confirm a valid RED caused by Spring Security's default authentication requirement, not compilation or startup failure, using `src/test/java/com/devsuperior/dscommerce/controllers/PublicCatalogSecurityIntegrationTest.java` and `src/test/java/com/devsuperior/dscommerce/controllers/PublicProductDetailSecurityIntegrationTest.java`
+- [X] T008 Implement only the stateless, CSRF-disabled, permit-all `SecurityFilterChain` with no bearer-token or Resource Server configuration in `src/main/java/com/devsuperior/dscommerce/config/SecurityConfig.java`
+- [X] T009 Execute `mvn -Dtest=PublicCatalogSecurityIntegrationTest,PublicProductDetailSecurityIntegrationTest,ProductControllerTest test` and confirm the post-`SecurityFilterChain` public regression gate is GREEN using `src/test/java/com/devsuperior/dscommerce/controllers/PublicCatalogSecurityIntegrationTest.java`, `src/test/java/com/devsuperior/dscommerce/controllers/PublicProductDetailSecurityIntegrationTest.java`, and `src/test/java/com/devsuperior/dscommerce/controllers/ProductControllerTest.java`
 
 ### JWT Configuration RED → Implementation → GREEN
 
-- [ ] T010 Add executable application-context tests for invalid Base64, decoded keys shorter than 256 bits, zero TTL, negative TTL, and a valid HS256 encoder/decoder configuration without importing not-yet-created project configuration classes in `src/test/java/com/devsuperior/dscommerce/config/JwtConfigurationTest.java`
-- [ ] T011 Execute `mvn -Dtest=JwtConfigurationTest test` and confirm every invalid-configuration case and the missing valid HS256 bean behavior fail for the expected assertions while the test source compiles in `src/test/java/com/devsuperior/dscommerce/config/JwtConfigurationTest.java`
-- [ ] T012 Implement Base64 decoding, minimum 32-byte key validation, and positive finite TTL binding in `src/main/java/com/devsuperior/dscommerce/config/JwtProperties.java`
-- [ ] T013 Implement HS256 `JwtEncoder` and `JwtDecoder` beans from the validated symmetric key in `src/main/java/com/devsuperior/dscommerce/config/JwtConfig.java`
-- [ ] T014 Execute `mvn -Dtest=JwtConfigurationTest test` and confirm all invalid and valid JWT configuration cases are GREEN in `src/test/java/com/devsuperior/dscommerce/config/JwtConfigurationTest.java`
+- [X] T010 Add executable application-context tests for invalid Base64, decoded keys shorter than 256 bits, zero TTL, negative TTL, and a valid HS256 encoder/decoder configuration without importing not-yet-created project configuration classes in `src/test/java/com/devsuperior/dscommerce/config/JwtConfigurationTest.java`
+- [X] T011 Execute `mvn -Dtest=JwtConfigurationTest test` and confirm every invalid-configuration case and the missing valid HS256 bean behavior fail for the expected assertions while the test source compiles in `src/test/java/com/devsuperior/dscommerce/config/JwtConfigurationTest.java`
+- [X] T012 Implement Base64 decoding, minimum 32-byte key validation, and positive finite TTL binding in `src/main/java/com/devsuperior/dscommerce/config/JwtProperties.java`
+- [X] T013 Implement HS256 `JwtEncoder` and `JwtDecoder` beans from the validated symmetric key in `src/main/java/com/devsuperior/dscommerce/config/JwtConfig.java`
+- [X] T014 Execute `mvn -Dtest=JwtConfigurationTest test` and confirm all invalid and valid JWT configuration cases are GREEN in `src/test/java/com/devsuperior/dscommerce/config/JwtConfigurationTest.java`
 
 ### BCrypt Encoder RED → Implementation → GREEN
 
-- [ ] T015 Add an executable context test that requires a BCrypt-backed `PasswordEncoder` bean and proves `matches(raw, encoded)` behavior in `src/test/java/com/devsuperior/dscommerce/config/PasswordEncoderConfigurationTest.java`
-- [ ] T016 Execute `mvn -Dtest=PasswordEncoderConfigurationTest test` and confirm valid RED because the BCrypt `PasswordEncoder` bean is absent, not because of compilation or unrelated startup failure, in `src/test/java/com/devsuperior/dscommerce/config/PasswordEncoderConfigurationTest.java`
-- [ ] T017 Add the BCrypt `PasswordEncoder` bean without changing the already validated permit-all HTTP policy in `src/main/java/com/devsuperior/dscommerce/config/SecurityConfig.java`
-- [ ] T018 Execute `mvn -Dtest=PasswordEncoderConfigurationTest,PublicCatalogSecurityIntegrationTest,PublicProductDetailSecurityIntegrationTest,ProductControllerTest test` and confirm BCrypt GREEN plus the mandatory post-`SecurityFilterChain` regression gate in `src/test/java/com/devsuperior/dscommerce/config/PasswordEncoderConfigurationTest.java`, `src/test/java/com/devsuperior/dscommerce/controllers/PublicCatalogSecurityIntegrationTest.java`, `src/test/java/com/devsuperior/dscommerce/controllers/PublicProductDetailSecurityIntegrationTest.java`, and `src/test/java/com/devsuperior/dscommerce/controllers/ProductControllerTest.java`
+- [X] T015 Add an executable context test that requires a BCrypt-backed `PasswordEncoder` bean and proves `matches(raw, encoded)` behavior in `src/test/java/com/devsuperior/dscommerce/config/PasswordEncoderConfigurationTest.java`
+- [X] T016 Execute `mvn -Dtest=PasswordEncoderConfigurationTest test` and confirm valid RED because the BCrypt `PasswordEncoder` bean is absent, not because of compilation or unrelated startup failure, in `src/test/java/com/devsuperior/dscommerce/config/PasswordEncoderConfigurationTest.java`
+- [X] T017 Add the BCrypt `PasswordEncoder` bean without changing the already validated permit-all HTTP policy in `src/main/java/com/devsuperior/dscommerce/config/SecurityConfig.java`
+- [X] T018 Execute `mvn -Dtest=PasswordEncoderConfigurationTest,PublicCatalogSecurityIntegrationTest,PublicProductDetailSecurityIntegrationTest,ProductControllerTest test` and confirm BCrypt GREEN plus the mandatory post-`SecurityFilterChain` regression gate in `src/test/java/com/devsuperior/dscommerce/config/PasswordEncoderConfigurationTest.java`, `src/test/java/com/devsuperior/dscommerce/controllers/PublicCatalogSecurityIntegrationTest.java`, `src/test/java/com/devsuperior/dscommerce/controllers/PublicProductDetailSecurityIntegrationTest.java`, and `src/test/java/com/devsuperior/dscommerce/controllers/ProductControllerTest.java`
 
 **Checkpoint**: JWT key/TTL validation, HS256 beans, BCrypt matching, and anonymous HTTP behavior are all GREEN before story implementation.
 

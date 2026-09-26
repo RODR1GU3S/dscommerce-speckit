@@ -84,38 +84,38 @@ description: "Tests-first implementation tasks for login and authentication"
 
 ### Repository RED → Implementation → GREEN
 
-- [ ] T019 [US1] Add an executable black-box JPA test that discovers the repository bean through the Spring context and specifies unique, exact, case-sensitive `name` lookup without compile-time imports of not-yet-created project types in `src/test/java/com/devsuperior/dscommerce/repositories/UserAccountRepositoryTest.java`
-- [ ] T020 [US1] Execute `mvn -Dtest=UserAccountRepositoryTest test` and confirm valid RED because the required account persistence/repository behavior is absent, not because the test fails to compile, in `src/test/java/com/devsuperior/dscommerce/repositories/UserAccountRepositoryTest.java`
-- [ ] T021 [US1] Create the `UserAccount` JPA entity with generated id, unique non-blank exact-case name, and a non-serialized BCrypt `passwordHash` in `src/main/java/com/devsuperior/dscommerce/entities/UserAccount.java`
-- [ ] T022 [US1] Create `UserAccountRepository.findByName(...)` returning `Optional<UserAccount>` with exact, case-sensitive lookup semantics in `src/main/java/com/devsuperior/dscommerce/repositories/UserAccountRepository.java`
-- [ ] T023 [US1] Add only a test account `demo` with a BCrypt hash for `secret123`, never a plaintext stored password or production account, in `src/test/resources/import.sql`
-- [ ] T024 [US1] Execute `mvn -Dtest=UserAccountRepositoryTest test` and confirm unique and exact case-sensitive lookup GREEN in `src/test/java/com/devsuperior/dscommerce/repositories/UserAccountRepositoryTest.java`
+- [X] T019 [US1] Add an executable black-box JPA test that discovers the repository bean through the Spring context and specifies unique, exact, case-sensitive `name` lookup without compile-time imports of not-yet-created project types in `src/test/java/com/devsuperior/dscommerce/repositories/UserAccountRepositoryTest.java`
+- [X] T020 [US1] Execute `mvn -Dtest=UserAccountRepositoryTest test` and confirm valid RED because the required account persistence/repository behavior is absent, not because the test fails to compile, in `src/test/java/com/devsuperior/dscommerce/repositories/UserAccountRepositoryTest.java`
+- [X] T021 [US1] Create the `UserAccount` JPA entity with generated id, unique non-blank exact-case name, and a non-serialized BCrypt `passwordHash` in `src/main/java/com/devsuperior/dscommerce/entities/UserAccount.java`
+- [X] T022 [US1] Create `UserAccountRepository.findByName(...)` returning `Optional<UserAccount>` with exact, case-sensitive lookup semantics in `src/main/java/com/devsuperior/dscommerce/repositories/UserAccountRepository.java`
+- [X] T023 [US1] Add only a test account `demo` with a BCrypt hash for `secret123`, never a plaintext stored password or production account, in `src/test/resources/import.sql`
+- [X] T024 [US1] Execute `mvn -Dtest=UserAccountRepositoryTest test` and confirm unique and exact case-sensitive lookup GREEN in `src/test/java/com/devsuperior/dscommerce/repositories/UserAccountRepositoryTest.java`
 
 ### Token Issuance RED → Implementation → GREEN
 
-- [ ] T025 [US1] Add an executable Spring black-box token-service test that discovers the service bean at runtime and specifies HS256, `sub`, `name`, `iat`, `exp`, configured TTL, non-empty output, and absence of password/hash/secret claims in `src/test/java/com/devsuperior/dscommerce/services/JwtTokenServiceTest.java`
-- [ ] T026 [US1] Execute `mvn -Dtest=JwtTokenServiceTest test` and confirm valid RED because token issuance behavior is absent while JWT configuration remains GREEN in `src/test/java/com/devsuperior/dscommerce/services/JwtTokenServiceTest.java`
-- [ ] T027 [US1] Create immutable `TokenResponseDTO` exposing only `accessToken` and `tokenType` in `src/main/java/com/devsuperior/dscommerce/dto/TokenResponseDTO.java`
-- [ ] T028 [US1] Implement HS256 token issuance with `sub`, `name`, `iat`, and `exp = iat + configured TTL`, returning `Bearer` and no secret data in `src/main/java/com/devsuperior/dscommerce/services/JwtTokenService.java`
-- [ ] T029 [US1] Execute `mvn -Dtest=JwtTokenServiceTest test` and confirm token issuance and claim verification GREEN in `src/test/java/com/devsuperior/dscommerce/services/JwtTokenServiceTest.java`
+- [X] T025 [US1] Add an executable Spring black-box token-service test that discovers the service bean at runtime and specifies HS256, `sub`, `name`, `iat`, `exp`, configured TTL, non-empty output, and absence of password/hash/secret claims in `src/test/java/com/devsuperior/dscommerce/services/JwtTokenServiceTest.java`
+- [X] T026 [US1] Execute `mvn -Dtest=JwtTokenServiceTest test` and confirm valid RED because token issuance behavior is absent while JWT configuration remains GREEN in `src/test/java/com/devsuperior/dscommerce/services/JwtTokenServiceTest.java`
+- [X] T027 [US1] Create immutable `TokenResponseDTO` exposing only `accessToken` and `tokenType` in `src/main/java/com/devsuperior/dscommerce/dto/TokenResponseDTO.java`
+- [X] T028 [US1] Implement HS256 token issuance with `sub`, `name`, `iat`, and `exp = iat + configured TTL`, returning `Bearer` and no secret data in `src/main/java/com/devsuperior/dscommerce/services/JwtTokenService.java`
+- [X] T029 [US1] Execute `mvn -Dtest=JwtTokenServiceTest test` and confirm token issuance and claim verification GREEN in `src/test/java/com/devsuperior/dscommerce/services/JwtTokenServiceTest.java`
 
 ### BCrypt Authentication RED → Implementation → GREEN
 
-- [ ] T030 [US1] Create only a compileable authentication-service seam whose login method has no successful behavior yet and throws an unsupported-operation failure in `src/main/java/com/devsuperior/dscommerce/services/AuthenticationService.java`
-- [ ] T031 [US1] Add service tests that verify one exact repository lookup, `PasswordEncoder.matches(rawPassword, storedHash)`, no raw-password persistence, and token issuance only after a successful BCrypt comparison in `src/test/java/com/devsuperior/dscommerce/services/AuthenticationServiceTest.java`
-- [ ] T032 [US1] Execute `mvn -Dtest=AuthenticationServiceTest test` and confirm valid behavioral RED from the unsupported authentication seam, not compilation failure, in `src/test/java/com/devsuperior/dscommerce/services/AuthenticationServiceTest.java`
-- [ ] T033 [US1] Implement the successful authentication path with one exact lookup, `PasswordEncoder.matches(...)`, and token issuance only after a valid BCrypt result in `src/main/java/com/devsuperior/dscommerce/services/AuthenticationService.java`
-- [ ] T034 [US1] Execute `mvn -Dtest=AuthenticationServiceTest test` and confirm successful BCrypt authentication GREEN in `src/test/java/com/devsuperior/dscommerce/services/AuthenticationServiceTest.java`
+- [X] T030 [US1] Create only a compileable authentication-service seam whose login method has no successful behavior yet and throws an unsupported-operation failure in `src/main/java/com/devsuperior/dscommerce/services/AuthenticationService.java`
+- [X] T031 [US1] Add service tests that verify one exact repository lookup, `PasswordEncoder.matches(rawPassword, storedHash)`, no raw-password persistence, and token issuance only after a successful BCrypt comparison in `src/test/java/com/devsuperior/dscommerce/services/AuthenticationServiceTest.java`
+- [X] T032 [US1] Execute `mvn -Dtest=AuthenticationServiceTest test` and confirm valid behavioral RED from the unsupported authentication seam, not compilation failure, in `src/test/java/com/devsuperior/dscommerce/services/AuthenticationServiceTest.java`
+- [X] T033 [US1] Implement the successful authentication path with one exact lookup, `PasswordEncoder.matches(...)`, and token issuance only after a valid BCrypt result in `src/main/java/com/devsuperior/dscommerce/services/AuthenticationService.java`
+- [X] T034 [US1] Execute `mvn -Dtest=AuthenticationServiceTest test` and confirm successful BCrypt authentication GREEN in `src/test/java/com/devsuperior/dscommerce/services/AuthenticationServiceTest.java`
 
 ### Login HTTP Contract RED → Implementation → GREEN
 
-- [ ] T035 [P] [US1] Create a compileable immutable `LoginRequestDTO` seam with `name` and `password` fields but without validation behavior yet in `src/main/java/com/devsuperior/dscommerce/dto/LoginRequestDTO.java`
-- [ ] T036 [P] [US1] Create a compileable `LoginController` seam without a mapped `/login` endpoint yet in `src/main/java/com/devsuperior/dscommerce/controllers/LoginController.java`
-- [ ] T037 [US1] Add `POST /login` MockMvc tests for exact `name` and `password` input, HTTP 200, exactly `accessToken` and `tokenType: Bearer`, one-request completion, and no password/hash/secret fields in `src/test/java/com/devsuperior/dscommerce/controllers/LoginControllerTest.java`
-- [ ] T038 [US1] Execute `mvn -Dtest=LoginControllerTest test` and confirm valid RED because `POST /login` is not mapped, not because of compilation or unrelated setup, in `src/test/java/com/devsuperior/dscommerce/controllers/LoginControllerTest.java`
-- [ ] T039 [US1] Implement anonymous `POST /login` mapping and DTO-only success response handling without adding missing/empty/blank-field validation yet in `src/main/java/com/devsuperior/dscommerce/controllers/LoginController.java`
-- [ ] T040 [US1] Execute `mvn -Dtest=LoginControllerTest test` and confirm the successful HTTP 200 contract GREEN in `src/test/java/com/devsuperior/dscommerce/controllers/LoginControllerTest.java`
-- [ ] T041 [US1] Execute `mvn -Dtest=JwtConfigurationTest,PasswordEncoderConfigurationTest,UserAccountRepositoryTest,JwtTokenServiceTest,AuthenticationServiceTest,LoginControllerTest,PublicCatalogSecurityIntegrationTest,PublicProductDetailSecurityIntegrationTest,ProductControllerTest test` and confirm the US1 plus feature 001/002 regression gate is GREEN using the corresponding files under `src/test/java/com/devsuperior/dscommerce/`
+- [X] T035 [P] [US1] Create a compileable immutable `LoginRequestDTO` seam with `name` and `password` fields but without validation behavior yet in `src/main/java/com/devsuperior/dscommerce/dto/LoginRequestDTO.java`
+- [X] T036 [P] [US1] Create a compileable `LoginController` seam without a mapped `/login` endpoint yet in `src/main/java/com/devsuperior/dscommerce/controllers/LoginController.java`
+- [X] T037 [US1] Add `POST /login` MockMvc tests for exact `name` and `password` input, HTTP 200, exactly `accessToken` and `tokenType: Bearer`, one-request completion, and no password/hash/secret fields in `src/test/java/com/devsuperior/dscommerce/controllers/LoginControllerTest.java`
+- [X] T038 [US1] Execute `mvn -Dtest=LoginControllerTest test` and confirm valid RED because `POST /login` is not mapped, not because of compilation or unrelated setup, in `src/test/java/com/devsuperior/dscommerce/controllers/LoginControllerTest.java`
+- [X] T039 [US1] Implement anonymous `POST /login` mapping and DTO-only success response handling without adding missing/empty/blank-field validation yet in `src/main/java/com/devsuperior/dscommerce/controllers/LoginController.java`
+- [X] T040 [US1] Execute `mvn -Dtest=LoginControllerTest test` and confirm the successful HTTP 200 contract GREEN in `src/test/java/com/devsuperior/dscommerce/controllers/LoginControllerTest.java`
+- [X] T041 [US1] Execute `mvn -Dtest=JwtConfigurationTest,PasswordEncoderConfigurationTest,UserAccountRepositoryTest,JwtTokenServiceTest,AuthenticationServiceTest,LoginControllerTest,PublicCatalogSecurityIntegrationTest,PublicProductDetailSecurityIntegrationTest,ProductControllerTest test` and confirm the US1 plus feature 001/002 regression gate is GREEN using the corresponding files under `src/test/java/com/devsuperior/dscommerce/`
 
 **Checkpoint**: US1 is independently GREEN, and catalog listing/product detail remain anonymous and unchanged.
 

@@ -182,6 +182,30 @@ description: "Tests-first implementation tasks for login and authentication"
 - [X] T063 Execute the final mandatory `mvn test` gate and confirm authentication plus every existing feature 001/002 test is GREEN using `pom.xml`
 - [X] T064 Record the verified final test command/results and reconcile the manual validation steps without embedding production secrets in `specs/003-login-autenticacao/quickstart.md`
 
+## Phase 8: Pull Request Review Remediation
+
+- [X] T065 [P] Add LoginControllerTest regression cases proving that non-string JSON values for `name` and `password` are rejected with the existing generic HTTP 400 login contract and never reach AuthenticationService, in src/test/java/com/devsuperior/dscommerce/controllers/LoginControllerTest.java
+
+- [X] T066 Execute only the new non-string credential regression tests from LoginControllerTest and confirm valid RED because Jackson currently coerces numeric/boolean scalar nodes to String rather than rejecting them
+
+- [X] T067 [P] Add GlobalExceptionHandlerRegressionTest coverage proving that the login-specific 400 contract is preserved when the application is mounted under a servlet context path such as `/api`, in src/test/java/com/devsuperior/dscommerce/controllers/GlobalExceptionHandlerRegressionTest.java
+
+- [X] T068 Execute only the new context-path regression test and confirm valid RED because login detection currently compares `/login` with HttpServletRequest.getRequestURI(), which includes the context path
+
+- [X] T069 Fix only the two confirmed PR-review defects: in JacksonConfig.java reject non-null `name` and `password` JSON nodes unless they are textual, without coercing numbers, booleans, arrays or objects to String; and in GlobalExceptionHandler.java detect `/login` independently of servlet context path using the context-relative servlet path or equivalent correct request property. Do not change any other authentication behavior or public route policy
+
+- [X] T070 Execute the new LoginControllerTest and GlobalExceptionHandlerRegressionTest remediation cases and confirm both PR-review defects are GREEN while existing contracts remain intact
+
+- [X] T071 Execute the final mandatory `mvn test` gate again after the PR-review remediation and confirm all feature 001, feature 002 and feature 003 tests are GREEN
+
+- [X] T072 Update specs/003-login-autenticacao/quickstart.md so its recorded final test evidence matches the actual T071 result, without changing behavioral documentation or embedding production secrets
+
+Dependencies:
+
+T065 -> T066 -> T069
+T067 -> T068 -> T069
+T069 -> T070 -> T071 -> T072
+
 ---
 
 ## Dependencies and Execution Order

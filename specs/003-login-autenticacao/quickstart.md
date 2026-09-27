@@ -26,14 +26,16 @@ mvn test
 The final feature gate executed this command and produced the following verified result:
 
 ```text
-Tests run: 74
+Tests run: 77
 Failures: 0
 Errors: 0
 Skipped: 0
 BUILD SUCCESS
 ```
 
-This automated gate verified features 001 and 002 without regression; HS256 JWT configuration and compatible `JwtEncoder`/`JwtDecoder`; BCrypt `PasswordEncoder`; exact, case-sensitive account lookup; JWT issuance; valid authentication; dummy BCrypt work for unknown users; uniform invalid-credential handling; HTTP 400, 401, and 500 contracts; rejection of unknown JSON properties; confidentiality; and anonymous access to `GET /products` and `GET /products/{id}`.
+This automated gate verified features 001 and 002 without regression and feature 003 GREEN; HS256 JWT configuration and compatible `JwtEncoder`/`JwtDecoder`; BCrypt `PasswordEncoder`; exact, case-sensitive account lookup; JWT issuance; valid authentication; dummy BCrypt work for unknown users; uniform invalid-credential handling; HTTP 400, 401, and 500 contracts; rejection of unknown JSON properties; confidentiality of responses and logs; and anonymous access to `GET /products` and `GET /products/{id}`. No security, validation, or HTTP-contract regression was detected, and the public-route policy for product listing and detail remains unchanged.
+
+The Pull Request review remediation is included in this gate. Non-string JSON credentials, including numeric `name` and boolean `password` values, are rejected with HTTP 400 and the generic four-field `Bad Request` / `Invalid login data` contract before authentication service execution. When the application is mounted under a servlet context path, the logical `/login` endpoint retains that login-specific contract while the public `path` field preserves the external request URI, such as `/api/login`. These cases also verify that responses and logs expose no password, hash, token, JWT secret, key material, or equivalent sensitive data.
 
 ## Run with Test Classpath
 

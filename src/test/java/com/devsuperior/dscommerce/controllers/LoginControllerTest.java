@@ -128,6 +128,36 @@ class LoginControllerTest {
     }
 
     @Test
+    void postLoginShouldRejectNumericNameWithoutCallingAuthenticationService()
+            throws Exception {
+        String requestBody = """
+                {
+                  "name": 123,
+                  "password": "secret123"
+                }
+                """;
+
+        performBadRequest(requestBody, "secret123");
+
+        verifyNoInteractions(authenticationService);
+    }
+
+    @Test
+    void postLoginShouldRejectBooleanPasswordWithoutCallingAuthenticationService()
+            throws Exception {
+        String requestBody = """
+                {
+                  "name": "demo",
+                  "password": true
+                }
+                """;
+
+        performBadRequest(requestBody, "true");
+
+        verifyNoInteractions(authenticationService);
+    }
+
+    @Test
     void postLoginShouldRejectUnknownJsonPropertyWithoutCallingAuthenticationService()
             throws Exception {
         String requestBody = """

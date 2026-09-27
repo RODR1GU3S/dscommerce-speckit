@@ -49,11 +49,14 @@ public class JacksonConfig {
         }
 
         private static String readStringValue(JsonParser parser, JsonNode value)
-                throws IOException {
+                throws JsonMappingException {
             if (value == null || value.isNull()) {
                 return null;
             }
-            return parser.getCodec().treeToValue(value, String.class);
+            if (!value.isTextual()) {
+                throw JsonMappingException.from(parser, "Invalid login data");
+            }
+            return value.textValue();
         }
     }
 }

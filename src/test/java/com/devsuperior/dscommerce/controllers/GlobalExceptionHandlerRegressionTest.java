@@ -145,6 +145,25 @@ class GlobalExceptionHandlerRegressionTest {
     }
 
     @Test
+    void loginContractInvalidInputPreservesGenericBadRequestUnderServletContextPath()
+            throws Exception {
+        MvcResult result = expectFourFieldError(
+                mockMvc.perform(post("/api/login")
+                        .contextPath("/api")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":" ","password":"raw-password-sensitive-sentinel"}
+                                """)),
+                400,
+                "Bad Request",
+                "Invalid login data",
+                "/api/login");
+
+        assertConfidentialLoginError(result);
+        verifyNoInteractions(authenticationService);
+    }
+
+    @Test
     void loginContractInvalidCredentialsReturnsGenericUnauthorized() throws Exception {
         when(authenticationService.login("UnknownName", RAW_PASSWORD_SENTINEL))
                 .thenThrow(new InvalidCredentialsException(

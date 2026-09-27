@@ -97,6 +97,9 @@ public class GlobalExceptionHandler {
     }
 
     private static boolean isLoginRequest(HttpServletRequest request) {
-        return LOGIN_PATH.equals(request.getRequestURI());
+        String requestUri = request.getRequestURI();
+        String contextPath = request.getContextPath();
+        String applicationPath = requestUri.substring(contextPath.length());
+        return LOGIN_PATH.equals(applicationPath);
     }
 }

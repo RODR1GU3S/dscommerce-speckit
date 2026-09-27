@@ -129,33 +129,34 @@ description: "Tests-first implementation tasks for login and authentication"
 
 ### Compileable Exception Seams
 
-- [ ] T042 [P] [US2] Create the compileable generic invalid-credentials exception type without wiring it into authentication yet in `src/main/java/com/devsuperior/dscommerce/services/exceptions/InvalidCredentialsException.java`
-- [ ] T043 [P] [US2] Create the compileable authentication-processing exception type without wiring it into authentication yet in `src/main/java/com/devsuperior/dscommerce/services/exceptions/AuthenticationProcessingException.java`
+- [X] T042 [P] [US2] Create the compileable generic invalid-credentials exception type without wiring it into authentication yet in `src/main/java/com/devsuperior/dscommerce/services/exceptions/InvalidCredentialsException.java`
+- [X] T043 [P] [US2] Create the compileable authentication-processing exception type without wiring it into authentication yet in `src/main/java/com/devsuperior/dscommerce/services/exceptions/AuthenticationProcessingException.java`
 
 ### Handler Baseline and US2 RED
 
-- [ ] T044 [P] [US2] Extend service tests for unknown name, wrong password, identical invalid-credential exceptions, no token, and verification that unknown names invoke `PasswordEncoder.matches` with a valid precomputed dummy BCrypt hash in `src/test/java/com/devsuperior/dscommerce/services/AuthenticationServiceTest.java`
-- [ ] T045 [P] [US2] Extend login HTTP tests for unknown name and wrong password 401 equality; missing/null/empty/whitespace-only `name` and `password`; unknown JSON properties; no token; and no password/hash/secret disclosure in `src/test/java/com/devsuperior/dscommerce/controllers/LoginControllerTest.java`
-- [ ] T046 [P] [US2] Add service tests that force repository, `PasswordEncoder`, and token-generation failures and require deliberate conversion to `AuthenticationProcessingException` without sensitive messages in `src/test/java/com/devsuperior/dscommerce/services/AuthenticationInternalFailureTest.java`
-- [ ] T047 [P] [US2] Add handler characterization tests for all existing product not-found and validation responses plus new login 400/401/5xx response shapes in `src/test/java/com/devsuperior/dscommerce/controllers/GlobalExceptionHandlerRegressionTest.java`
-- [ ] T048 [P] [US2] Add a security characterization test that captures logs for valid login, unknown name, wrong password, and internal failure and rejects raw passwords, stored BCrypt hashes, JWT secrets, decoded key material, tokens, and equivalent sensitive values in `src/test/java/com/devsuperior/dscommerce/services/AuthenticationSensitiveLoggingTest.java`
-- [ ] T049 [US2] Execute only the existing product-error cases in `GlobalExceptionHandlerRegressionTest` and confirm the pre-handler-change baseline is GREEN in `src/test/java/com/devsuperior/dscommerce/controllers/GlobalExceptionHandlerRegressionTest.java`
-- [ ] T050 [US2] Execute `mvn -Dtest=AuthenticationSensitiveLoggingTest test`; if GREEN, record it as the protected security characterization baseline, and if RED, record the exact sensitive logging source before remediation in `src/test/java/com/devsuperior/dscommerce/services/AuthenticationSensitiveLoggingTest.java`
+- [X] T044 [P] [US2] Extend service tests for unknown name, wrong password, identical invalid-credential exceptions, no token, and verification that unknown names invoke `PasswordEncoder.matches` with a valid precomputed dummy BCrypt hash in `src/test/java/com/devsuperior/dscommerce/services/AuthenticationServiceTest.java`
+- [X] T045 [P] [US2] Extend login HTTP tests for unknown name and wrong password 401 equality; missing/null/empty/whitespace-only `name` and `password`; unknown JSON properties; no token; and no password/hash/secret disclosure in `src/test/java/com/devsuperior/dscommerce/controllers/LoginControllerTest.java`
+- [X] T046 [P] [US2] Add service tests that force repository, `PasswordEncoder`, and token-generation failures and require deliberate conversion to `AuthenticationProcessingException` without sensitive messages in `src/test/java/com/devsuperior/dscommerce/services/AuthenticationInternalFailureTest.java`
+- [X] T047 [P] [US2] Add handler characterization tests for all existing product not-found and validation responses plus new login 400/401/5xx response shapes in `src/test/java/com/devsuperior/dscommerce/controllers/GlobalExceptionHandlerRegressionTest.java`
+- [X] T048 [P] [US2] Add a security characterization test that captures logs for valid login, unknown name, wrong password, and internal failure and rejects raw passwords, stored BCrypt hashes, JWT secrets, decoded key material, tokens, and equivalent sensitive values in `src/test/java/com/devsuperior/dscommerce/services/AuthenticationSensitiveLoggingTest.java`
+- [X] T049 [US2] Execute only the existing product-error cases in `GlobalExceptionHandlerRegressionTest` and confirm the pre-handler-change baseline is GREEN in `src/test/java/com/devsuperior/dscommerce/controllers/GlobalExceptionHandlerRegressionTest.java`
+- [X] T050 [US2] Execute `mvn -Dtest=AuthenticationSensitiveLoggingTest test`; if GREEN, record it as the protected security characterization baseline, and if RED, record the exact sensitive logging source before remediation in `src/test/java/com/devsuperior/dscommerce/services/AuthenticationSensitiveLoggingTest.java`
 - [ ] T051 [US2] If and only if T050 is RED, remove or sanitize the identified sensitive logging without adding replacement secret-bearing logs in `src/main/java/com/devsuperior/dscommerce/services/AuthenticationService.java`, `src/main/java/com/devsuperior/dscommerce/services/JwtTokenService.java`, `src/main/java/com/devsuperior/dscommerce/config/JwtConfig.java`, and `src/main/java/com/devsuperior/dscommerce/controllers/handlers/GlobalExceptionHandler.java` as applicable
-- [ ] T052 [US2] If T051 was required, execute `mvn -Dtest=AuthenticationSensitiveLoggingTest test` and confirm GREEN; otherwise confirm the T050 GREEN characterization remains the accepted baseline in `src/test/java/com/devsuperior/dscommerce/services/AuthenticationSensitiveLoggingTest.java`
-- [ ] T053 [US2] Execute `mvn -Dtest=AuthenticationServiceTest,AuthenticationInternalFailureTest,LoginControllerTest,GlobalExceptionHandlerRegressionTest test` and confirm executable RED for dummy BCrypt, uniform 401, missing/null/empty/whitespace-only input 400, unknown-property 400, deliberate internal-failure conversion, and generic 5xx while recording that confidentiality assertions are coupled to failing response-contract cases rather than relying on compilation failure, using the corresponding files under `src/test/java/com/devsuperior/dscommerce/`
+- [X] T052 [US2] If T051 was required, execute `mvn -Dtest=AuthenticationSensitiveLoggingTest test` and confirm GREEN; otherwise confirm the T050 GREEN characterization remains the accepted baseline in `src/test/java/com/devsuperior/dscommerce/services/AuthenticationSensitiveLoggingTest.java`
+- [X] T053 [US2] Execute `mvn -Dtest=AuthenticationServiceTest,AuthenticationInternalFailureTest,LoginControllerTest,GlobalExceptionHandlerRegressionTest test` and confirm executable RED for dummy BCrypt, uniform 401, missing/null/empty/whitespace-only input 400, unknown-property 400, deliberate internal-failure conversion, and generic 5xx while recording that confidentiality assertions are coupled to failing response-contract cases rather than relying on compilation failure, using the corresponding files under `src/test/java/com/devsuperior/dscommerce/`
 
 ### US2 Implementation
 
-- [ ] T054 [P] [US2] Implement wrong-password and unknown-name normalization plus a precomputed valid dummy BCrypt `PasswordEncoder.matches(...)` call for absent users in `src/main/java/com/devsuperior/dscommerce/services/AuthenticationService.java`
-- [ ] T055 [US2] Extend authentication to catch unexpected repository, BCrypt/`PasswordEncoder`, and JWT/token-generation failures and convert them deliberately to `AuthenticationProcessingException` without converting expected invalid credentials in `src/main/java/com/devsuperior/dscommerce/services/AuthenticationService.java`
-- [ ] T056 [P] [US2] Add `@NotBlank` validation to both `name` and `password`, covering missing, null, empty, and whitespace-only values without trimming or normalization, in `src/main/java/com/devsuperior/dscommerce/dto/LoginRequestDTO.java`
-- [ ] T057 [P] [US2] Configure login request deserialization to reject unknown JSON properties so the OpenAPI `additionalProperties: false` contract returns 400 in `src/main/java/com/devsuperior/dscommerce/config/JacksonConfig.java`
-- [ ] T058 [P] [US2] Extend centralized handling with login-specific generic 400, identical 401, and safe generic 5xx mappings while preserving every existing handler and response contract in `src/main/java/com/devsuperior/dscommerce/controllers/handlers/GlobalExceptionHandler.java`
+- [X] T054 [P] [US2] Implement wrong-password and unknown-name normalization plus a precomputed valid dummy BCrypt `PasswordEncoder.matches(...)` call for absent users in `src/main/java/com/devsuperior/dscommerce/services/AuthenticationService.java`
+- [X] T055 [US2] Extend authentication to catch unexpected repository, BCrypt/`PasswordEncoder`, and JWT/token-generation failures and convert them deliberately to `AuthenticationProcessingException` without converting expected invalid credentials in `src/main/java/com/devsuperior/dscommerce/services/AuthenticationService.java`
+- [X] T056 [P] [US2] Add `@NotBlank` validation to both `name` and `password`, covering missing, null, empty, and whitespace-only values without trimming or normalization, in `src/main/java/com/devsuperior/dscommerce/dto/LoginRequestDTO.java`
+- [X] T057 [P] [US2] Configure login request deserialization to reject unknown JSON properties so the OpenAPI `additionalProperties: false` contract returns 400 in `src/main/java/com/devsuperior/dscommerce/config/JacksonConfig.java`
+- [X] T058 [P] [US2] Extend centralized handling with login-specific generic 400, identical 401, and safe generic 5xx mappings while preserving every existing handler and response contract in `src/main/java/com/devsuperior/dscommerce/controllers/handlers/GlobalExceptionHandler.java`
+- [X] T059 [US2] Activate Bean Validation at the `POST /login` controller boundary by importing `jakarta.validation.Valid` and changing the parameter to `@Valid @RequestBody LoginRequestDTO dto` in `src/main/java/com/devsuperior/dscommerce/controllers/LoginController.java`, without normalizing values, changing `AuthenticationService`, or adding HTTP handling in the controller; preserve the existing success contract and execute `mvn '-Dtest=LoginControllerTest#postLoginShouldRejectInvalidNameWithoutCallingAuthenticationService+postLoginShouldRejectInvalidPasswordWithoutCallingAuthenticationService' test` as directed validation using `src/test/java/com/devsuperior/dscommerce/controllers/LoginControllerTest.java`
 
 ### US2 GREEN and Regression Gate
 
-- [ ] T059 [US2] Execute `mvn -Dtest=AuthenticationServiceTest,AuthenticationInternalFailureTest,AuthenticationSensitiveLoggingTest,LoginControllerTest,GlobalExceptionHandlerRegressionTest,PublicCatalogSecurityIntegrationTest,PublicProductDetailSecurityIntegrationTest,ProductControllerTest test` and confirm input validation, all remaining US2 behaviors, sensitive-logging regression, existing handlers, and anonymous routes are GREEN using the corresponding files under `src/test/java/com/devsuperior/dscommerce/`
+- [X] T060 [US2] Execute `mvn -Dtest=AuthenticationServiceTest,AuthenticationInternalFailureTest,AuthenticationSensitiveLoggingTest,LoginControllerTest,GlobalExceptionHandlerRegressionTest,PublicCatalogSecurityIntegrationTest,PublicProductDetailSecurityIntegrationTest,ProductControllerTest test` and confirm input validation, all remaining US2 behaviors, sensitive-logging regression, existing handlers, and anonymous routes are GREEN using the corresponding files under `src/test/java/com/devsuperior/dscommerce/`
 
 **Checkpoint**: US2 is independently GREEN, internal failures are intentionally translated, unknown JSON is rejected, and all existing error/public-route behavior remains unchanged.
 
@@ -167,7 +168,7 @@ description: "Tests-first implementation tasks for login and authentication"
 
 **Independent Test**: Without an Authorization header, all baseline feature 001/002 scenarios still produce the same status codes and payload shapes after US1 and US2.
 
-- [ ] T060 [US3] Execute `mvn -Dtest=PublicCatalogSecurityIntegrationTest,PublicProductDetailSecurityIntegrationTest,ProductControllerTest,LoginControllerTest test` without an Authorization header on product requests and confirm the final US3 regression gate is GREEN using the corresponding files under `src/test/java/com/devsuperior/dscommerce/controllers/`
+- [X] T061 [US3] Execute `mvn -Dtest=PublicCatalogSecurityIntegrationTest,PublicProductDetailSecurityIntegrationTest,ProductControllerTest,LoginControllerTest test` without an Authorization header on product requests and confirm the final US3 regression gate is GREEN using the corresponding files under `src/test/java/com/devsuperior/dscommerce/controllers/`
 
 **Checkpoint**: The exact pre-security characterization suite remains GREEN; no additional `SecurityFilterChain` change or route-protection task exists in US3.
 
@@ -177,9 +178,9 @@ description: "Tests-first implementation tasks for login and authentication"
 
 **Purpose**: Document the completed behavior, execute the complete suite, and retain evidence separately from implementation.
 
-- [ ] T061 [P] Document external JWT configuration, test-profile execution, successful/error login examples, and the intentionally public route policy in `README.md`
-- [ ] T062 Execute the final mandatory `mvn test` gate and confirm authentication plus every existing feature 001/002 test is GREEN using `pom.xml`
-- [ ] T063 Record the verified final test command/results and reconcile the manual validation steps without embedding production secrets in `specs/003-login-autenticacao/quickstart.md`
+- [X] T062 [P] Document external JWT configuration, test-profile execution, successful/error login examples, and the intentionally public route policy in `README.md`
+- [X] T063 Execute the final mandatory `mvn test` gate and confirm authentication plus every existing feature 001/002 test is GREEN using `pom.xml`
+- [X] T064 Record the verified final test command/results and reconcile the manual validation steps without embedding production secrets in `specs/003-login-autenticacao/quickstart.md`
 
 ---
 
@@ -191,9 +192,9 @@ description: "Tests-first implementation tasks for login and authentication"
 - **Phase 2** depends on the baseline. T005 and T006 may run concurrently only after T004 because both are independent property-file edits.
 - **Phase 3** depends on Phase 2. T007 must observe the expected default-security RED before T008; every `SecurityConfig` edit is followed by a public regression gate. JWT and BCrypt each have separate RED and GREEN checkpoints.
 - **US1** depends on Phase 3. Each behavioral slice completes its own RED → implementation → GREEN sequence before the next dependent slice, then T041 gates US1 and features 001/002 together.
-- **US2** depends on US1. T042 and T043 establish only compileable exception seams; T044-T048 specify behavior; T049 preserves the old handler baseline; T050-T052 establish or restore the sensitive-logging characterization; T053 is the behavioral RED; T054-T058 implement; T059 is GREEN plus regression.
+- **US2** depends on US1. T042 and T043 establish only compileable exception seams; T044-T048 specify behavior; T049 preserves the old handler baseline; T050-T052 establish or restore the sensitive-logging characterization; T053 is the behavioral RED; T054-T059 implement; T060 is GREEN plus regression.
 - **US3 closure** depends on US1 and US2 and reruns the original baseline without another security-policy change.
-- **Final validation** depends on every desired story. T062 runs the complete suite before T063 records results.
+- **Final validation** depends on every desired story. T063 runs the complete suite before T064 records results.
 
 ### User Story Dependency Graph
 
@@ -230,7 +231,8 @@ Repository/BCrypt/JWT internal-failure conversion: T055
 Missing/null/empty/whitespace-only input validation: T056
 Unknown JSON rejection: T057
 Central 400/401/5xx mapping with existing-handler preservation: T058
-Same US2 tests + logging + existing handlers + public routes: T059 GREEN
+Controller-boundary Bean Validation activation and directed validation: T059
+Same US2 tests + logging + existing handlers + public routes: T060 GREEN
 ```
 
 ### Regression Gates
@@ -239,9 +241,9 @@ Same US2 tests + logging + existing handlers + public routes: T059 GREEN
 - **After initial `SecurityFilterChain` creation**: T009.
 - **After adding `PasswordEncoder` to `SecurityConfig`**: T018.
 - **End of US1**: T041.
-- **End of US2**: T059.
-- **End of US3**: T060.
-- **Final full suite**: T062 with `mvn test`.
+- **End of US2**: T060.
+- **End of US3**: T061.
+- **Final full suite**: T063 with `mvn test`.
 
 ## Parallel Opportunities
 
@@ -250,8 +252,8 @@ Same US2 tests + logging + existing handlers + public routes: T059 GREEN
 - T035 and T036 create independent compile-only HTTP seams before T037.
 - T042 and T043 create independent exception types before US2 tests.
 - T044-T048 edit five different test files after both exception seams exist; T049/T050 wait for them.
-- After T053 RED, T054, T056, T057, and T058 edit separate production files and depend on no state from one another; T055 waits for T054 because both edit `AuthenticationService.java`.
-- T061 documentation can proceed independently after the story behavior stabilizes; T062 remains the authoritative final gate.
+- After T053 RED, T054, T056, T057, and T058 edit separate production files and depend on no state from one another; T055 waits for T054 because both edit `AuthenticationService.java`, and T059 waits for T056 and T058 so its directed MVC validation can assert the approved login 400 contract.
+- T062 documentation can proceed independently after the story behavior stabilizes; T063 remains the authoritative final gate.
 
 ## Implementation Strategy
 
@@ -264,9 +266,9 @@ Same US2 tests + logging + existing handlers + public routes: T059 GREEN
 
 ### Incremental Delivery
 
-1. Add safe invalid-credential, input-validation, logging-regression, and internal-failure behavior through T042-T059.
-2. Close US3 with the unchanged original characterization suite at T060.
-3. Document behavior, execute `mvn test`, and record results through T061-T063.
+1. Add safe invalid-credential, input-validation, logging-regression, and internal-failure behavior through T042-T060.
+2. Close US3 with the unchanged original characterization suite at T061.
+3. Document behavior, execute `mvn test`, and record results through T062-T064.
 
 ### Commit Guidance
 

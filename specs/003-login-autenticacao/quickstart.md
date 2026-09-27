@@ -7,9 +7,9 @@ This Windows/PowerShell guide validates the feature after implementation using o
 - Java 21 and Maven available on `PATH`.
 - Test profile configuration in `src/test/resources/application-test.properties`.
 - A test-only BCrypt-backed user seeded by `src/test/resources/import.sql` with credentials `demo` / `secret123`.
-- Test JWT configuration supplies `security.jwt.secret-base64` from `JWT_SECRET_BASE64` and uses default `security.jwt.ttl=PT15M` unless the test profile overrides it.
+- The test profile supplies disposable JWT configuration and uses `security.jwt.ttl=PT15M`.
 
-The planned seed belongs only to `src/test/resources`; `src/main/resources` must not create accounts or contain signing secrets.
+The `demo` / `secret123` account belongs exclusively to `src/test/resources`; it is not a production account. `src/main/resources` does not create accounts or contain signing secrets.
 
 Relevant references:
 
@@ -23,7 +23,17 @@ Relevant references:
 mvn test
 ```
 
-Expected: authentication tests and all feature 001/002 regression tests pass. Token tests decode the returned JWT with the configured `JwtDecoder` and verify HS256 signature, `sub`, `name`, `iat`, and finite `exp` without enabling resource protection.
+The final feature gate executed this command and produced the following verified result:
+
+```text
+Tests run: 74
+Failures: 0
+Errors: 0
+Skipped: 0
+BUILD SUCCESS
+```
+
+This automated gate verified features 001 and 002 without regression; HS256 JWT configuration and compatible `JwtEncoder`/`JwtDecoder`; BCrypt `PasswordEncoder`; exact, case-sensitive account lookup; JWT issuance; valid authentication; dummy BCrypt work for unknown users; uniform invalid-credential handling; HTTP 400, 401, and 500 contracts; rejection of unknown JSON properties; confidentiality; and anonymous access to `GET /products` and `GET /products/{id}`.
 
 ## Run with Test Classpath
 
@@ -36,13 +46,15 @@ mvn spring-boot:test-run -Dspring-boot.run.profiles=test
 
 `spring-boot:test-run` uses the test classpath, so `application-test.properties` and the test-only `import.sql` are available. Keep this process running while executing the commands below in another PowerShell window.
 
+The following sections are reproducible manual procedures. Their expected behavior is backed by the automated gate above; this document does not claim that these `curl.exe` commands were executed as part of the final gate.
+
 ## A. Valid Login
 
 ```powershell
 curl.exe -i -X POST "http://localhost:8080/login" -H "Content-Type: application/json" -d '{"name":"demo","password":"secret123"}'
 ```
 
-Expected: `HTTP/1.1 200`, a non-empty `accessToken`, and `tokenType` equal to `Bearer`. The body contains no password, hash, refresh token, or `expiresIn`; expiry is in JWT claim `exp`.
+Expected: `HTTP/1.1 200`. The response contains only a non-empty `accessToken` and `tokenType` equal to `Bearer`. It contains no password, password hash, secret, refresh token, or `expiresIn`; expiry is in JWT claim `exp`.
 
 ## B. Unknown Name
 
@@ -50,7 +62,7 @@ Expected: `HTTP/1.1 200`, a non-empty `accessToken`, and `tokenType` equal to `B
 curl.exe -i -X POST "http://localhost:8080/login" -H "Content-Type: application/json" -d '{"name":"unknown","password":"secret123"}'
 ```
 
-Expected: `HTTP/1.1 401`, message `Invalid credentials`, and no token. The server performs a BCrypt comparison against the dummy hash before rejecting the request.
+Expected: `HTTP/1.1 401`, error `Unauthorized`, message `Invalid credentials`, path `/login`, and no token. The server performs a BCrypt comparison against the dummy hash before rejecting the request.
 
 ## C. Wrong Password
 
@@ -60,14 +72,15 @@ curl.exe -i -X POST "http://localhost:8080/login" -H "Content-Type: application/
 
 Expected: the same `HTTP/1.1 401`, message, and response shape as the unknown-name case, with no token.
 
-## D. Missing or Blank Field
+## D. Invalid Input
 
 ```powershell
 curl.exe -i -X POST "http://localhost:8080/login" -H "Content-Type: application/json" -d '{"name":" ","password":"secret123"}'
 curl.exe -i -X POST "http://localhost:8080/login" -H "Content-Type: application/json" -d '{"name":"demo"}'
+curl.exe -i -X POST "http://localhost:8080/login" -H "Content-Type: application/json" -d '{"name":"demo","password":"secret123","unexpectedField":"value"}'
 ```
 
-Expected: `HTTP/1.1 400`, generic message `Invalid login data`, no echoed credential value, and no token.
+Missing, `null`, empty, or whitespace-only `name` or `password`, and any unknown JSON property, have the same expected result: `HTTP/1.1 400`, error `Bad Request`, message `Invalid login data`, path `/login`, no echoed credential value, and no token.
 
 ## E. Public Catalog Listing
 
@@ -75,7 +88,7 @@ Expected: `HTTP/1.1 400`, generic message `Invalid login data`, no echoed creden
 curl.exe -i "http://localhost:8080/products?page=0&size=12"
 ```
 
-Expected: `HTTP/1.1 200` without an Authorization header and behavior identical to feature 001.
+Expected: `HTTP/1.1 200` without an Authorization header and behavior identical to feature 001. This route remains intentionally public.
 
 ## F. Public Product Detail
 
@@ -83,10 +96,12 @@ Expected: `HTTP/1.1 200` without an Authorization header and behavior identical 
 curl.exe -i "http://localhost:8080/products/1"
 ```
 
-Expected: the existing feature 002 result without an Authorization header. For seeded product `1`, this is `HTTP/1.1 200`; missing ids retain the existing `404` behavior rather than becoming `401`.
+Expected: the existing feature 002 result without an Authorization header. This route remains intentionally public. For seeded product `1`, this is `HTTP/1.1 200`; missing ids retain the existing `404` behavior rather than becoming `401`.
+
+Feature 003 issues JWTs but does not enable OAuth2 Resource Server, Authorization Server, or bearer-token protection. The JWT is not required for either public product route.
 
 ## Internal Failure Validation
 
-Use an automated controller/service test that makes the repository or JWT encoder fail.
+Internal failures are validated primarily by automated controller/service tests that simulate repository, password-encoder, or JWT-encoder failures. Do not deliberately disrupt real infrastructure for this check.
 
-Expected: generic 5xx response, message `Authentication could not be completed`, and no token, password, hash, or stack trace.
+Verified public contract: `HTTP 500`, error `Internal Server Error`, message `Authentication could not be completed`, path `/login`, and no token, password, hash, secret, internal cause, or stack trace.

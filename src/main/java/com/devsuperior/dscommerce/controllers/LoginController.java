@@ -3,6 +3,7 @@ package com.devsuperior.dscommerce.controllers;
 import com.devsuperior.dscommerce.dto.LoginRequestDTO;
 import com.devsuperior.dscommerce.dto.TokenResponseDTO;
 import com.devsuperior.dscommerce.services.AuthenticationService;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -17,7 +18,7 @@ public class LoginController {
     }
 
     @PostMapping("/login")
-    public TokenResponseDTO login(@RequestBody LoginRequestDTO dto) {
+    public TokenResponseDTO login(@Valid @RequestBody LoginRequestDTO dto) {
         return authenticationService.login(dto.name(), dto.password());
     }
 }

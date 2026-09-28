@@ -1,0 +1,116 @@
+openapi: 3.0.3
+info:
+  title: DSCommerce Login API
+  version: 0.1.0
+  description: Login by exact, case-sensitive name and password. No refresh token or resource authorization is provided.
+paths:
+  /login:
+    post:
+      summary: Authenticate an existing user
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            examples:
+              validCredentials:
+                value:
+                  name: demo
+                  password: secret123
+      responses:
+        '200':
+          description: Credentials accepted and a non-empty HS256 JWT issued.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+              examples:
+                authenticated:
+                  value:
+                    accessToken: eyJhbGciOiJIUzI1NiJ9.example.signature
+                    tokenType: Bearer
+        '400':
+          description: Name or password is missing, empty, or composed only of whitespace.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidLoginInput:
+                  value:
+                    status: 400
+                    error: Bad Request
+                    message: Invalid login data
+                    path: /login
+        '401':
+          description: Credentials are invalid. Unknown names and wrong passwords produce the same response and reveal neither which credential failed nor whether the account exists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidCredentials:
+                  value:
+                    status: 401
+                    error: Unauthorized
+                    message: Invalid credentials
+                    path: /login
+        '500':
+          description: Authentication could not be completed because of an internal processing failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                internalFailure:
+                  value:
+                    status: 500
+                    error: Internal Server Error
+                    message: Authentication could not be completed
+                    path: /login
+components:
+  schemas:
+    LoginRequest:
+      type: object
+      required: [name, password]
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 1
+          pattern: '.*\S.*'
+          description: Exact, case-sensitive existing login name. Whitespace-only values are invalid; no normalization is applied.
+        password:
+          type: string
+          format: password
+          writeOnly: true
+          minLength: 1
+          pattern: '.*\S.*'
+          description: Password input. Whitespace-only values are invalid and the value is never returned.
+    TokenResponse:
+      type: object
+      required: [accessToken, tokenType]
+      additionalProperties: false
+      properties:
+        accessToken:
+          type: string
+          minLength: 1
+          description: HS256-signed JWT containing its finite expiration in the exp claim.
+        tokenType:
+          type: string
+          enum: [Bearer]
+    ErrorResponse:
+      type: object
+      required: [status, error, message, path]
+      additionalProperties: false
+      properties:
+        status:
+          type: integer
+        error:
+          type: string
+        message:
+          type: string
+        path:
+          type: string

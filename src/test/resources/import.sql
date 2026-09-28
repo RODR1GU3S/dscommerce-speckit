@@ -58,3 +58,5 @@ INSERT INTO tb_category (id, name) VALUES (3, 'Accessories');
 INSERT INTO tb_product_category (product_id, category_id) VALUES (1, 1);
 INSERT INTO tb_product_category (product_id, category_id) VALUES (1, 2);
 INSERT INTO tb_product_category (product_id, category_id) VALUES (2, 3);
+
+INSERT INTO tb_user_account (name, password_hash) VALUES ('demo', '$2a$10$ix7qnD5c6oPLj7LyNGM1uewPu.Cw1FJ39KKMo6nEkTOkQ8q7g60bm');

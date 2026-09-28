@@ -11,6 +11,7 @@ import java.util.Base64;
 public class JwtProperties {
 
     private static final int MINIMUM_SECRET_BYTES = 32;
+    private static final Duration MINIMUM_TTL = Duration.ofSeconds(1);
 
     private byte[] secret;
     private Duration ttl;
@@ -42,8 +43,8 @@ public class JwtProperties {
     }
 
     public void setTtl(Duration ttl) {
-        if (ttl == null || ttl.isZero() || ttl.isNegative()) {
-            throw new IllegalArgumentException("security.jwt.ttl must be a positive finite duration");
+        if (ttl == null || ttl.compareTo(MINIMUM_TTL) < 0) {
+            throw new IllegalArgumentException("security.jwt.ttl must be at least 1 second");
         }
 
         this.ttl = ttl;

@@ -60,6 +60,15 @@ class JwtConfigurationTest {
     }
 
     @Test
+    void shouldRejectPositiveSubSecondTtl() {
+        contextRunner
+                .withPropertyValues(
+                        "security.jwt.secret-base64=" + VALID_256_BIT_SECRET,
+                        "security.jwt.ttl=PT0.5S")
+                .run(context -> assertThat(context).hasFailed());
+    }
+
+    @Test
     void shouldConfigureWorkingHs256EncoderAndDecoder() {
         contextRunner
                 .withPropertyValues(

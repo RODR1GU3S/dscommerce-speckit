@@ -208,6 +208,36 @@ T069 -> T070 -> T071 -> T072
 
 ---
 
+## Phase 9: Pull Request Review Remediation II
+
+**Purpose**: Address the two P2 findings from the second review of PR #2 by rejecting JWT TTL values that cannot be represented as distinct NumericDate seconds and allowing the enabled H2 Console to render with same-origin frames without changing the public-route policy.
+
+- [X] T073 [P] Add JwtConfigurationTest coverage proving that a positive sub-second `security.jwt.ttl`, such as `PT0.5S`, must be rejected while preserving the existing valid TTL behavior in `src/test/java/com/devsuperior/dscommerce/config/JwtConfigurationTest.java`
+
+- [X] T074 Execute only the new sub-second JWT TTL test and confirm valid RED because JwtProperties currently accepts every positive Duration, including values below one second
+
+- [X] T075 [P] Add a security integration regression test proving that the enabled H2 console response permits same-origin framing rather than `X-Frame-Options: DENY`, without changing anonymous access to existing public product routes
+
+- [X] T076 Execute only the new H2-console frame regression test and confirm valid RED because Spring Security currently applies its default DENY frame policy
+
+- [X] T077 Update JwtProperties so `security.jwt.ttl` rejects null, zero, negative, and positive durations shorter than one second while preserving valid TTLs of one second or greater
+
+- [X] T078 Update SecurityConfig only as necessary to allow SAMEORIGIN framing for the enabled H2 console while preserving the current stateless security configuration and public-route policy
+
+- [X] T079 Execute the new JWT TTL and H2-console security regression tests and confirm both PR-review findings are GREEN while existing contracts remain intact
+
+- [X] T080 Execute the final mandatory `mvn test` gate and confirm features 001, 002 and 003 plus both new PR-review remediation cases are GREEN
+
+- [X] T081 Update `specs/003-login-autenticacao/quickstart.md` so the final recorded test evidence matches the actual T080 result, without changing behavioral documentation or embedding production secrets
+
+Dependencies:
+
+T073 -> T074 -> T077
+T075 -> T076 -> T078
+T077 + T078 -> T079 -> T080 -> T081
+
+---
+
 ## Dependencies and Execution Order
 
 ### Phase Dependencies

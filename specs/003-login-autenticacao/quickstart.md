@@ -26,7 +26,7 @@ mvn test
 The final feature gate executed this command and produced the following verified result:
 
 ```text
-Tests run: 77
+Tests run: 79
 Failures: 0
 Errors: 0
 Skipped: 0
@@ -36,6 +36,8 @@ BUILD SUCCESS
 This automated gate verified features 001 and 002 without regression and feature 003 GREEN; HS256 JWT configuration and compatible `JwtEncoder`/`JwtDecoder`; BCrypt `PasswordEncoder`; exact, case-sensitive account lookup; JWT issuance; valid authentication; dummy BCrypt work for unknown users; uniform invalid-credential handling; HTTP 400, 401, and 500 contracts; rejection of unknown JSON properties; confidentiality of responses and logs; and anonymous access to `GET /products` and `GET /products/{id}`. No security, validation, or HTTP-contract regression was detected, and the public-route policy for product listing and detail remains unchanged.
 
 The Pull Request review remediation is included in this gate. Non-string JSON credentials, including numeric `name` and boolean `password` values, are rejected with HTTP 400 and the generic four-field `Bad Request` / `Invalid login data` contract before authentication service execution. When the application is mounted under a servlet context path, the logical `/login` endpoint retains that login-specific contract while the public `path` field preserves the external request URI, such as `/api/login`. These cases also verify that responses and logs expose no password, hash, token, JWT secret, key material, or equivalent sensitive data.
+
+The second Pull Request review remediation is also included in this gate. JWT TTL values must be at least one second: positive durations shorter than `PT1S`, including `PT0.5S`, are rejected, while `PT1S` and greater durations remain valid. The enabled H2 Console now receives `X-Frame-Options: SAMEORIGIN`; this header change does not alter anonymous access to `GET /products`, `GET /products/{id}`, or `POST /login`.
 
 ## Run with Test Classpath
 

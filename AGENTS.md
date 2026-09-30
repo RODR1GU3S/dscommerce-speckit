@@ -26,11 +26,23 @@ O projeto usa Java 21. Use o Maven Wrapper, que seleciona Maven 3.9.16 pelas pro
 .\mvnw.cmd test
 ```
 
-Em Linux/macOS, use `./mvnw test`; consulte os requisitos e o registro pendente de permissão executável no [guia do harness](docs/harness.md). O Wrapper precisa de um JDK instalado e de rede para o download inicial. O comando histórico `mvn test` permanece nas evidências do diagnóstico; não reescreva resultados históricos como execuções pelo Wrapper.
+Em Linux/macOS, use `./mvnw test`; consulte os requisitos e a permissão executável registrada no [guia do harness](docs/harness.md). O Wrapper precisa de um JDK instalado e de rede para o download inicial. O comando histórico `mvn test` permanece nas evidências do diagnóstico; não reescreva resultados históricos como execuções pelo Wrapper.
 
 Para mudanças de comportamento, use testes que exercitem os critérios de aceitação e as regressões afetadas. Quando aplicável ou exigido pela task, execute o teste antes da implementação e confirme falha pela causa esperada; erro de compilação ou de preparação não demonstra comportamento ausente. Após implementar, execute os testes apropriados e a suíte completa quando exigida pelos artefatos ou pelo alcance da mudança.
 
 Para alterações exclusivamente documentais, revise caminhos, links, comandos, consistência com as fontes e o diff. Execute `git diff --check`; revise também o conteúdo dos arquivos novos, pois arquivos não rastreados não aparecem no diff comum. Não repita testes de aplicação sem necessidade decorrente da mudança.
+
+## CI
+
+O [workflow de CI](.github/workflows/ci.yml) está preparado localmente para PRs com destino `main`, pushes em `main` e `chore/harness-foundation` e execução manual por `workflow_dispatch`, quando disponível na branch padrão. O job usa Ubuntu 24.04, Java 21 Zulu e cache Maven. Na raiz, executa:
+
+```sh
+./mvnw --batch-mode --no-transfer-progress test
+```
+
+Na aba Actions do GitHub, consulte os logs do job e o artefato `surefire-reports` no resumo da execução, com retenção de 14 dias. O upload também é solicitado após falha dos testes; seu sucesso não transforma essa falha em aprovação.
+
+A execução remota está pendente. Diferencie resultados locais de uma execução identificada por URL, evento, revisão e resultado no GitHub; os 79 testes anteriores no Windows não comprovam aprovação em Linux ou CI. Um workflow configurado só se torna uma condição obrigatória de merge se as regras do repositório exigirem seu check.
 
 ## Conclusão
 

@@ -22,9 +22,9 @@ Linux/macOS:
 
 The first invocation downloads the official Maven ZIP, verifies its configured SHA-256, and extracts it into the user's `.m2/wrapper/dists` cache. Later invocations reuse that distribution. Initial downloads require network access; Maven may also download project dependencies. The Wrapper selects Maven, while the installed JDK determines the Java runtime.
 
-For Linux/macOS, keep `mvnw` with LF line endings and executable permission; install `unzip` and either `sha256sum` or `shasum` for this ZIP/checksum configuration. Until the executable bit is recorded in the next commit, use `sh ./mvnw` in place of `./mvnw`. Keep `mvnw.cmd` with CRLF line endings.
+For Linux/macOS, keep `mvnw` with LF line endings and executable permission; install `unzip` and either `sha256sum` or `shasum` for this ZIP/checksum configuration. Git records `mvnw` as executable (`100755`); [.gitattributes](.gitattributes) keeps LF for `mvnw` and CRLF for `mvnw.cmd` in checkouts.
 
-See [the SDD and harness guide](docs/harness.md) for generation commands, checksum provenance, Windows validation results and remaining work. Linux/macOS execution has not been validated in this stage; CI remains pending.
+See [the SDD and harness guide](docs/harness.md) for generation commands, checksum provenance, Windows validation results and CI preparation. Linux/macOS commands have received static review only; the GitHub Actions workflow is prepared locally and remote execution remains pending.
 
 ## Running the Application
 
@@ -206,3 +206,19 @@ Linux/macOS:
 ```
 
 The suite covers JWT/HS256 configuration, BCrypt password matching, valid authentication, invalid credentials and input, safe internal-error handling, confidentiality, regressions in features 001 and 002, and continued anonymous access to the public product routes.
+
+## GitHub Actions CI
+
+The [CI workflow](.github/workflows/ci.yml), named `CI - Testes Maven`, is configured for pull requests targeting `main`, pushes to `main` and `chore/harness-foundation`, and manual `workflow_dispatch` runs. GitHub requires the workflow to be present on the default branch for the manual trigger to be available.
+
+The `Testes (Java 21 / Maven)` job uses Ubuntu 24.04, Java 21 Zulu and a Maven dependency cache. It prints Java and Wrapper-selected Maven versions, then runs from the repository root:
+
+```bash
+./mvnw --batch-mode --no-transfer-progress test
+```
+
+Once runs exist on GitHub, open the repository's Actions tab, select the workflow and run, and inspect the job's step logs. Download the `surefire-reports` artifact from the run summary; it contains `target/surefire-reports/` and is retained for 14 days. Upload is attempted even when tests fail; a successful upload preserves the test failure. If an earlier failure prevents reports from being generated, upload emits a warning about missing files.
+
+Current state: workflow prepared locally, with remote execution pending. The previously recorded 79 passing tests were local Windows executions and do not prove Linux or GitHub CI success. Associate future CI evidence with its run URL, event, tested revision and result, as explained in the [harness guide](docs/harness.md).
+
+A configured workflow does not make its check mandatory for merging. That depends on repository rules requiring the check; branch protection rules have not been configured in this stage.

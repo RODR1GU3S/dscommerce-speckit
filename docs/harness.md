@@ -4,7 +4,7 @@ Este projeto serve ao aprendizado de desenvolvimento de software e à construç�
 
 SDD (Specification-Driven Development) organiza o desenvolvimento a partir de requisitos explícitos. Neste repositório, o Spec Kit estrutura especificação, planejamento e tarefas. A [constituição](../.specify/memory/constitution.md) governa as decisões: Java/Spring Boot, arquitetura em camadas, DTOs, persistência, validação e tratamento centralizado de erros.
 
-O harness reúne as instruções, o contexto e os mecanismos de verificação que apoiam o trabalho do agente. [AGENTS.md](../AGENTS.md) oferece uma entrada curta para encontrar as fontes e trabalhar dentro do escopo. Este guia explica o processo e suas evidências. Os testes existentes fornecem feedback executável; a segunda etapa acrescenta o Maven Wrapper e documenta sua execução. CI permanece pendente.
+O harness reúne as instruções, o contexto e os mecanismos de verificação que apoiam o trabalho do agente. [AGENTS.md](../AGENTS.md) oferece uma entrada curta para encontrar as fontes e trabalhar dentro do escopo. Este guia explica o processo e suas evidências. Os testes existentes fornecem feedback executável; a segunda etapa acrescenta o Maven Wrapper e documenta sua execução. A terceira prepara o workflow de CI localmente; sua execução no GitHub permanece pendente.
 
 ## Das necessidades à revisão
 
@@ -87,7 +87,7 @@ As instruções orientam escolhas do agente: quais fontes ler, qual escopo respe
 
 As verificações produzem evidências: Maven compila e executa testes; os testes comparam resultados com expectativas; `git diff --check` procura problemas de whitespace no diff. Essas ferramentas não substituem a revisão dos requisitos e do escopo. Uma regra escrita no `AGENTS.md` também não se torna automaticamente um bloqueio executável.
 
-O [workflow existente do Spec Kit](../.specify/workflows/speckit/workflow.yml) organiza o ciclo SDD e revisões de spec e plan. Ele não é um workflow de CI que execute a suíte em pull requests. Neste estágio, o agente ou desenvolvedor ainda precisa chamar as verificações e registrar os resultados.
+O [workflow existente do Spec Kit](../.specify/workflows/speckit/workflow.yml) organiza o ciclo SDD e revisões de spec e plan. O [workflow de CI](../.github/workflows/ci.yml), preparado na terceira etapa, define a execução automática da suíte nos eventos descritos abaixo. Sua presença local ainda não produz evidência remota: o agente ou desenvolvedor precisa revisar a configuração e registrar os resultados de uma execução real quando ela existir.
 
 Uma entrega deve informar arquivos afetados, comandos realmente executados, resultados, limitações e estado do Git. Diferencie sempre evidência histórica, execução atual e procedimento ainda sugerido. Revise arquivos não rastreados diretamente: `git diff` e `git diff --check` comuns não incluem esses arquivos.
 
@@ -162,13 +162,69 @@ A consulta inicial de rede no sandbox falhou com impossibilidade de conexão. A 
 
 Linux/macOS recebeu somente revisão estática do script gerado, de sua origem e dos finais de linha; não houve execução nesses sistemas. Os comandos de inicialização da aplicação documentados no README também não foram executados nesta etapa. CI continua pendente.
 
+## Terceira etapa: CI preparada localmente
+
+A preparação confirmou Git limpo em `chore/harness-foundation`, com HEAD `6c7f04d053dcd0d0da339b9b6d7f7a26b8cbc3e1`, commit da segunda etapa. O [workflow](../.github/workflows/ci.yml) foi criado no checkout, ainda sem stage, commit ou publicação. O estado atual é **workflow preparado localmente; execução remota pendente**.
+
+### Eventos e execução
+
+| Evento | Quando se aplica |
+| --- | --- |
+| `pull_request` | PRs cuja branch de destino é `main`; o filtro não se refere à branch de origem. |
+| `push` | Pushes em `main` ou `chore/harness-foundation`. |
+| `workflow_dispatch` | Execução manual, disponível quando o workflow estiver na branch padrão, conforme a [documentação GitHub](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#onworkflow_dispatch). |
+
+O workflow se chama `CI - Testes Maven`; o job `tests` aparece como `Testes (Java 21 / Maven)`. Ele usa `ubuntu-24.04`, timeout de 20 minutos e `permissions: contents: read`. As etapas fazem checkout, configuram Java 21 Zulu e cache Maven, mostram `java --version` e `./mvnw --version` e executam na raiz:
+
+```sh
+./mvnw --batch-mode --no-transfer-progress test
+```
+
+O Wrapper continua selecionando Maven 3.9.16. Java é solicitado pela versão principal `21`; o patch efetivamente utilizado deverá ser observado no log da execução. O cache acelera a preparação, mas não substitui o resultado dos testes.
+
+A etapa final envia `target/surefire-reports/` como artefato `surefire-reports`, com retenção de 14 dias. `if: ${{ always() }}` solicita o upload também após falhas; a falha da etapa de testes continua sendo falha do job mesmo se o upload tiver sucesso. Se não houver relatórios, `if-no-files-found: warn` emite um aviso, por exemplo após uma falha anterior à execução dos testes. Esses comportamentos seguem as [condições de execução](https://docs.github.com/en/actions/reference/workflows-and-actions/expressions#always) e os [inputs oficiais de upload](https://github.com/actions/upload-artifact/blob/043fb46d1a93c77aae656e7c1c64a875d1fc6a0a/action.yml).
+
+### Actions e procedência dos SHAs
+
+Em 30/09/2026, foram consultadas as releases estáveis dos repositórios oficiais. Para cada uma, o link do commit na página da release forneceu o SHA completo; em seguida, o `action.yml` desse SHA foi conferido. As referências fixadas no workflow são:
+
+| Action | Release oficial | Commit fixado |
+| --- | --- | --- |
+| `actions/checkout` | [v7.0.1](https://github.com/actions/checkout/releases/tag/v7.0.1) | [3d3c42e5aac5ba805825da76410c181273ba90b1](https://github.com/actions/checkout/commit/3d3c42e5aac5ba805825da76410c181273ba90b1) |
+| `actions/setup-java` | [v6.0.1](https://github.com/actions/setup-java/releases/tag/v6.0.1) | [de7274f081f381c8f8158605e0321c36c376e2e6](https://github.com/actions/setup-java/commit/de7274f081f381c8f8158605e0321c36c376e2e6) |
+| `actions/upload-artifact` | [v7.0.1](https://github.com/actions/upload-artifact/releases/tag/v7.0.1) | [043fb46d1a93c77aae656e7c1c64a875d1fc6a0a](https://github.com/actions/upload-artifact/commit/043fb46d1a93c77aae656e7c1c64a875d1fc6a0a) |
+
+Os metadados de [checkout](https://github.com/actions/checkout/blob/3d3c42e5aac5ba805825da76410c181273ba90b1/action.yml), [setup-java](https://github.com/actions/setup-java/blob/de7274f081f381c8f8158605e0321c36c376e2e6/action.yml) e [upload-artifact](https://github.com/actions/upload-artifact/blob/043fb46d1a93c77aae656e7c1c64a875d1fc6a0a/action.yml) usam Node 24. O requisito mínimo indicado para esse runtime é Actions Runner `v2.327.1`, conforme o [README oficial](https://github.com/actions/setup-java/blob/de7274f081f381c8f8158605e0321c36c376e2e6/README.md). O runner selecionado é hospedado pelo GitHub; a [imagem Ubuntu 24.04](https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2404-Readme.md) documenta suas ferramentas. O cache e a distribuição Zulu são opções do setup-java; `path`, `if-no-files-found` e `retention-days` foram conferidos nos inputs do upload.
+
+O SHA fixa o código da action consultada, enquanto o comentário identifica sua release. Isso não congela todos os componentes da imagem Ubuntu nem o patch do JDK. Uma atualização futura das actions precisa conferir novamente a release, seu commit e seus requisitos.
+
+### Logs, relatórios e evidência
+
+Quando houver uma execução remota, abra a aba **Actions** do repositório, escolha `CI - Testes Maven` e a execução desejada. No job, consulte os logs das etapas, especialmente versões e testes. No resumo da execução, baixe o artefato `surefire-reports`, se tiver sido produzido. As fontes oficiais explicam como [consultar logs](https://docs.github.com/en/actions/how-tos/monitor-workflows/use-workflow-run-logs) e [baixar artefatos](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/download-workflow-artifacts).
+
+Registre URL da execução, evento, revisão testada, versões observadas, resultado e relatórios. Em PRs, o checkout padrão testa a referência de merge preparada pelo GitHub, que pode diferir do HEAD local; confirme a revisão nos logs. Os 79 testes aprovados no Windows continuam como evidências locais históricas. Eles não demonstram sucesso em Linux ou no GitHub.
+
+Configurar CI não torna seu check uma condição obrigatória de merge. Isso depende das regras do repositório, como [checks obrigatórios em proteção de branch](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches#require-status-checks-before-merging). Essas regras não foram configuradas ou verificadas nesta etapa.
+
+### Validação local e limites
+
+`actionlint` não foi encontrado no `PATH` com `Get-Command actionlint -ErrorAction SilentlyContinue`; por isso não foi executado. A sintaxe YAML foi lida com SnakeYAML 2.2 já presente no cache local, usando `SafeConstructor` e rejeição de chaves duplicadas, com código de saída 0. O comando foi:
+
+```powershell
+java --class-path C:/Users/ronal/.m2/repository/org/yaml/snakeyaml/2.2/snakeyaml-2.2.jar target/harness-validation/ci-review/ReadWorkflowYaml.java .github/workflows/ci.yml
+```
+
+Esse comando é uma conferência local de sintaxe, feita no Windows com um auxiliar em `target/`, ignorado pelo Git; não é um comando necessário para executar o projeto. A estrutura foi revisada contra os requisitos: eventos, permissões, runner, timeout, referências oficiais, cache, comandos na raiz, condição de upload, caminho e retenção dos relatórios. Um parser YAML geral não substitui actionlint nem a execução no GitHub.
+
+Não foram repetidos os testes Windows ou a geração do Wrapper. Não houve execução de Maven em Linux nem execução de CI. Aplicação, POM, testes, Wrapper, especificações e constituição foram preservados. A etapa prepara somente o workflow e as partes pertinentes dos três documentos; publicação e validação remota continuam fora deste pedido.
+
 ## Etapas do harness
 
 | Etapa | Finalidade | Situação |
 | --- | --- | --- |
 | Documentos de orientação | Explicar fontes, fluxo SDD, escopo e critérios de conclusão. | Primeira etapa commitada em `6580067d78aa86ff116d359490af91b4fa157d12`. |
-| Maven Wrapper | Fixar Maven 3.9.16 e oferecer entradas para Windows e Linux/macOS. | Gerado e validado no Windows; fechamento com atributos de finais de linha e permissão executável no Git. |
-| README | Tornar o guia e os comandos reproduzíveis fáceis de encontrar para quem avalia o portfólio. | Comandos e requisitos atualizados nesta segunda etapa e incluídos no fechamento. |
-| CI | Configurar Java 21, executar testes em PRs e disponibilizar relatórios associados à revisão executada. | Pendente; não existe workflow em `.github/workflows/`. |
+| Maven Wrapper | Fixar Maven 3.9.16 e oferecer entradas para Windows e Linux/macOS. | Segunda etapa commitada em `6c7f04d053dcd0d0da339b9b6d7f7a26b8cbc3e1`, com atributos de finais de linha e permissão executável no Git; testes observados no Windows. |
+| README | Tornar o guia e os comandos reproduzíveis fáceis de encontrar para quem avalia o portfólio. | Comandos da segunda etapa commitados; explicação da CI atualizada localmente na terceira. |
+| CI | Configurar Java 21, executar testes em PRs e disponibilizar relatórios associados à revisão executada. | Workflow preparado localmente em `.github/workflows/ci.yml`; execução remota pendente. |
 
-A geração e a validação da segunda etapa afetaram somente os três arquivos do Wrapper e as partes pertinentes de `AGENTS.md`, `docs/harness.md` e `README.md`, sem stage ou commit naquele momento. O fechamento autorizado acrescenta `.gitattributes` e versiona somente esses sete arquivos, com a mensagem `build: add Maven Wrapper and reproducible commands`, sem repetir a geração ou os testes já aprovados. Aplicação, POM, testes, especificações e constituição foram preservados. Não houve push, merge ou deploy; CI continua pendente e requer trabalho posterior no escopo correspondente.
+A geração e a validação da segunda etapa afetaram somente os três arquivos do Wrapper e as partes pertinentes de `AGENTS.md`, `docs/harness.md` e `README.md`, sem stage ou commit naquele momento. O fechamento autorizado acrescentou `.gitattributes` e versionou somente esses sete arquivos, com a mensagem `build: add Maven Wrapper and reproducible commands`, sem repetir a geração ou os testes já aprovados. Na terceira etapa, foram preparados localmente somente `.github/workflows/ci.yml`, `AGENTS.md`, `README.md` e `docs/harness.md`, sem stage, commit, push, PR, merge ou deploy. A configuração local de CI aguarda execução no GitHub.

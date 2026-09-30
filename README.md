@@ -24,7 +24,7 @@ The first invocation downloads the official Maven ZIP, verifies its configured S
 
 For Linux/macOS, keep `mvnw` with LF line endings and executable permission; install `unzip` and either `sha256sum` or `shasum` for this ZIP/checksum configuration. Git records `mvnw` as executable (`100755`); [.gitattributes](.gitattributes) keeps LF for `mvnw` and CRLF for `mvnw.cmd` in checkouts.
 
-See [the SDD and harness guide](docs/harness.md) for generation commands, checksum provenance, Windows validation results and CI preparation. Linux/macOS commands have received static review only; the GitHub Actions workflow is prepared locally and remote execution remains pending.
+See [the SDD and harness guide](docs/harness.md) for generation commands, checksum provenance, and Windows and Linux validation evidence. The [first Linux CI run](https://github.com/RODR1GU3S/dscommerce-speckit/actions/runs/36776432450) passed the test suite through the Wrapper; macOS commands have received static review only.
 
 ## Running the Application
 
@@ -217,8 +217,8 @@ The `Testes (Java 21 / Maven)` job uses Ubuntu 24.04, Java 21 Zulu and a Maven d
 ./mvnw --batch-mode --no-transfer-progress test
 ```
 
-Once runs exist on GitHub, open the repository's Actions tab, select the workflow and run, and inspect the job's step logs. Download the `surefire-reports` artifact from the run summary; it contains `target/surefire-reports/` and is retained for 14 days. Upload is attempted even when tests fail; a successful upload preserves the test failure. If an earlier failure prevents reports from being generated, upload emits a warning about missing files.
+Open the repository's Actions tab, select the workflow and run, and inspect the job's step logs. Download the `surefire-reports` artifact from the run summary; it contains the reports from `target/surefire-reports/` and is retained for 14 days. Upload is attempted even when tests fail; a successful upload preserves the test failure. If an earlier failure prevents reports from being generated, upload emits a warning about missing files.
 
-Current state: workflow prepared locally, with remote execution pending. The previously recorded 79 passing tests were local Windows executions and do not prove Linux or GitHub CI success. Associate future CI evidence with its run URL, event, tested revision and result, as explained in the [harness guide](docs/harness.md).
+The [first remote Linux run](https://github.com/RODR1GU3S/dscommerce-speckit/actions/runs/36776432450), triggered by `push` on `chore/harness-foundation`, completed successfully with 79 tests, no failures, errors or skipped tests, and an uploaded Surefire artifact. Its tested commit, effective versions, report inspection and retention limit are recorded in the [harness guide](docs/harness.md). The earlier Windows results remain separate historical evidence. Each new revision needs its own checks; for `pull_request`, confirm the GitHub merge reference tested in the checkout logs as well as the proposal's branch commit.
 
 A configured workflow does not make its check mandatory for merging. That depends on repository rules requiring the check; branch protection rules have not been configured in this stage.

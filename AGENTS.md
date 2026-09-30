@@ -34,7 +34,7 @@ Para alterações exclusivamente documentais, revise caminhos, links, comandos, 
 
 ## CI
 
-O [workflow de CI](.github/workflows/ci.yml) está preparado localmente para PRs com destino `main`, pushes em `main` e `chore/harness-foundation` e execução manual por `workflow_dispatch`, quando disponível na branch padrão. O job usa Ubuntu 24.04, Java 21 Zulu e cache Maven. Na raiz, executa:
+O [workflow de CI](.github/workflows/ci.yml) executa testes para PRs com destino `main`, pushes em `main` e `chore/harness-foundation` e execução manual por `workflow_dispatch`, quando disponível na branch padrão. O job usa Ubuntu 24.04, Java 21 Zulu e cache Maven. Na raiz, executa:
 
 ```sh
 ./mvnw --batch-mode --no-transfer-progress test
@@ -42,7 +42,7 @@ O [workflow de CI](.github/workflows/ci.yml) está preparado localmente para PRs
 
 Na aba Actions do GitHub, consulte os logs do job e o artefato `surefire-reports` no resumo da execução, com retenção de 14 dias. O upload também é solicitado após falha dos testes; seu sucesso não transforma essa falha em aprovação.
 
-A execução remota está pendente. Diferencie resultados locais de uma execução identificada por URL, evento, revisão e resultado no GitHub; os 79 testes anteriores no Windows não comprovam aprovação em Linux ou CI. Um workflow configurado só se torna uma condição obrigatória de merge se as regras do repositório exigirem seu check.
+A primeira execução remota em Linux foi concluída com sucesso e está registrada no [guia do harness](docs/harness.md). Diferencie resultados locais de cada execução identificada por URL, evento, revisão e resultado no GitHub; os 79 testes históricos no Windows são uma evidência separada. Em `pull_request`, confirme nos logs a referência de merge testada e sua relação com o HEAD da proposta. Um resultado anterior não aprova uma revisão nova. Um workflow configurado só se torna uma condição obrigatória de merge se as regras do repositório exigirem seu check.
 
 ## Conclusão
 

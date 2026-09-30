@@ -4,7 +4,7 @@ Este projeto serve ao aprendizado de desenvolvimento de software e à construç�
 
 SDD (Specification-Driven Development) organiza o desenvolvimento a partir de requisitos explícitos. Neste repositório, o Spec Kit estrutura especificação, planejamento e tarefas. A [constituição](../.specify/memory/constitution.md) governa as decisões: Java/Spring Boot, arquitetura em camadas, DTOs, persistência, validação e tratamento centralizado de erros.
 
-O harness reúne as instruções, o contexto e os mecanismos de verificação que apoiam o trabalho do agente. [AGENTS.md](../AGENTS.md) oferece uma entrada curta para encontrar as fontes e trabalhar dentro do escopo. Este guia explica o processo e suas evidências. Os testes existentes fornecem feedback executável; a segunda etapa acrescenta o Maven Wrapper e documenta sua execução. A terceira prepara o workflow de CI localmente; sua execução no GitHub permanece pendente.
+O harness reúne as instruções, o contexto e os mecanismos de verificação que apoiam o trabalho do agente. [AGENTS.md](../AGENTS.md) oferece uma entrada curta para encontrar as fontes e trabalhar dentro do escopo. Este guia explica o processo e suas evidências. Os testes existentes fornecem feedback executável; a segunda etapa acrescenta o Maven Wrapper e documenta sua execução. A terceira acrescenta o workflow de CI e a primeira execução remota em Linux, registrada abaixo.
 
 ## Das necessidades à revisão
 
@@ -77,7 +77,7 @@ As fontes disponíveis são:
 - Os relatórios locais XML e TXT em `target/surefire-reports/` registram resultados por classe. Na preparação desta etapa documental, a leitura dos 15 relatórios XML confirmou novamente o agregado de 79 testes, 0 falhas, 0 erros e 0 ignorados, sem executar a suíte outra vez.
 - O console da execução no diagnóstico registrou `BUILD SUCCESS`, duração e horário acima. Este guia preserva o resumo dessa observação.
 
-Limites da evidência: `target/` é ignorado pelo [Git](../.gitignore), portanto os relatórios podem não existir em outro checkout ou podem ser substituídos por uma execução posterior. Nem esses relatórios nem o resumo do quickstart atestam, por si, o hash testado; a associação ao commit acima veio da conferência do HEAD e do Git limpo no diagnóstico. Não há log integral versionado dessa execução nem resultado de CI confirmado. O quickstart não identifica o commit exato de sua própria execução histórica. A referência local `origin/main` coincidia com o HEAD, mas não houve consulta remota para confirmar seu estado atual.
+Limites da evidência: `target/` é ignorado pelo [Git](../.gitignore), portanto os relatórios podem não existir em outro checkout ou podem ser substituídos por uma execução posterior. Nem esses relatórios nem o resumo do quickstart atestam, por si, o hash testado; a associação ao commit acima veio da conferência do HEAD e do Git limpo no diagnóstico. Não há log integral versionado dessa execução; naquele diagnóstico, também não havia resultado de CI confirmado. O quickstart não identifica o commit exato de sua própria execução histórica. A referência local `origin/main` coincidia com o HEAD, mas não houve consulta remota naquele momento para confirmar seu estado atual.
 
 Assim, os 79 testes são uma linha de base observada nessa revisão, não uma garantia para alterações futuras ou uma medida de cobertura integral dos requisitos. Na primeira etapa documental, não foi feita nova execução de `mvn test`. Os resultados novos da segunda etapa estão separados abaixo.
 
@@ -87,7 +87,7 @@ As instruções orientam escolhas do agente: quais fontes ler, qual escopo respe
 
 As verificações produzem evidências: Maven compila e executa testes; os testes comparam resultados com expectativas; `git diff --check` procura problemas de whitespace no diff. Essas ferramentas não substituem a revisão dos requisitos e do escopo. Uma regra escrita no `AGENTS.md` também não se torna automaticamente um bloqueio executável.
 
-O [workflow existente do Spec Kit](../.specify/workflows/speckit/workflow.yml) organiza o ciclo SDD e revisões de spec e plan. O [workflow de CI](../.github/workflows/ci.yml), preparado na terceira etapa, define a execução automática da suíte nos eventos descritos abaixo. Sua presença local ainda não produz evidência remota: o agente ou desenvolvedor precisa revisar a configuração e registrar os resultados de uma execução real quando ela existir.
+O [workflow existente do Spec Kit](../.specify/workflows/speckit/workflow.yml) organiza o ciclo SDD e revisões de spec e plan. O [workflow de CI](../.github/workflows/ci.yml), preparado na terceira etapa, define a execução automática da suíte nos eventos descritos abaixo. Sua presença local, isoladamente, não produz evidência remota: o agente ou desenvolvedor precisa revisar a configuração e registrar os resultados de uma execução real, como a primeira execução em Linux documentada neste guia.
 
 Uma entrega deve informar arquivos afetados, comandos realmente executados, resultados, limitações e estado do Git. Diferencie sempre evidência histórica, execução atual e procedimento ainda sugerido. Revise arquivos não rastreados diretamente: `git diff` e `git diff --check` comuns não incluem esses arquivos.
 
@@ -160,11 +160,11 @@ A execução dos testes pelo Wrapper terminou em `2026-09-30T16:32:44-03:00`, co
 
 A consulta inicial de rede no sandbox falhou com impossibilidade de conexão. A primeira tentativa de geração retornou código 1 ao resolver o parent Spring Boot, com `Permission denied: getsockopt`. A consulta e a geração foram repetidas com acesso autorizado e concluíram corretamente. Não houve alteração da aplicação para contornar esse bloqueio do ambiente.
 
-Linux/macOS recebeu somente revisão estática do script gerado, de sua origem e dos finais de linha; não houve execução nesses sistemas. Os comandos de inicialização da aplicação documentados no README também não foram executados nesta etapa. CI continua pendente.
+Na segunda etapa, Linux/macOS recebeu somente revisão estática do script gerado, de sua origem e dos finais de linha; não houve execução nesses sistemas naquele momento. Os comandos de inicialização da aplicação documentados no README também não foram executados nesta etapa. A CI estava pendente; a validação remota posterior em Linux está registrada abaixo. macOS não foi executado.
 
-## Terceira etapa: CI preparada localmente
+## Terceira etapa: configuração e evidência remota de CI
 
-A preparação confirmou Git limpo em `chore/harness-foundation`, com HEAD `6c7f04d053dcd0d0da339b9b6d7f7a26b8cbc3e1`, commit da segunda etapa. O [workflow](../.github/workflows/ci.yml) foi criado no checkout, ainda sem stage, commit ou publicação. O estado atual é **workflow preparado localmente; execução remota pendente**.
+A preparação confirmou Git limpo em `chore/harness-foundation`, com HEAD `6c7f04d053dcd0d0da339b9b6d7f7a26b8cbc3e1`, commit da segunda etapa. O [workflow](../.github/workflows/ci.yml) foi inicialmente criado no checkout, sem stage, commit ou publicação naquele momento. Seu fechamento foi commitado em `1d49b28d46d6a73cf6c39b1077574c1306dba7f2`. O push posterior disparou a primeira execução remota com sucesso, registrada nesta seção.
 
 ### Eventos e execução
 
@@ -200,7 +200,7 @@ O SHA fixa o código da action consultada, enquanto o comentário identifica sua
 
 ### Logs, relatórios e evidência
 
-Quando houver uma execução remota, abra a aba **Actions** do repositório, escolha `CI - Testes Maven` e a execução desejada. No job, consulte os logs das etapas, especialmente versões e testes. No resumo da execução, baixe o artefato `surefire-reports`, se tiver sido produzido. As fontes oficiais explicam como [consultar logs](https://docs.github.com/en/actions/how-tos/monitor-workflows/use-workflow-run-logs) e [baixar artefatos](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/download-workflow-artifacts).
+Abra a aba **Actions** do repositório, escolha `CI - Testes Maven` e a execução desejada. No job, consulte os logs das etapas, especialmente versões e testes. No resumo da execução, baixe o artefato `surefire-reports`, se tiver sido produzido. As fontes oficiais explicam como [consultar logs](https://docs.github.com/en/actions/how-tos/monitor-workflows/use-workflow-run-logs) e [baixar artefatos](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/download-workflow-artifacts).
 
 Registre URL da execução, evento, revisão testada, versões observadas, resultado e relatórios. Em PRs, o checkout padrão testa a referência de merge preparada pelo GitHub, que pode diferir do HEAD local; confirme a revisão nos logs. Os 79 testes aprovados no Windows continuam como evidências locais históricas. Eles não demonstram sucesso em Linux ou no GitHub.
 
@@ -216,7 +216,45 @@ java --class-path C:/Users/ronal/.m2/repository/org/yaml/snakeyaml/2.2/snakeyaml
 
 Esse comando é uma conferência local de sintaxe, feita no Windows com um auxiliar em `target/`, ignorado pelo Git; não é um comando necessário para executar o projeto. A estrutura foi revisada contra os requisitos: eventos, permissões, runner, timeout, referências oficiais, cache, comandos na raiz, condição de upload, caminho e retenção dos relatórios. Um parser YAML geral não substitui actionlint nem a execução no GitHub.
 
-Não foram repetidos os testes Windows ou a geração do Wrapper. Não houve execução de Maven em Linux nem execução de CI. Aplicação, POM, testes, Wrapper, especificações e constituição foram preservados. A etapa prepara somente o workflow e as partes pertinentes dos três documentos; publicação e validação remota continuam fora deste pedido.
+Na preparação local da terceira etapa, não foram repetidos os testes Windows ou a geração do Wrapper e ainda não havia execução de Maven em Linux nem execução de CI. Aplicação, POM, testes, Wrapper, especificações e constituição foram preservados. A preparação abrangeu somente o workflow e as partes pertinentes dos três documentos; publicação e validação remota ocorreram depois, em uma etapa autorizada separadamente.
+
+### Primeira execução remota em Linux
+
+Em 30/09/2026, o push de `chore/harness-foundation` publicou a fundação do harness e disparou a [execução 36776432450](https://github.com/RODR1GU3S/dscommerce-speckit/actions/runs/36776432450), número 1, tentativa 1, do workflow `CI - Testes Maven`. A execução foi localizada já concluída; os metadados e os logs foram conferidos, sem atribuir a ela os resultados locais anteriores.
+
+| Informação | Evidência observada |
+| --- | --- |
+| Evento e branch | `push` em `chore/harness-foundation`. |
+| Commit testado | [`1d49b28d46d6a73cf6c39b1077574c1306dba7f2`](https://github.com/RODR1GU3S/dscommerce-speckit/commit/1d49b28d46d6a73cf6c39b1077574c1306dba7f2), confirmado nos metadados e no checkout dos logs. |
+| Estado e conclusão | `completed` e `success`; checkout, preparação do Java, testes e upload concluídos com sucesso. |
+| Ambiente | Runner hospedado pelo GitHub, imagem `ubuntu-24.04`, Linux `6.17.0-1022-azure`, arquitetura `amd64`. |
+| Java efetivo | OpenJDK `21.0.12+8-LTS`, distribuição `Zulu21.52+15-CA`, fornecedor Azul Systems. |
+| Maven efetivo | Apache Maven `3.9.16`, chamado pelo Wrapper de `.m2/wrapper/dists`. |
+| Testes | 79 testes, 0 falhas, 0 erros e 0 ignorados; `BUILD SUCCESS`. |
+
+Comando observado nos logs, executado na raiz no Linux:
+
+```sh
+./mvnw --batch-mode --no-transfer-progress test
+```
+
+O [artefato `surefire-reports`](https://github.com/RODR1GU3S/dscommerce-speckit/actions/runs/36776432450/artifacts/11126240641), ID `11126240641`, foi enviado com sucesso: ZIP de 70.395 bytes, com 30 arquivos. No acompanhamento remoto desta sessão, o ZIP foi lido em memória e seus 15 XMLs e 15 TXTs foram examinados. O agregado dos XMLs e os resumos TXT confirmaram 79 testes, 0 falhas, 0 erros e 0 ignorados; os XMLs também registraram Java `21.0.12` e sistema `Linux`.
+
+O SHA-256 calculado sobre o ZIP lido correspondeu ao digest do upload e dos metadados do artefato:
+
+```text
+53c6f0220dcd64943a2ae556ac47d540950dc05fd591e13733178121eeb2807e
+```
+
+A retenção configurada é de 14 dias. Os metadados consultados informaram `expired: false` e expiração em **14/10/2026 às 21:00:06 UTC** (`2026-10-14T21:00:06Z`). O resumo fica versionado neste guia, mas a disponibilidade do ZIP é limitada por essa retenção; o sucesso do upload, isoladamente, não seria prova de exame de seu conteúdo.
+
+Fontes consultadas para este registro:
+
+- [Metadados da execução na API GitHub](https://api.github.com/repos/RODR1GU3S/dscommerce-speckit/actions/runs/36776432450): workflow, evento, branch, SHA, número, tentativa, estado e conclusão.
+- [Logs do job `Testes (Java 21 / Maven)`](https://github.com/RODR1GU3S/dscommerce-speckit/actions/runs/36776432450/job/110095399519): checkout, runner, versões, comando, resumo dos testes e upload.
+- [Metadados dos artefatos da execução na API GitHub](https://api.github.com/repos/RODR1GU3S/dscommerce-speckit/actions/runs/36776432450/artifacts): associação à execução e ao commit, tamanho, digest e expiração do artefato `11126240641`; o ZIP acessível pelo link do artefato forneceu os relatórios examinados.
+
+Na preparação desta atualização documental, os metadados e os logs da execução foram conferidos novamente. Nenhum teste Windows foi repetido. Esta é uma evidência remota separada do diagnóstico e da validação Windows do Wrapper. Ela demonstra o resultado da suíte existente para o commit acima; não demonstra cobertura integral dos requisitos nem aprova revisões posteriores. macOS e os comandos de inicialização da aplicação continuam sem execução nesta validação do harness. Checks obrigatórios para merge não foram configurados nesta entrega.
 
 ## Etapas do harness
 
@@ -224,7 +262,7 @@ Não foram repetidos os testes Windows ou a geração do Wrapper. Não houve exe
 | --- | --- | --- |
 | Documentos de orientação | Explicar fontes, fluxo SDD, escopo e critérios de conclusão. | Primeira etapa commitada em `6580067d78aa86ff116d359490af91b4fa157d12`. |
 | Maven Wrapper | Fixar Maven 3.9.16 e oferecer entradas para Windows e Linux/macOS. | Segunda etapa commitada em `6c7f04d053dcd0d0da339b9b6d7f7a26b8cbc3e1`, com atributos de finais de linha e permissão executável no Git; testes observados no Windows. |
-| README | Tornar o guia e os comandos reproduzíveis fáceis de encontrar para quem avalia o portfólio. | Comandos da segunda etapa commitados; explicação da CI atualizada localmente na terceira. |
-| CI | Configurar Java 21, executar testes em PRs e disponibilizar relatórios associados à revisão executada. | Workflow preparado localmente em `.github/workflows/ci.yml`; execução remota pendente. |
+| README | Tornar o guia e os comandos reproduzíveis fáceis de encontrar para quem avalia o portfólio. | Comandos e explicação da CI commitados; primeira evidência Linux vinculada nesta atualização documental. |
+| CI | Configurar Java 21, executar testes em PRs e disponibilizar relatórios associados à revisão executada. | Workflow commitado em `1d49b28d46d6a73cf6c39b1077574c1306dba7f2`; [primeira execução remota em Linux](https://github.com/RODR1GU3S/dscommerce-speckit/actions/runs/36776432450) concluída com sucesso e relatórios examinados. |
 
-A geração e a validação da segunda etapa afetaram somente os três arquivos do Wrapper e as partes pertinentes de `AGENTS.md`, `docs/harness.md` e `README.md`, sem stage ou commit naquele momento. O fechamento autorizado acrescentou `.gitattributes` e versionou somente esses sete arquivos, com a mensagem `build: add Maven Wrapper and reproducible commands`, sem repetir a geração ou os testes já aprovados. Na terceira etapa, foram preparados localmente somente `.github/workflows/ci.yml`, `AGENTS.md`, `README.md` e `docs/harness.md`, sem stage, commit, push, PR, merge ou deploy. A configuração local de CI aguarda execução no GitHub.
+A geração e a validação da segunda etapa afetaram somente os três arquivos do Wrapper e as partes pertinentes de `AGENTS.md`, `docs/harness.md` e `README.md`, sem stage ou commit naquele momento. O fechamento autorizado acrescentou `.gitattributes` e versionou somente esses sete arquivos, com a mensagem `build: add Maven Wrapper and reproducible commands`, sem repetir a geração ou os testes já aprovados. Na preparação local da terceira etapa, foram alterados somente `.github/workflows/ci.yml`, `AGENTS.md`, `README.md` e `docs/harness.md`, ainda sem stage, commit, push, PR, merge ou deploy. O fechamento posterior foi commitado com a mensagem `ci: run Maven tests and retain Surefire reports`; a primeira execução remota após o push está registrada acima.

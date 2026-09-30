@@ -2,6 +2,30 @@
 
 Spring Boot backend service for DSCommerce learning features.
 
+## Requirements and Maven Wrapper
+
+Install a Java 21 JDK and configure `JAVA_HOME` or make Java available on `PATH`. The project includes Apache Maven Wrapper 3.3.4 (`only-script`), configured to run Maven 3.9.16. A separate Maven installation is not required for normal project commands.
+
+Check the Maven and Java versions from the repository root:
+
+Windows/PowerShell:
+
+```powershell
+.\mvnw.cmd --version
+```
+
+Linux/macOS:
+
+```bash
+./mvnw --version
+```
+
+The first invocation downloads the official Maven ZIP, verifies its configured SHA-256, and extracts it into the user's `.m2/wrapper/dists` cache. Later invocations reuse that distribution. Initial downloads require network access; Maven may also download project dependencies. The Wrapper selects Maven, while the installed JDK determines the Java runtime.
+
+For Linux/macOS, keep `mvnw` with LF line endings and executable permission; install `unzip` and either `sha256sum` or `shasum` for this ZIP/checksum configuration. Until the executable bit is recorded in the next commit, use `sh ./mvnw` in place of `./mvnw`. Keep `mvnw.cmd` with CRLF line endings.
+
+See [the SDD and harness guide](docs/harness.md) for generation commands, checksum provenance, Windows validation results and remaining work. Linux/macOS execution has not been validated in this stage; CI remains pending.
+
 ## Running the Application
 
 The application signs access tokens with HS256 and requires the signing key to be supplied externally through:
@@ -15,7 +39,13 @@ security.jwt.ttl=PT15M
 
 ```powershell
 $env:JWT_SECRET_BASE64 = "<base64-de-chave-segura>"
-mvn spring-boot:run
+.\mvnw.cmd spring-boot:run
+```
+
+On Linux/macOS, supply the external key for the process and run:
+
+```bash
+JWT_SECRET_BASE64="<base64-de-chave-segura>" ./mvnw spring-boot:run
 ```
 
 The default token lifetime is 15 minutes (`PT15M`) and can be changed through `security.jwt.ttl`. Starting the application this way does not create a production account; production identities must be provisioned outside this feature.
@@ -25,7 +55,13 @@ The default token lifetime is 15 minutes (`PT15M`) and can be changed through `s
 To run with the test profile and test classpath:
 
 ```powershell
-mvn spring-boot:test-run -Dspring-boot.run.profiles=test
+.\mvnw.cmd spring-boot:test-run "-Dspring-boot.run.profiles=test"
+```
+
+Linux/macOS:
+
+```bash
+./mvnw spring-boot:test-run -Dspring-boot.run.profiles=test
 ```
 
 This mode loads configuration and seed data exclusively from `src/test/resources`. The credentials `demo` / `secret123` are test-only data and do not represent a production account or password. The disposable JWT key from the test profile must never be reused in production.
@@ -81,8 +117,16 @@ curl -i "http://localhost:8080/products?page=0&size=51"
 
 Run the catalog tests:
 
+Windows/PowerShell:
+
+```powershell
+.\mvnw.cmd test "-Dtest=ProductControllerTest,ProductCatalogServiceTest,ProductRepositoryTest"
+```
+
+Linux/macOS:
+
 ```bash
-mvn test -Dtest=ProductControllerTest,ProductCatalogServiceTest,ProductRepositoryTest
+./mvnw test "-Dtest=ProductControllerTest,ProductCatalogServiceTest,ProductRepositoryTest"
 ```
 
 ## Login and Authentication API
@@ -149,8 +193,16 @@ If authentication cannot be completed because of an internal failure, the public
 
 Run the complete test suite:
 
+Windows/PowerShell:
+
+```powershell
+.\mvnw.cmd test
+```
+
+Linux/macOS:
+
 ```bash
-mvn test
+./mvnw test
 ```
 
 The suite covers JWT/HS256 configuration, BCrypt password matching, valid authentication, invalid credentials and input, safe internal-error handling, confidentiality, regressions in features 001 and 002, and continued anonymous access to the public product routes.

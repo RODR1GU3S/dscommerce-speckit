@@ -20,13 +20,15 @@ O ponteiro local `.specify/feature.json`, quando existir, indica apenas a featur
 
 ## Validação
 
-O projeto usa Java 21 e Maven instalado no `PATH`. O comando existente para a suíte completa, confirmado no diagnóstico, é:
+O projeto usa Java 21. Use o Maven Wrapper, que seleciona Maven 3.9.16 pelas propriedades em `.mvn/wrapper/maven-wrapper.properties`. No Windows/PowerShell, o comando recomendado para a suíte completa é:
 
 ```powershell
-mvn test
+.\mvnw.cmd test
 ```
 
-O Maven Wrapper ainda está pendente. Para mudanças de comportamento, use testes que exercitem os critérios de aceitação e as regressões afetadas. Quando aplicável ou exigido pela task, execute o teste antes da implementação e confirme falha pela causa esperada; erro de compilação ou de preparação não demonstra comportamento ausente. Após implementar, execute os testes apropriados e a suíte completa quando exigida pelos artefatos ou pelo alcance da mudança.
+Em Linux/macOS, use `./mvnw test`; consulte os requisitos e o registro pendente de permissão executável no [guia do harness](docs/harness.md). O Wrapper precisa de um JDK instalado e de rede para o download inicial. O comando histórico `mvn test` permanece nas evidências do diagnóstico; não reescreva resultados históricos como execuções pelo Wrapper.
+
+Para mudanças de comportamento, use testes que exercitem os critérios de aceitação e as regressões afetadas. Quando aplicável ou exigido pela task, execute o teste antes da implementação e confirme falha pela causa esperada; erro de compilação ou de preparação não demonstra comportamento ausente. Após implementar, execute os testes apropriados e a suíte completa quando exigida pelos artefatos ou pelo alcance da mudança.
 
 Para alterações exclusivamente documentais, revise caminhos, links, comandos, consistência com as fontes e o diff. Execute `git diff --check`; revise também o conteúdo dos arquivos novos, pois arquivos não rastreados não aparecem no diff comum. Não repita testes de aplicação sem necessidade decorrente da mudança.
 

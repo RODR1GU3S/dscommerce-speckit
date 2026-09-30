@@ -4,7 +4,7 @@ Este projeto serve ao aprendizado de desenvolvimento de software e à construç�
 
 SDD (Specification-Driven Development) organiza o desenvolvimento a partir de requisitos explícitos. Neste repositório, o Spec Kit estrutura especificação, planejamento e tarefas. A [constituição](../.specify/memory/constitution.md) governa as decisões: Java/Spring Boot, arquitetura em camadas, DTOs, persistência, validação e tratamento centralizado de erros.
 
-O harness reúne as instruções, o contexto e os mecanismos de verificação que apoiam o trabalho do agente. Nesta primeira etapa, [AGENTS.md](../AGENTS.md) oferece uma entrada curta para encontrar as fontes e trabalhar dentro do escopo. Este guia explica o processo e suas evidências. Os testes existentes fornecem feedback executável; Maven Wrapper e CI permanecem pendentes.
+O harness reúne as instruções, o contexto e os mecanismos de verificação que apoiam o trabalho do agente. [AGENTS.md](../AGENTS.md) oferece uma entrada curta para encontrar as fontes e trabalhar dentro do escopo. Este guia explica o processo e suas evidências. Os testes existentes fornecem feedback executável; a segunda etapa acrescenta o Maven Wrapper e documenta sua execução. CI permanece pendente.
 
 ## Das necessidades à revisão
 
@@ -29,7 +29,7 @@ A feature [003-login-autenticacao](../specs/003-login-autenticacao/spec.md) exem
 
 As consultas de [catálogo](../specs/001-consulta-catalogo-produtos/spec.md) e [detalhes do produto](../specs/002-visualizar-detalhes-produto/spec.md) são fontes de requisitos de regressão. Uma alteração em autenticação precisa respeitar o comportamento público já definido.
 
-Nesta etapa, o pedido abrange somente os dois documentos do harness. A validação adequada é revisar caminhos, comandos, consistência, conteúdo e diff. A suíte da aplicação não precisa ser repetida porque não houve mudança de código, configuração ou comportamento.
+Na primeira etapa, o pedido abrangeu somente os dois documentos do harness. A validação consistiu em revisar caminhos, comandos, consistência, conteúdo e diff, sem repetir a suíte da aplicação. A segunda etapa muda a entrada de execução do build e, por isso, valida o Wrapper e executa a suíte existente pelo novo comando.
 
 ## Estados que precisam ser distinguidos
 
@@ -79,7 +79,7 @@ As fontes disponíveis são:
 
 Limites da evidência: `target/` é ignorado pelo [Git](../.gitignore), portanto os relatórios podem não existir em outro checkout ou podem ser substituídos por uma execução posterior. Nem esses relatórios nem o resumo do quickstart atestam, por si, o hash testado; a associação ao commit acima veio da conferência do HEAD e do Git limpo no diagnóstico. Não há log integral versionado dessa execução nem resultado de CI confirmado. O quickstart não identifica o commit exato de sua própria execução histórica. A referência local `origin/main` coincidia com o HEAD, mas não houve consulta remota para confirmar seu estado atual.
 
-Assim, os 79 testes são uma linha de base observada nessa revisão, não uma garantia para alterações futuras ou uma medida de cobertura integral dos requisitos. Nesta etapa documental, não foi feita nova execução de `mvn test`.
+Assim, os 79 testes são uma linha de base observada nessa revisão, não uma garantia para alterações futuras ou uma medida de cobertura integral dos requisitos. Na primeira etapa documental, não foi feita nova execução de `mvn test`. Os resultados novos da segunda etapa estão separados abaixo.
 
 ## Instruções e verificações têm papéis distintos
 
@@ -91,12 +91,84 @@ O [workflow existente do Spec Kit](../.specify/workflows/speckit/workflow.yml) o
 
 Uma entrega deve informar arquivos afetados, comandos realmente executados, resultados, limitações e estado do Git. Diferencie sempre evidência histórica, execução atual e procedimento ainda sugerido. Revise arquivos não rastreados diretamente: `git diff` e `git diff --check` comuns não incluem esses arquivos.
 
-## Próximas etapas — pendentes
+## Segunda etapa: Maven Wrapper e comandos
 
-| Etapa | Finalidade | Situação nesta fundação |
+A preparação confirmou checkout limpo em `chore/harness-foundation`, com HEAD `6580067d78aa86ff116d359490af91b4fa157d12`. `mvn --version` confirmou Maven `3.9.16` e Java Azul Zulu `21.0.12.1`, com código de saída 0. Essa versão do Maven foi mantida e sua distribuição foi confirmada no Maven Central e no servidor oficial Apache.
+
+O [plugin oficial Apache Maven Wrapper](https://maven.apache.org/tools/wrapper/maven-wrapper-plugin/wrapper-mojo.html), versão `3.3.4`, gerou os arquivos pelo tipo `only-script`. O comando executado foi:
+
+```powershell
+mvn org.apache.maven.plugins:maven-wrapper-plugin:3.3.4:wrapper `
+  "-Dmaven=3.9.16" `
+  "-Dtype=only-script" `
+  "-DdistributionUrl=https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/3.9.16/apache-maven-3.9.16-bin.zip" `
+  "-DdistributionSha256Sum=5af3b743dd8b876b5c45da33b676251e5f1687712644abb4ee519ca56e1d89ce"
+```
+
+O comando concluiu com `BUILD SUCCESS` e código de saída 0. Os scripts [mvnw](../mvnw) e [mvnw.cmd](../mvnw.cmd) não foram escritos ou adaptados manualmente: a comparação dos bytes com o ZIP oficial `maven-wrapper-distribution-3.3.4-only-script.zip` confirmou que foram preservados. O tipo `only-script` não adicionou JAR do Wrapper nem fonte Java ao projeto.
+
+### Distribuição e procedência do checksum
+
+As [propriedades do Wrapper](../.mvn/wrapper/maven-wrapper.properties) fixam a distribuição ZIP oficial do [Maven Central](https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/3.9.16/apache-maven-3.9.16-bin.zip). Para obter um SHA-256 verificável, foi baixado esse mesmo ZIP, de 9.395.475 bytes, e seu SHA-512 foi comparado com o [checksum publicado pela Apache](https://downloads.apache.org/maven/maven-3/3.9.16/binaries/apache-maven-3.9.16-bin.zip.sha512). Somente após a igualdade foi calculado o SHA-256 com `Get-FileHash -Algorithm SHA256`.
+
+```text
+SHA-512 publicado e conferido:
+ed41650d42485cfc243fad22158caf9cbb5dc408ce7a09ddb94dd42a019de929ca43065bfa450612cf12bf78b5cafa3884b96c090de326ff590448c933454af3
+
+SHA-256 calculado do ZIP conferido e configurado como distributionSha256Sum:
+5af3b743dd8b876b5c45da33b676251e5f1687712644abb4ee519ca56e1d89ce
+```
+
+O SHA-256 acima foi calculado localmente; não é apresentado como um valor publicado diretamente pela Apache. O ZIP e os hashes de conferência ficaram em `target/harness-validation/`, ignorado pelo Git. A configuração do Wrapper foi conferida contra esse arquivo. A [documentação Apache do Wrapper](https://maven.apache.org/tools/wrapper/) descreve a propriedade `distributionSha256Sum`.
+
+### Como executar
+
+Na raiz, em Windows/PowerShell:
+
+```powershell
+.\mvnw.cmd --version
+.\mvnw.cmd test
+```
+
+Em Linux/macOS, os comandos previstos são:
+
+```sh
+./mvnw --version
+./mvnw test
+```
+
+O Wrapper lê `distributionUrl`, localiza o Maven correspondente no cache e, se necessário, baixa a distribuição, verifica o SHA-256 antes de extrair e chama o `mvn` dessa instalação com os argumentos recebidos. O cache padrão fica em `.m2/wrapper/dists` no diretório do usuário. Uma instalação já presente no cache é reutilizada; o script não recalcula o checksum a cada execução. `MAVEN_USER_HOME` pode mudar o cache e `MVNW_REPOURL` pode substituir a origem de download; nenhum dos dois estava definido na validação desta etapa.
+
+O Wrapper seleciona o Maven, mas não instala nem fixa o JDK: Java 21 precisa estar instalado, com `JAVA_HOME` ou `PATH` configurado. No Windows, o script usa PowerShell para baixar e extrair. Em Linux/macOS, esta configuração com checksum do ZIP exige `unzip` e `sha256sum` ou `shasum`, além do JDK e rede inicial. Sem `unzip`, o script oficial tenta o TAR.GZ, cujo hash não corresponde ao SHA-256 do ZIP fixado aqui; por isso `unzip` é um requisito deste projeto.
+
+Os finais de linha gerados foram preservados: LF em `mvnw` e CRLF em `mvnw.cmd`. No fechamento desta etapa, o arquivo [.gitattributes](../.gitattributes) fixa `/mvnw text eol=lf` e `/mvnw.cmd text eol=crlf`, mantendo esses finais de linha nos futuros checkouts. O índice Git usa LF para ambos os scripts.
+
+Após o stage autorizado, `git update-index --chmod=+x -- mvnw` registra o script Unix como executável (`100755`); `mvnw.cmd` permanece com modo `100644`. Nesta máquina, `core.autocrlf=true` e `core.filemode=false`; os atributos e o modo registrado permitem compartilhar essas definições sem mudar a configuração local. As conferências do fechamento usam `git check-attr text eol`, `git ls-files --eol` e `git ls-files --stage` para revisar os atributos, os finais de linha no índice e no arquivo de trabalho e os modos dos scripts.
+
+### Novos resultados no Windows — 30/09/2026
+
+Esta validação foi feita no Windows, a partir do commit de preparação `6580067d78aa86ff116d359490af91b4fa157d12`, com os arquivos da segunda etapa ainda sem commit. Portanto, esse hash identifica a base, não uma revisão commitada que já contenha o Wrapper.
+
+| Comando executado | Resultado observado | Código de saída |
 | --- | --- | --- |
-| Maven Wrapper | Fixar a distribuição Maven e oferecer entradas para Windows e Linux/macOS. | Pendente; `mvnw`, `mvnw.cmd` e `.mvn/` ainda não existem. O comando atual continua sendo `mvn test`. |
-| README | Tornar o guia e os futuros comandos reproduzíveis fáceis de encontrar para quem avalia o portfólio. | Atualização pendente; o README existente foi somente consultado. |
+| `mvn --version` | Maven 3.9.16 local; Java Azul Zulu 21.0.12.1. | 0 |
+| Comando de geração acima | Plugin 3.3.4, tipo `only-script`, Maven 3.9.16; `BUILD SUCCESS`. | 0 |
+| `.\mvnw.cmd --version` | Maven 3.9.16 em `.m2/wrapper/dists`; Java 21.0.12.1, Azul, runtime `C:\Program Files\Zulu\zulu-21`. | 0 |
+| `.\mvnw.cmd test` | 79 testes, 0 falhas, 0 erros, 0 ignorados; `BUILD SUCCESS`. | 0 |
+
+A execução dos testes pelo Wrapper terminou em `2026-09-30T16:32:44-03:00`, com duração Maven de `48.398 s`. Esses resultados são novos e não substituem o diagnóstico histórico de 14:44. Logs de geração, versão e testes estão em `target/harness-validation/`; os relatórios atuais por classe estão em `target/surefire-reports/`. São evidências locais ignoradas pelo Git, que podem ser substituídas ou faltar em outro checkout.
+
+A consulta inicial de rede no sandbox falhou com impossibilidade de conexão. A primeira tentativa de geração retornou código 1 ao resolver o parent Spring Boot, com `Permission denied: getsockopt`. A consulta e a geração foram repetidas com acesso autorizado e concluíram corretamente. Não houve alteração da aplicação para contornar esse bloqueio do ambiente.
+
+Linux/macOS recebeu somente revisão estática do script gerado, de sua origem e dos finais de linha; não houve execução nesses sistemas. Os comandos de inicialização da aplicação documentados no README também não foram executados nesta etapa. CI continua pendente.
+
+## Etapas do harness
+
+| Etapa | Finalidade | Situação |
+| --- | --- | --- |
+| Documentos de orientação | Explicar fontes, fluxo SDD, escopo e critérios de conclusão. | Primeira etapa commitada em `6580067d78aa86ff116d359490af91b4fa157d12`. |
+| Maven Wrapper | Fixar Maven 3.9.16 e oferecer entradas para Windows e Linux/macOS. | Gerado e validado no Windows; fechamento com atributos de finais de linha e permissão executável no Git. |
+| README | Tornar o guia e os comandos reproduzíveis fáceis de encontrar para quem avalia o portfólio. | Comandos e requisitos atualizados nesta segunda etapa e incluídos no fechamento. |
 | CI | Configurar Java 21, executar testes em PRs e disponibilizar relatórios associados à revisão executada. | Pendente; não existe workflow em `.github/workflows/`. |
 
-Essas etapas exigem trabalho posterior no escopo correspondente. Esta primeira fundação cria apenas `AGENTS.md` e `docs/harness.md`, sem alterar aplicação, POM, especificações, constituição ou README.
+A geração e a validação da segunda etapa afetaram somente os três arquivos do Wrapper e as partes pertinentes de `AGENTS.md`, `docs/harness.md` e `README.md`, sem stage ou commit naquele momento. O fechamento autorizado acrescenta `.gitattributes` e versiona somente esses sete arquivos, com a mensagem `build: add Maven Wrapper and reproducible commands`, sem repetir a geração ou os testes já aprovados. Aplicação, POM, testes, especificações e constituição foram preservados. Não houve push, merge ou deploy; CI continua pendente e requer trabalho posterior no escopo correspondente.

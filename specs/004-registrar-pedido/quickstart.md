@@ -139,3 +139,46 @@ Verificações realmente executadas nesta revisão:
 - Conferência local do BOM Boot 3.3.4 identificou Hibernate 6.5.3.Final; a API oficial Hibernate 6.5 foi consultada para @Check. `javap -classpath C:/Users/ronal/.m2/repository/org/hibernate/orm/hibernate-core/6.5.3.Final/hibernate-core-6.5.3.Final.jar org.hibernate.annotations.Check` terminou inicialmente com AccessDeniedException no sandbox e, repetido com permissão, concluiu com código 0 e confirmou name/constraints. A página Spring 6.1.13 de TransactionSynchronization não ficou acessível pela ferramenta web; a API corrente foi consultada como apoio, com essa distinção registrada em research.md.
 
 Limites do fechamento: nenhum teste de aplicação, chamada HTTP, geração de schema ou prova de rollback foi executado; todos os cenários funcionais continuam previstos para a implementação futura. Não foram identificadas inconsistências documentais restantes no escopo solicitado. Permanecem a validação executável do desenho e a validação OpenAPI completa, sem alegação de aprovação nesta revisão. Estado final: mesma branch/HEAD, seis artefatos de planejamento não rastreados, nenhum arquivo rastreado alterado; sem tasks.md, stage, commit, push, merge ou mudança de branch.
+
+## Execução limitada de T001/T002 — 2026-10-02
+
+Este registro é posterior aos checkpoints de planejamento acima, cujas evidências e datas permanecem preservadas. A autorização desta execução abrange somente a conferência da base (T001) e a linha de base de testes existentes (T002), com parada antes de T003. Não representa implementação ou aprovação funcional do registro de pedidos. U1 (conteúdo residual no JSON) e U2 (ativação de fixtures na demonstração), apresentados antes da execução, continuam sugestões não aplicadas.
+
+### T001 — base e escopo conferidos
+
+Em 2026-10-02, às 19:30:54 -03:00, a conferência inicial por `git rev-parse --show-toplevel`, `git branch --show-current`, `git rev-parse HEAD` e `git status --short --untracked-files=all` identificou raiz `C:/Users/ronal/dscommerce-speckit`, branch real `004-registrar-pedido`, HEAD `4afb5e7634ce5236df2aeb2ba57dc228578be292` e checkout limpo, sem alterações preexistentes a preservar. `.specify/feature.json` seleciona esta feature; a branch real foi confirmada separadamente pelo Git.
+
+Executado `.specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks`, com código 0: FEATURE_DIR absoluto da Feature 004 e research.md, data-model.md, contracts/, quickstart.md e tasks.md disponíveis. Spec, plano, pesquisa, modelo, quickstart, os dois arquivos de contratos e tarefas foram conferidos com a constituição 1.0.0 e as orientações do harness. O checklist `checklists/requirements.md` tem 16 itens marcados e nenhum aberto; permaneceu sem edição. `.specify/extensions.yml` estava ausente. `.gitignore` já cobre target e os artefatos Java; nenhuma configuração foi alterada.
+
+Escopo preservado: compra para a própria conta por CLIENT ou ADMIN, Q1 com novo pedido por envio, A1 com rejeição de duplicatas e preço estritamente positivo aprovados; A2/A3 permanecem assunções adotadas. Sem pagamentos, consulta de pedidos, carrinho no backend, CRUD/provisionamento real de perfis, alterações em Product ou nas features anteriores. T001 cumprida; nenhuma tarefa a partir de T003 foi iniciada.
+
+### T002 — versões e testes existentes executados
+
+Todas as execuções abaixo ocorreram na raiz, em Windows/PowerShell, com HEAD `4afb5e7634ce5236df2aeb2ba57dc228578be292`. Ao iniciar T002, o diff para esse HEAD continha somente o registro de T001 neste quickstart e sua checkbox em tasks.md; código, POM, configurações e testes estavam idênticos à revisão commitada. O índice permaneceu vazio. Os horários abaixo são de 2026-10-02, com offset -03:00.
+
+| Execução / comando | Início → fim | Resultado observado | Código |
+| --- | --- | --- | --- |
+| `.\mvnw.cmd --version`, no sandbox | 19:32:08 → 19:32:12 | Bootstrap PowerShell falhou com `NullArray` / “Não é possível indexar em uma matriz nula” e `Cannot start maven from wrapper`; Maven não iniciou | 1 |
+| `.\mvnw.cmd --version`, repetição autorizada fora do sandbox | 19:38:19 → 19:38:30 | Apache Maven 3.9.16 pelo Wrapper; Java 21.0.12.1, Azul Systems, Inc.; runtime `C:\Program Files\Zulu\zulu-21`; Windows 10, amd64 | 0 |
+| Regressões selecionadas pelo comando abaixo, fora do sandbox com autorização | 19:39:38 → 19:41:21 | 79 testes, 0 falhas, 0 erros, 0 ignorados; `BUILD SUCCESS`; duração Maven 01:36 min | 0 |
+| `.\mvnw.cmd test`, fora do sandbox com autorização | 19:41:22 → 19:42:22 | 79 testes, 0 falhas, 0 erros, 0 ignorados; `BUILD SUCCESS`; duração Maven 48.695 s | 0 |
+
+Comando efetivamente executado para as regressões existentes listadas na seção de comandos previstos:
+
+```powershell
+.\mvnw.cmd '-Dtest=PublicCatalogSecurityIntegrationTest,PublicProductDetailSecurityIntegrationTest,ProductControllerTest,ProductCatalogServiceTest,ProductRepositoryTest,LoginControllerTest,GlobalExceptionHandlerRegressionTest,JwtConfigurationTest,JwtTokenServiceTest,AuthenticationServiceTest,AuthenticationInternalFailureTest,AuthenticationSensitiveLoggingTest,UserAccountRepositoryTest,PasswordEncoderConfigurationTest,H2ConsoleSecurityIntegrationTest' test
+```
+
+A versão do Maven foi selecionada pela distribuição fixada em `.mvn/wrapper/maven-wrapper.properties`, sem edição do Wrapper ou de variáveis para contornar o bootstrap. O Maven home informado foi `C:\Users\ronal\.m2\wrapper\dists\apache-maven-3.9.16\0daed3be3ebd1c706f0e69e8b07c6b73f5cc4ea3dfce72a8d0ec2e849ca2ddb0`. A falha inicial foi do bootstrap observado no ambiente restrito, não um resultado de testes; a mesma consulta concluiu na repetição autorizada. Não foi demonstrada uma causa interna mais específica para o NullArray, nem alterada a aplicação para contorná-lo.
+
+Evidências locais preservadas em `target/harness-validation/feature-004-t001-t002-2026-10-02-1931/`, ignoradas pelo Git:
+
+- `wrapper-version.txt` e `wrapper-version-result.json`: tentativa inicial com código 1; `wrapper-version-authorized.txt` e `wrapper-version-authorized-result.json`: versão obtida na repetição com código 0.
+- `regressions.txt` / `regressions-result.json` e `full-suite.txt` / `full-suite-result.json`: logs, comandos, horários, códigos e destinos dos relatórios de cada execução.
+- `regressions-surefire-reports/` e `full-suite-surefire-reports/`: cópias separadas dos 15 XMLs e 15 TXTs produzidos em cada execução, realizadas antes da substituição dos relatórios pela execução seguinte. `reports-summary.json` registra as classes e os agregados conferidos.
+
+Os XMLs das duas execuções foram lidos e somados: cada conjunto contém exatamente as 15 classes previstas, 79 testes, 0 falhas, 0 erros e 0 ignorados. Os 15 resumos TXT de cada conjunto também foram conferidos sem falhas/erros/ignorados. A cópia da suíte completa foi comparada por SHA-256 com os arquivos atuais de `target/surefire-reports/`, todos iguais. A seleção de regressões abrange todas as classes de teste existentes nesta base; por isso os totais coincidem, embora sejam duas execuções distintas. Estes resultados são novos, locais e vinculados ao HEAD/diff acima; não substituem os 79 testes históricos Windows nem a execução remota Linux do harness.
+
+T002 cumprida após a repetição autorizada do Wrapper e as duas execuções de testes existentes. A falha inicial permanece registrada. Nenhum teste novo de pedidos, chamada HTTP manual, demonstração de T051 ou prova de rollback da Feature 004 foi executado. T003 e todas as tarefas seguintes continuam pendentes; o resultado não comprova funcionamento ou aprovação funcional do registro de pedidos.
+
+Fechamento documental: diff revisado e `git diff --check` concluído com código 0; `git diff --cached --exit-code` confirmou índice vazio. A comparação com o conteúdo anterior à execução confirmou todo o histórico deste quickstart preservado e tasks.md alterado somente nas caixas T001/T002, agora `[X]`; as 53 tarefas T003–T055 permanecem abertas. Raiz, branch e HEAD foram reconfirmados sem mudança. `git status --short --untracked-files=all` mostrou somente quickstart.md e tasks.md modificados, ambos sem stage; código, POM, configurações, testes e demais artefatos permaneceram sem alterações. `.specify/extensions.yml` continuou ausente, sem hooks before_implement/after_implement. Não houve stage, commit ou push.

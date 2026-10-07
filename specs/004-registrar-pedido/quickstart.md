@@ -350,3 +350,92 @@ Evidências locais ignoradas pelo Git em `target/harness-validation/feature-004-
 T007 concluída e validada, marcada somente após GREEN. T001–T007 [X]; T008–T055 abertas (48). O histórico anterior deste quickstart foi preservado integralmente; tasks.md alterado somente na caixa T007. Comparação SHA256 dos 54 arquivos capturados confirmou zero alterações nos recursos/seeds compartilhados, POM, Wrapper, OrderTestConfig, teste de perfis e evidências preservadas de T005/T006. Não foram implementados resolução autenticada, filtro, proteção HTTP, pedidos ou qualquer tarefa T008+; U1/U2 não aplicadas.
 
 Diff e arquivo novo revisados; `git diff --check` e conferência de whitespace/newline do principal sem erros. Índice vazio. Raiz, branch e HEAD reconfirmados sem mudança. Estado final: quickstart.md, tasks.md, OrderTestSupportTest.java e OrderTestFixture.java modificados; AuthenticatedAccountPrincipal.java novo/não rastreado. Não houve stage, commit ou push.
+
+## Execução exclusiva de T008 — contrato unitário de resolução de conta (RED) — 2026-10-07
+
+Escopo autorizado: somente T008, com parada antes de T009. Base conferida por `git rev-parse --show-toplevel`, `git branch --show-current`, `git rev-parse HEAD` e `git status --short --untracked-files=all`: raiz `C:/Users/ronal/dscommerce-speckit`, branch real `004-registrar-pedido`, HEAD `27850dddc8a21dd1b6542b9cf5f7aa9d9ccf273c` (checkpoint T007) e checkout inicialmente limpo, sem alterações preexistentes. A execução atual não reatribui os 37 testes aprovados em 06/10/2026 a uma execução nova.
+
+Lidas as instruções do projeto e da skill speckit-implement, constituição, tarefas/dependência T007, plano, spec, pesquisa D1/D2/D7, modelo de identidade, contratos, quickstart e fontes pertinentes. `.specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks` retornou código 0, FEATURE_DIR absoluto correto e research.md, data-model.md, contracts/, quickstart.md e tasks.md disponíveis. Checklist requirements.md conferido somente em leitura: 16 marcados, nenhum aberto. Ignore existente cobre target e artefatos Java; não foi alterado. Não havia extensions.yml nem hooks before_implement.
+
+### Teste escrito primeiro e suporte mínimo
+
+Criado primeiro `src/test/java/com/devsuperior/dscommerce/services/AuthenticatedAccountServiceTest.java`, instanciando diretamente o serviço com UserAccountRepository mockado, sem contexto Spring ou transação de teste. O contrato exige:
+
+- CLIENT, ADMIN isolado, ambos e conjunto vazio: principal somente com accountId e authorities ROLE_CLIENT/ROLE_ADMIN derivadas exclusivamente dos perfis da conta devolvida pelo repositório; nenhum perfil automático. A saída conserva os valores após mudança na coleção da conta de preparação.
+- Uso exclusivo de `findByIdWithRoles(accountId)`, rejeitando lookup comum por id/nome, escrita ou outra interação. A consulta existente tem left join fetch e mantém conta sem linhas de perfis recuperável.
+- Conta ausente: AuthenticationException; indisponibilidade de lookup: OrderAccountResolutionException distinta de AuthenticationException e InvalidCredentialsException, com causa preservada internamente e mensagem sem os detalhes privados da causa.
+- Saída transitória com exatamente principal/authorities, principal somente accountId; sem entidade UserAccount, nome, hash ou segredo.
+
+Somente depois do teste foi criado `src/main/java/com/devsuperior/dscommerce/services/AuthenticatedAccountService.java`: construtor recebe o repositório, `resolve(Long accountId)` retorna provisoriamente null e o record aninhado ResolvedAccount define somente principal/authorities. Não há lógica de consulta/mapeamento/tradução de falha, anotação Service/Component/Transactional ou registro por Bean. A exceção OrderAccountResolutionException não foi criada: o teste verifica seu nome de tipo em runtime para não antecipar T009.
+
+Estes mocks verificam o contrato da chamada e do resultado; não comprovam carregamento JPA, ausência de LazyInitializationException em uso real ou funcionamento de proxy transacional. O fetch explícito sem sessão aberta na view é exigido pela escolha da consulta e pela saída sem entidade; a prova JPA existente em UserAccountRoleRepositoryTest (open-in-view=false, isLoaded e leitura fora da transação) pertence a T005/T006 e não foi executada novamente nesta etapa. Não foi inicializado contexto de aplicação nesta execução unitária.
+
+### Execuções realmente observadas
+
+Comandos na raiz Windows/PowerShell, no HEAD acima com somente os dois arquivos Java novos no diff de trabalho durante o teste. Executados fora do sandbox com autorização após falha de criação do processo no ambiente restrito (`helper_unknown_error: setup refresh had errors`); a tentativa de patch também falhou ao gravar. Esses impedimentos de ferramenta não foram contados como RED. Nenhum erro de bootstrap, compilação, startup ou preparação foi apresentado como falha comportamental.
+
+Horários de 2026-10-07, offset -03:00:
+
+| Comando | Início → fim | Resultado observado | Código |
+| --- | --- | --- | --- |
+| `.\mvnw.cmd --version` | 15:44:09 → 15:44:33 | Maven 3.9.16 pelo Wrapper; Java 21.0.12.1 Azul Systems, Inc.; runtime C:\Program Files\Zulu\zulu-21 | 0 |
+| `.\mvnw.cmd '-Dtest=AuthenticatedAccountServiceTest' test` | 15:44:33 → 15:45:47 | RED: 8 testes, 8 falhas, 0 erros, 0 ignorados; BUILD FAILURE esperado | 1 |
+
+Compilação concluída: 28 arquivos de produção e 21 arquivos de teste, javac release 21. As oito falhas são comportamentais: quatro combinações de perfis e a saída mínima receberam null; conta ausente e falha interna não lançaram exceção; a verificação de consulta registrou "Wanted but not invoked" para findByIdWithRoles(42L), com zero interações no mock. Os XMLs confirmam sete AssertionErrors por valor/exceção ausente e uma falha de verificação Mockito; nenhum erro de execução. As assertivas posteriores de mapeamento, confidencialidade e tipo de falha permanecem exigências para o GREEN de T009, sem alegação de que já passaram.
+
+Evidências locais ignoradas pelo Git em `target/harness-validation/feature-004-t008-2026-10-07/`: wrapper-version.txt / wrapper-version-result.json; resolution-red.txt / resolution-red-result.json; reports-summary.json; cópias dos dois fontes executados. XML/TXT de AuthenticatedAccountServiceTest foram copiados de `target/surefire-reports/` para `resolution-red-reports/`, sem incluir/somar relatórios antigos. preserved-before.json registra SHA256 dos 123 arquivos rastreados; quickstart-before.md e tasks-before.md preservam os documentos anteriores. Antes do registro documental, a comparação confirmou zero mudanças nos 123 arquivos rastreados. Nenhuma suíte completa, regressão adicional, chamada HTTP ou validação remota foi executada.
+
+### Fechamento e limites
+
+T008 cumprida como tarefa de escrever/executar testes e demonstrar RED, marcada somente após conferência das falhas e dos relatórios. T001–T008 [X]; T009–T055 abertas (47). T009 deverá substituir o corpo provisório por resolução via consulta explícita, mapear principal/authorities dentro de transação read-only pelo proxy Spring, registrar o serviço e distinguir conta ausente de falha interna, obtendo GREEN sem enfraquecer este contrato.
+
+Histórico deste quickstart preservado por acréscimo; tasks.md alterado somente na checkbox T008. Não houve implementação de T009+, filtro, handler ou proteção HTTP; U1/U2 não aplicadas. Sem stage, commit, push ou mudança de branch. O RED permanece intencional até T009.
+
+Revisão final: a conferência dos novos arquivos com autocrlf desativado detectou um CRLF final misturado a LF; ambos foram normalizados para LF, sem mudança lógica. As cópias dos fontes efetivamente executados permanecem nas evidências e a comparação após normalizar finais de linha confirmou conteúdo idêntico. Não foi repetido o teste por essa correção de formatação. Whitespace dos novos arquivos reconferido com `git -c core.autocrlf=false diff --no-index --check -- /dev/null <arquivo>`, sem diagnósticos; código 1 indica conteúdo novo no modo no-index. A revisão e `git diff --check` abrangem também os documentos; nenhum arquivo além dos dois fontes novos e dos dois documentos do checkpoint foi alterado.
+
+## Execução exclusiva de T009 — resolução autenticada e proxy read-only (GREEN) — 2026-10-07
+
+Escopo autorizado: somente T009, com parada antes de T010. Conferidos raiz `C:/Users/ronal/dscommerce-speckit`, branch real `004-registrar-pedido`, HEAD `27850dddc8a21dd1b6542b9cf5f7aa9d9ccf273c` e status por `git rev-parse --show-toplevel`, `git branch --show-current`, `git rev-parse HEAD` e `git status --short --untracked-files=all`. Índice inicialmente vazio. Alterações locais preexistentes de T008: quickstart.md/tasks.md modificados; AuthenticatedAccountService.java e AuthenticatedAccountServiceTest.java não rastreados. Foram preservadas, com evolução autorizada somente do suporte provisório do serviço e dos dois documentos.
+
+Instruções do projeto/skill já lida, T009/dependência T008, pesquisa D1/D2/D7, modelo de identidade, desenho, contratos e testes pertinentes conferidos. Pré-requisitos do Spec Kit retornaram código 0 e FEATURE_DIR absoluto da Feature 004. Checklist requirements.md: 16 marcados, nenhum aberto, sem edição. Ignore existente suficiente e preservado; extensions.yml ausente antes da execução.
+
+### Implementação e distinção de falhas
+
+AuthenticatedAccountService agora é serviço Spring com método público resolve(Long) e transação read-only. Usa exclusivamente findByIdWithRoles; o left join fetch existente carrega a conta e seus perfis. Principal mínimo com accountId e authorities ROLE_CLIENT/ROLE_ADMIN são construídos dentro do método transacional. O resultado contém valores transitórios e conjunto imutável, sem entidade JPA, nome, hash ou segredo. Conta existente sem perfis é resolvida com authorities vazias, sem conceder perfil e sem antecipar autorização de pedidos.
+
+Ausência da conta lança BadCredentialsException com mensagem genérica "Authentication required or invalid", fora do catch de falhas internas. RuntimeException de consulta/mapeamento é encapsulada em OrderAccountResolutionException, criada no caminho de T009, com mensagem "Account resolution could not be completed" e causa preservada internamente. A exceção interna não é AuthenticationException nem InvalidCredentialsException. O futuro adaptador distinguirá autenticação inválida (401) de falha interna (500); nenhum handler HTTP foi implementado nesta etapa.
+
+AuthenticatedAccountServiceTest de T008 permaneceu byte a byte inalterado, incluindo todas as assertivas. O histórico e os 12 artefatos RED arquivados de T008 também foram preservados por SHA256. Não houve repetição do RED nem enfraquecimento da cobertura.
+
+### Prova de registro e execução pelo proxy real
+
+Criado antes da lógica de T009 o teste adicional AuthenticatedAccountServiceIntegrationTest, com SpringBootTest, perfil test, repositório JPA real, fixtures JDBC confirmadas e H2 próprio por DynamicPropertySource; sem transação na classe/métodos de teste, sem mock/spy de repositório ou serviço e com open-in-view=false.
+
+Quatro casos exercitam CLIENT, ADMIN isolado, ambos e nenhum perfil pelo serviço injetado e proxy Spring. StatementInspector exclusivo de teste observa a consulta real com left join de tb_user_account_role e transação ativa/read-only. Advice observador é anexado dentro do proxy já existente, após o TransactionInterceptor: somente registra o resultado mapeado e a transação ativa/read-only antes de sua conclusão; não cria transação, não altera consulta/resultado e não substitui o interceptor real. Assim, a prova não se limita a inspecionar anotações ou mocks.
+
+Depois do retorno do proxy, os testes comprovam ausência de transação e EntityManager ligado à thread, limpam as contas/perfis das fixtures e usam accountId/authorities conservados no resultado, incluindo conjunto vazio e imutabilidade. Dois casos adicionais comprovam conta ausente e falha SQL real: renomeiam temporariamente a tabela de perfis apenas no H2 isolado, observam OrderAccountResolutionException com causa DataAccessException e restauram a tabela em finally antes da limpeza. Não se trata de simulação de falha física de conexão nem de prova de rollback de pedidos.
+
+### Execuções realmente observadas
+
+Na raiz Windows/PowerShell, HEAD acima com suporte do serviço de T008 substituído pela implementação e os dois novos arquivos de T009. Java 21.0.12.1 Azul Systems, Inc., runtime C:\Program Files\Zulu\zulu-21; Maven 3.9.16 selecionado pelo Wrapper. Horários de 2026-10-07, offset -03:00:
+
+| Comando | Início → fim | Resultado observado | Código |
+| --- | --- | --- | --- |
+| `.\mvnw.cmd --version` | 16:14:26 → 16:14:29 | Maven 3.9.16 e Java 21 confirmados | 0 |
+| GREEN de resolução, comando abaixo | 16:14:29 → 16:15:38 | 14 testes: 8 unitários de T008 e 6 de integração; 0 falhas, 0 erros, 0 ignorados; BUILD SUCCESS | 0 |
+| Regressões de conta/login, comando abaixo | 16:18:39 → 16:20:47 | 62 testes; 0 falhas, 0 erros, 0 ignorados; BUILD SUCCESS | 0 |
+
+```powershell
+.\mvnw.cmd '-Dtest=AuthenticatedAccountServiceTest,AuthenticatedAccountServiceIntegrationTest' test
+.\mvnw.cmd '-Dtest=OrderTestSupportTest,UserAccountRoleRepositoryTest,UserAccountRepositoryTest,LoginControllerTest,AuthenticationServiceTest,AuthenticationInternalFailureTest,AuthenticationSensitiveLoggingTest,JwtTokenServiceTest,JwtConfigurationTest,PasswordEncoderConfigurationTest,GlobalExceptionHandlerRegressionTest' test
+```
+
+Regressões por classe: OrderTestSupportTest 5; UserAccountRoleRepositoryTest 11; UserAccountRepositoryTest 4; LoginControllerTest 13; AuthenticationServiceTest 4; AuthenticationInternalFailureTest 4; AuthenticationSensitiveLoggingTest 4; JwtTokenServiceTest 1; JwtConfigurationTest 6; PasswordEncoderConfigurationTest 1; GlobalExceptionHandlerRegressionTest 9. Os 76 testes selecionados em dois grupos disjuntos não são uma execução da suíte completa. As regressões incluem suporte/limpeza das fixtures, perfis e constraints reais, repositório/login, falhas internas, confidencialidade, JWT/encoders e tratamento MVC existente.
+
+Evidências locais ignoradas pelo Git em `target/harness-validation/feature-004-t009-2026-10-07/`: wrapper-version.txt / wrapper-version-result.json; resolution-green.txt / resolution-green-result.json; account-login-regressions.txt / account-login-regressions-result.json; reports-summary.json. XMLs/TXTs copiados de target/surefire-reports para resolution-green-reports (somente duas classes) e account-login-regression-reports (somente onze classes); totais agregados apenas desses relatórios atuais, sem somar arquivos antigos. Fontes executados copiados, preserved-before.json registra hashes da base/fontes/artefatos RED e quickstart-before.md/tasks-before.md/service-before.java preservam a base local.
+
+### Fechamento e limites
+
+T009 concluída após GREEN, prova real do proxy/H2 e regressões. T001–T009 [X]; T010–T055 abertas (46). Histórico do quickstart preservado por acréscimo e tasks.md alterado neste checkpoint somente na checkbox T009. Diff do serviço contra o suporte preexistente e arquivos novos revisados; git diff --check e conferência no-index de whitespace dos fontes novos sem diagnósticos (código 1 do modo no-index indica conteúdo novo).
+
+Somente serviço, exceção, teste adicional e os dois documentos foram alterados nesta execução; o teste unitário e as evidências RED de T008 permanecem preservados. H2 é a prova local, sem alegação sobre outro banco ou ambiente. Suíte completa e CI não executadas; não foi testada falha de abertura/conclusão transacional nem implantado adaptador HTTP. Nenhuma tarefa T010+, filtro, handler, proteção HTTP ou pedido foi implementado. U1/U2 não aplicadas; sem stage, commit, push ou mudança de branch.

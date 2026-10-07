@@ -1,5 +1,6 @@
 package com.devsuperior.dscommerce.fixtures;
 
+import com.devsuperior.dscommerce.entities.UserRole;
 import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
@@ -20,7 +21,7 @@ import java.util.Set;
 
 /**
  * Committed JDBC setup for isolated H2 tests, with explicit cleanup of owned rows only.
- * Accounts have no roles here; role provisioning will be added after T006 supplies the schema.
+ * Accounts have only the explicit roles requested by the test; the default is no roles.
  * Future tests that persist orders must remove their dependent rows before calling cleanUp.
  */
 public final class OrderTestFixture {
@@ -46,8 +47,20 @@ public final class OrderTestFixture {
     }
 
     public long createAccount(String name, String rawPassword) {
+        return createAccount(name, rawPassword, Set.of());
+    }
+
+    public long createAccount(String name, String rawPassword, Set<UserRole> roles) {
+        var requestedRoles = Set.copyOf(roles);
         var hash = passwordEncoder.encode(rawPassword);
-        var id = insert("insert into tb_user_account (name, password_hash) values (?, ?)", name, hash);
+        var id = Objects.requireNonNull(committed.execute(status -> {
+            var accountId = insertRow("insert into tb_user_account (name, password_hash) values (?, ?)", name, hash);
+            for (var role : requestedRoles) {
+                jdbc.update("insert into tb_user_account_role (user_account_id, role) values (?, ?)",
+                        accountId, role.name());
+            }
+            return accountId;
+        }));
         accounts.add(id);
         return id;
     }
@@ -84,6 +97,7 @@ public final class OrderTestFixture {
                 jdbc.update("delete from tb_product where id = ?", productId);
             }
             for (var accountId : accounts) {
+                jdbc.update("delete from tb_user_account_role where user_account_id = ?", accountId);
                 jdbc.update("delete from tb_user_account where id = ?", accountId);
             }
         });
@@ -92,16 +106,18 @@ public final class OrderTestFixture {
     }
 
     private long insert(String sql, Object... values) {
-        return Objects.requireNonNull(committed.execute(status -> {
-            var key = new GeneratedKeyHolder();
-            jdbc.update(connection -> {
-                var statement = connection.prepareStatement(sql, new String[]{"id"});
-                for (int i = 0; i < values.length; i++) {
-                    statement.setObject(i + 1, values[i]);
-                }
-                return statement;
-            }, key);
-            return Objects.requireNonNull(key.getKey()).longValue();
-        }));
+        return Objects.requireNonNull(committed.execute(status -> insertRow(sql, values)));
+    }
+
+    private long insertRow(String sql, Object... values) {
+        var key = new GeneratedKeyHolder();
+        jdbc.update(connection -> {
+            var statement = connection.prepareStatement(sql, new String[]{"id"});
+            for (int i = 0; i < values.length; i++) {
+                statement.setObject(i + 1, values[i]);
+            }
+            return statement;
+        }, key);
+        return Objects.requireNonNull(key.getKey()).longValue();
     }
 }

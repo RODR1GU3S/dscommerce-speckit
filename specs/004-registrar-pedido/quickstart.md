@@ -311,3 +311,42 @@ Evidências locais ignoradas pelo Git em `target/harness-validation/feature-004-
 T006 concluída e validada. T001–T006 [X]; T007–T055 abertas (49). Nenhuma implementação/provisionamento de fixtures de perfis de T007, principal, resolução autenticada, pedido, endpoint ou política HTTP foi acrescentada. U1/U2 não aplicadas. As constraints foram verificadas no schema H2 gerado, sem migração ou validação de outro banco.
 
 Diff e arquivos novos revisados; `git diff --check` e conferência específica de whitespace/newline dos não rastreados sem problemas. Índice vazio. Estado final: mesma raiz, branch e HEAD; quickstart.md, tasks.md, UserAccount.java e UserAccountRepository.java modificados; UserRole.java novo/não rastreado e UserAccountRoleRepositoryTest.java ainda não rastreado, preservado de T005. Sem stage, commit ou push.
+
+## Execução exclusiva de T007 — fixtures de perfis e principal mínimo — 2026-10-06
+
+Escopo autorizado: somente T007, com parada antes de T008. Conferidos raiz `C:/Users/ronal/dscommerce-speckit`, branch real `004-registrar-pedido`, HEAD `3bc1ef590ca50abf04a442ab356be06167d900db` (checkpoint T005/T006) e checkout inicialmente limpo, usando `git rev-parse --show-toplevel`, `git branch --show-current`, `git rev-parse HEAD` e `git status --short --untracked-files=all`.
+
+AGENTS.md, skill speckit-implement já lida, constituição, tarefa real/dependência T006, modelo, desenho de identidade, pesquisa, contrato, quickstart e suporte de teste foram consultados. `.specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks` retornou código 0 e FEATURE_DIR absoluto correto. Checklist requirements.md conferido sem edição: 16 marcados, nenhum aberto. Ignore existente adequado para Java/target, sem alteração. `.specify/extensions.yml` ausente antes e depois, sem hooks before_implement/after_implement.
+
+### Mudanças e cobertura pertinente
+
+- `src/test/java/com/devsuperior/dscommerce/fixtures/OrderTestFixture.java`: sobrecarga `createAccount(name, rawPassword, Set<UserRole>)` aceita explicitamente CLIENT, ADMIN isolado, ambos ou conjunto vazio. Copia o Set antes de gravar, usa BCrypt real e insere a conta e todas as linhas de perfis por JDBC na mesma transação REQUIRES_NEW confirmada antes do retorno; rastreia o id somente depois do sucesso. A assinatura anterior de dois argumentos permanece e delega com Set vazio. Nenhum perfil automático. Extraído insertRow para compartilhar a inserção com chave gerada sem abrir outra transação dentro do provisionamento. Produtos, alteração de preço e encoder JWT mantêm seus comportamentos anteriores.
+- Limpeza remove tb_user_account_role apenas dos accountIds próprios antes de remover suas contas, respeitando a FK; produtos/vínculos próprios continuam sendo limpos como antes. A restrição ao prefixo H2 isolado order-test permanece. Não há alterações em seeds ou configurações compartilhadas, nem provisionamento de conta real.
+- `src/test/java/com/devsuperior/dscommerce/config/OrderTestSupportTest.java`: duas novas provas de integração, além dos três testes anteriores. Uma prepara as quatro combinações dentro de um chamador que sofre rollback e verifica contas/perfis por conexão JDBC independente; depois comprova limpeza idempotente preservando conta/perfil de outro proprietário no mesmo H2 e restaurando a seed. Outra abre dois contextos H2 distintos, cria contas com o mesmo nome e perfis diferentes, limpa o primeiro e comprova que o segundo conserva sua conta ADMIN; após ambas as limpezas, verifica as linhas de seed. O teste anterior de encoders agora também verifica ausência de linhas de perfis e login via POST /login com MockMvc sobre contexto real e FilterChainProxy real: HTTP 200, payload com dois campos, Bearer e JWT aceito pelo decoder existente. Login pelo AuthenticationService real também permanece verificado, sem claims de roles/hash/segredo, e a conta continua sem perfis depois do HTTP.
+- `src/main/java/com/devsuperior/dscommerce/security/AuthenticatedAccountPrincipal.java`: record transitório com somente Long accountId, sem name, roles, hash, segredo, anotação de persistência ou registro Spring. Foi compilado no build GREEN e conferido integralmente em leitura. É um valor mínimo da identidade autenticada, distinto da entidade UserAccount persistida e de seus dados de conta/permissões. Ainda não está conectado ao fluxo HTTP ou à resolução de conta.
+
+### Execuções realmente observadas
+
+Testes novos escritos antes da lógica. Para permitir compilação inicial, a sobrecarga de fixture recebeu provisoriamente corpo delegando à criação anterior sem perfis. Executado o novo teste de quatro combinações: contexto inicializado, 1 teste, 1 falha, 0 erros, 0 ignorados; assertiva JDBC esperava CLIENT, mas encontrou conjunto vazio. Nenhuma falha de compilação/startup/preparação/limpeza foi usada como RED. Depois, a delegação provisória foi substituída pelo provisionamento completo, sem reduzir assertivas.
+
+Comandos na raiz Windows/PowerShell, HEAD acima e diff de T007. Wrapper autorizado fora do sandbox considerando o impedimento de bootstrap observado anteriormente; nenhuma nova falha de sandbox foi atribuída a esta etapa. Horários de 2026-10-06, offset -03:00:
+
+| Comando | Início → fim | Resultado real | Código |
+| --- | --- | --- | --- |
+| `.\mvnw.cmd '-Dtest=OrderTestSupportTest#shouldCommitAllRoleFixturesAndCleanOnlyOwnedRows' test` | 16:58:33 → 16:59:10 | RED: 1 teste, 1 falha pela ausência de CLIENT persistido, 0 erros, 0 ignorados; BUILD FAILURE esperado | 1 |
+| `.\mvnw.cmd --version` | 17:00:18 → 17:00:19 | Maven 3.9.16 pelo Wrapper; Java 21.0.12.1 Azul Systems, Inc.; runtime `C:\Program Files\Zulu\zulu-21` | 0 |
+| GREEN e regressões, comando abaixo | 17:00:20 → 17:01:26 | 37 testes; 0 falhas, 0 erros, 0 ignorados; BUILD SUCCESS | 0 |
+
+```powershell
+.\mvnw.cmd '-Dtest=OrderTestSupportTest,UserAccountRoleRepositoryTest,UserAccountRepositoryTest,LoginControllerTest,AuthenticationServiceTest' test
+```
+
+Totais atuais por classe: OrderTestSupportTest 5 (dois novos e três anteriores, com login ampliado); UserAccountRoleRepositoryTest 11; UserAccountRepositoryTest 4; LoginControllerTest 13; AuthenticationServiceTest 4. Todos passaram sem falhas/erros/ignorados. Os testes de T005/T006 foram preservados e exercitaram novamente constraints JDBC, round-trip e carregamento explícito; a fixture nova permaneceu compatível com eles. O teste anterior de suporte confirmou também preservação dos 52 produtos, categorias/vínculos e dados da seed, Clock e encoders reais. Não se trata de prova de rollback de pedidos: o rollback do chamador demonstra somente independência do commit das fixtures. Nenhuma suíte completa ou validação remota foi executada neste checkpoint; os 60 aprovados em T006 permanecem evidência histórica separada.
+
+Evidências locais ignoradas pelo Git em `target/harness-validation/feature-004-t007-2026-10-06/`: fixture-red.txt / fixture-red-result.json; wrapper-version.txt / wrapper-version-result.json; fixture-green-regressions.txt / fixture-green-regressions-result.json. XMLs/TXTs copiados de target/surefire-reports/ para fixture-red-reports/ antes do GREEN (somente OrderTestSupportTest, 1 caso) e fixture-green-regressions-reports/ após o GREEN (somente as cinco classes executadas); reports-summary.json agrega os XMLs e lista os casos, sem somar relatórios antigos. preserved-before.json e cópias iniciais dos documentos/fontes registram a base e sua preservação.
+
+### Fechamento e limites
+
+T007 concluída e validada, marcada somente após GREEN. T001–T007 [X]; T008–T055 abertas (48). O histórico anterior deste quickstart foi preservado integralmente; tasks.md alterado somente na caixa T007. Comparação SHA256 dos 54 arquivos capturados confirmou zero alterações nos recursos/seeds compartilhados, POM, Wrapper, OrderTestConfig, teste de perfis e evidências preservadas de T005/T006. Não foram implementados resolução autenticada, filtro, proteção HTTP, pedidos ou qualquer tarefa T008+; U1/U2 não aplicadas.
+
+Diff e arquivo novo revisados; `git diff --check` e conferência de whitespace/newline do principal sem erros. Índice vazio. Raiz, branch e HEAD reconfirmados sem mudança. Estado final: quickstart.md, tasks.md, OrderTestSupportTest.java e OrderTestFixture.java modificados; AuthenticatedAccountPrincipal.java novo/não rastreado. Não houve stage, commit ou push.

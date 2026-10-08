@@ -1,6 +1,7 @@
 package com.devsuperior.dscommerce.controllers;
 
 import com.devsuperior.dscommerce.config.SecurityConfig;
+import com.devsuperior.dscommerce.config.OrderSecuritySliceTestConfig;
 import com.devsuperior.dscommerce.dto.TokenResponseDTO;
 import com.devsuperior.dscommerce.services.AuthenticationService;
 import com.devsuperior.dscommerce.services.exceptions.InvalidCredentialsException;
@@ -32,8 +33,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(LoginController.class)
-@Import(SecurityConfig.class)
+@WebMvcTest(controllers = LoginController.class, properties = "test.order-security.public-mvc-slice=true")
+@Import({SecurityConfig.class, OrderSecuritySliceTestConfig.class})
 class LoginControllerTest {
 
     private static final String EXACT_NAME = "  Demo.User  ";

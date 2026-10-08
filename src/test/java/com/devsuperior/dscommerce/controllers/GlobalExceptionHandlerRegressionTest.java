@@ -1,6 +1,7 @@
 package com.devsuperior.dscommerce.controllers;
 
 import com.devsuperior.dscommerce.config.SecurityConfig;
+import com.devsuperior.dscommerce.config.OrderSecuritySliceTestConfig;
 import com.devsuperior.dscommerce.services.AuthenticationService;
 import com.devsuperior.dscommerce.services.ProductCatalogService;
 import com.devsuperior.dscommerce.services.exceptions.AuthenticationProcessingException;
@@ -34,13 +35,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(controllers = {
+@WebMvcTest(properties = "test.order-security.public-mvc-slice=true", controllers = {
         ProductController.class,
         LoginController.class,
         GlobalExceptionHandlerRegressionTest.ValidationProbeController.class
 })
 @Import({
         SecurityConfig.class,
+        OrderSecuritySliceTestConfig.class,
         GlobalExceptionHandlerRegressionTest.ValidationProbeController.class
 })
 class GlobalExceptionHandlerRegressionTest {

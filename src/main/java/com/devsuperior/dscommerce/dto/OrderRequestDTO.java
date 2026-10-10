@@ -1,14 +1,18 @@
 package com.devsuperior.dscommerce.dto;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-/** Immutable input data; strict JSON reading and Bean Validation belong to T033. */
-public record OrderRequestDTO(List<OrderItemRequestDTO> items) {
+/** Immutable input data, validated at the controller boundary. */
+public record OrderRequestDTO(@NotEmpty @Valid List<@NotNull OrderItemRequestDTO> items) {
 
     public OrderRequestDTO {
-        // Preserve null lists/elements for the later input validation boundary.
+        // Keep null lists/elements available to Bean Validation at the boundary.
         if (items != null) {
             items = Collections.unmodifiableList(new ArrayList<>(items));
         }

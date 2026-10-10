@@ -1,5 +1,10 @@
 package com.devsuperior.dscommerce.dto;
 
-/** Consumer-supplied identifiers and quantities; input validation belongs to T033. */
-public record OrderItemRequestDTO(Long productId, Integer quantity) {
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+
+/** Consumer-supplied positive identifiers and representable quantities. */
+public record OrderItemRequestDTO(@NotNull @Positive Long productId,
+                                  @NotNull @Positive @Max(2147483647) Integer quantity) {
 }

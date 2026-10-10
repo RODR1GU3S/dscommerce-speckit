@@ -1,6 +1,7 @@
 package com.devsuperior.dscommerce.controllers;
 
 import com.devsuperior.dscommerce.config.SecurityConfig;
+import com.devsuperior.dscommerce.config.OrderClockConfig;
 import com.devsuperior.dscommerce.config.OrderSecuritySliceTestConfig;
 import com.devsuperior.dscommerce.services.AuthenticationService;
 import com.devsuperior.dscommerce.services.ProductCatalogService;
@@ -10,6 +11,8 @@ import com.devsuperior.dscommerce.services.exceptions.ProductNotFoundException;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -25,6 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Locale;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -42,6 +46,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 })
 @Import({
         SecurityConfig.class,
+        OrderClockConfig.class,
         OrderSecuritySliceTestConfig.class,
         GlobalExceptionHandlerRegressionTest.ValidationProbeController.class
 })
@@ -211,6 +216,25 @@ class GlobalExceptionHandlerRegressionTest {
                 "/login");
 
         assertConfidentialLoginError(result);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void productMessageAndExternalPathRemainUnchanged(boolean contextPath) throws Exception {
+        String message = "Existing product error message";
+        when(productCatalogService.findProductDetails(99999L)).thenThrow(new ProductNotFoundException(message));
+        String path = contextPath ? "/api/products/99999" : "/products/99999";
+        var request = get(path).servletPath("/products/99999");
+        if (contextPath) request.contextPath("/api");
+        expectFourFieldError(mockMvc.perform(request), 404, "Not Found", message, path);
+    }
+
+    @Test
+    void unexpectedPublicFailureIsNotTranslatedAsAnOrderRegistrationError() {
+        var failure = new IllegalStateException("test-only unrelated processing failure");
+        when(productCatalogService.findProductDetails(99999L)).thenThrow(failure);
+        assertThatThrownBy(() -> mockMvc.perform(get("/products/99999")))
+                .rootCause().isSameAs(failure);
     }
 
     private MvcResult expectFourFieldError(

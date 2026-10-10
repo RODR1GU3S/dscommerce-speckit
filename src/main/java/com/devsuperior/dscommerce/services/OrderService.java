@@ -11,6 +11,7 @@ import com.devsuperior.dscommerce.repositories.OrderRepository;
 import com.devsuperior.dscommerce.repositories.ProductRepository;
 import com.devsuperior.dscommerce.repositories.UserAccountRepository;
 import com.devsuperior.dscommerce.security.AuthenticatedAccountPrincipal;
+import com.devsuperior.dscommerce.services.exceptions.InvalidOrderException;
 import com.devsuperior.dscommerce.services.exceptions.ProductNotFoundException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -24,6 +25,11 @@ import java.time.Clock;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+
+import static com.devsuperior.dscommerce.services.exceptions.InvalidOrderException.Reason.DUPLICATE_PRODUCT;
+import static com.devsuperior.dscommerce.services.exceptions.InvalidOrderException.Reason.INVALID_PRODUCT_PRICE;
+import static com.devsuperior.dscommerce.services.exceptions.InvalidOrderException.Reason.UNREPRESENTABLE_VALUE;
 
 /** Registers one complete historical aggregate and maps its confirmation in the transaction. */
 @Service
@@ -53,6 +59,12 @@ public class OrderService {
         }
 
         var ids = request.items().stream().map(line -> line.productId()).toList();
+        var uniqueIds = new HashSet<Long>();
+        for (var id : ids) {
+            if (!uniqueIds.add(id)) {
+                throw new InvalidOrderException(DUPLICATE_PRODUCT);
+            }
+        }
         var byId = new HashMap<Long, Product>();
         products.findAllById(ids).forEach(product -> byId.put(product.getId(), product));
 
@@ -63,7 +75,11 @@ public class OrderService {
             if (product == null) {
                 throw new ProductNotFoundException("Product not found");
             }
-            var price = exactMoney(product.getPrice());
+            var currentPrice = product.getPrice();
+            if (currentPrice == null || currentPrice.signum() <= 0) {
+                throw new InvalidOrderException(INVALID_PRODUCT_PRICE);
+            }
+            var price = exactMoney(currentPrice);
             var item = new OrderItem(product, line.quantity(), price);
             var subtotal = exactMoney(item.getSubtotal());
             total = exactMoney(total.add(subtotal));
@@ -82,14 +98,19 @@ public class OrderService {
                 saved.getStatus(), responseItems, saved.getTotal().toPlainString());
     }
 
-    // Numerical preconditions only; domain rejection reasons and HTTP translation belong to later tasks.
+    // Translate only exact decimal normalization/capacity failures, never repository or processing failures.
     private static BigDecimal exactMoney(BigDecimal value) {
         if (value == null || value.signum() <= 0) {
             throw new IllegalArgumentException("Order value must be positive");
         }
-        var normalized = value.setScale(2, RoundingMode.UNNECESSARY);
+        final BigDecimal normalized;
+        try {
+            normalized = value.setScale(2, RoundingMode.UNNECESSARY);
+        } catch (ArithmeticException exception) {
+            throw new InvalidOrderException(UNREPRESENTABLE_VALUE);
+        }
         if (normalized.precision() > 19) {
-            throw new IllegalArgumentException("Order value exceeds decimal19,2");
+            throw new InvalidOrderException(UNREPRESENTABLE_VALUE);
         }
         return normalized;
     }

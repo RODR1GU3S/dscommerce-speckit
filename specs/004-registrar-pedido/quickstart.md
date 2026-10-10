@@ -1417,3 +1417,1316 @@ Captura própria em `target/harness-validation/feature-004-us1-checkpoint-2026-1
 Uma leitura auxiliar combinou sintaxe de expansão de caminhos de outro shell e recebeu erro de parser PowerShell antes de executar qualquer comando; corrigida usando o diretório explícito. Sem escrita/teste/falha de aplicação nessa tentativa. O diff staged deve corresponder integralmente à whitelist e aos conteúdos revisados, com whitespace aprovado antes do commit. Hash e estado Git pós-commit serão informados no relato de entrega e registrados na captura local; não inserir hash autorreferente neste documento. Próximo ponto de retomada: **T026**, sem execução nessa etapa.
 
 A primeira conferência BeforeStage retornou código 1 por incluir na busca a tabela T025 e a tabela repetida deste resumo; registros corretos, sem falha de teste/aplicação. Limitada a comparação à seção T025, nova conferência BeforeStage aprovada com código 0: 144 testes históricos confirmados, 149 dos 150 arquivos iniciais intactos (único acréscimo em quickstart), 193 evidências T025 e 74 fontes preservados, prefixo histórico de 241064 bytes intacto, tasks inalterado, índice vazio e whitespace aprovado. Capturas da primeira tentativa e do resultado após correção preservadas. Nenhum teste repetido.
+
+## Checkpoint T026 — matriz de leitura MVC escrita e RED comportamental registrado (2026-10-08)
+
+Executada exclusivamente T026, com parada antes de T027. Raiz real `C:/Users/ronal/dscommerce-speckit`, branch `004-registrar-pedido`, HEAD `0344dc0199fd8135f98e852e7d6fedc06b124d9a` (`feat: implement successful order registration`), Git inicialmente limpo e índice vazio. T025 concluída no checkpoint commitado; T026 aberta. Skill speckit-implement aplicada somente ao escopo solicitado, com T026/US2.1/2/7/13, pesquisa D3, contrato OpenAPI/README, plano/modelo/constituição e registros anteriores revisados. `.specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks`: código 0, FEATURE_DIR correto. Checklist requirements.md 16/16 concluídos, zero abertos, PASS, somente lido. Ignore Java existente suficiente. `.specify/extensions.yml` ausente antes/depois, sem hooks executáveis.
+
+### Preparação de teste e preservação dos positivos
+
+Alterado somente OrderControllerTest.java nos fontes. Duas classes JUnit @Nested e @NestedTestConfiguration(OVERRIDE) permitem contextos separados dentro do mesmo alvo. SuccessfulRegistration conserva SpringBootTest, perfil test, filtros reais, import OrderTestConfig, banco isolado, serviço real e os três métodos positivos anteriores. Seus corpos, fixtures e assertivas permanecem iguais após remover somente a indentação adicional do novo contexto. OrderHttpTestSupport, usado também por OrderSecurityIntegrationTest, permanece integralmente igual. Nenhum teste anterior desabilitado/removido ou assertiva enfraquecida; os nomes dos três métodos foram mantidos, com novo nome de suite aninhada no XML.
+
+InputBoundary usa WebMvcTest com o OrderController real, mapper/advice existentes e somente OrderService mockado. Filtros desativados e SecurityAutoConfiguration excluída nesse contexto; não é prova de autorização, identidade JWT real, banco, commit ou rollback. Preparação verifica mock e ausência de ProductRepository/OrderRepository no slice. Não exige autenticação ou comprador no mock; a fronteira testada é leitura/validação antes da delegação. O stub retorna uma confirmação válida mesmo se MVC delegar uma entrada inválida, para que falta de validação apareça como 201/chamada de serviço, sem NPE artificial. Essa resposta mockada não demonstra compra real.
+
+Cada entrada inválida exige, via assertAll, HTTP 400, Content-Type JSON e igualdade exata da árvore de resposta com `{"status":400,"error":"Bad Request","message":"Invalid order data","path":"/orders"}`, além de verifyNoInteractions(OrderService). São verificadas as três condições mesmo quando uma falha; subassertivas não são contadas como testes adicionais. JSON bruto é enviado diretamente a MVC, preservando chaves repetidas; somente a resposta é lida como árvore para conferir o envelope. Ausência do serviço na fronteira é condição exigida pelos testes, ainda não satisfeita em todos os casos.
+
+### Matriz efetivamente executada
+
+| Grupo / método no InputBoundary | Casos | Resultado atual |
+| --- | ---: | --- |
+| shouldRejectInvalidBodiesAndContainersBeforeService | 24 | RED: corpo ausente/vazio/espaços/ilegível; root null/array/string/número/bool; items ausente/null/vazio/objeto/string/número/bool; linha null/array/string/número/bool/objeto vazio e campos ausentes |
+| shouldRejectInvalidIntegerFieldsBeforeService | 28 | RED: productId e quantity com null/0/-1, overflow positivo e negativo, 1.0/1.5/1e0, strings numérica/textual, true/false, array e objeto |
+| shouldRejectExtraOrSystemFieldsBeforeService | 40 | RED: dez campos no root e na linha, cada um com valor e null: accountId/buyerId/buyer/id/createdAt/status/unitPrice/subtotal/total/unexpected |
+| shouldRejectRepeatedJsonKeysBeforeService | 13 | RED: items repetido com valor igual/diferente/null/vazio e null anterior; productId/quantity repetidos com valores iguais/diferentes, zero anterior e null posterior |
+| shouldRejectTheWholeInputWithAZeroQuantityBetweenValidLinesBeforeService | 1 | RED: US2.13 com linhas válidas antes/depois da quantidade zero, exigindo rejeição antes do serviço |
+| shouldReadPositiveIntegerTokensIncludingBothMaximumsExactly | 2 | GREEN: tokens inteiros 1/1 e Long.MAX_VALUE/Integer.MAX_VALUE chegam exatamente como Long/Integer ao serviço observado, uma chamada por request |
+
+Os controles máximos são exclusivamente de leitura: não afirmam existência de produto, cálculo de pedido com essas grandezas ou sucesso de persistência. Os três controles reais preservados também ficaram GREEN: shouldReturn201WithExactlyTheOrderAndItemContractFields, shouldReturnDecimalCapacityAsTextWithoutExponentOrNumericCoercion e shouldReturnTwoDecimalPlacesForUnitPriceSubtotalAndTotal. Confirmam, nesta execução, os mesmos contratos positivos anteriores com login/JWT/filtros/serviço reais, valores 42.50/0.30/teto decimal19,2 e instante UTC. Não executadas outras classes ou integrações.
+
+### Comando, resultado e causas reais
+
+Windows/PowerShell, 2026-10-08, offset -03:00. Uma execução, somente o alvo abaixo; Wrapper configurado para Maven 3.9.16 e XML registra Java 21.0.12.1 Azul/Zulu. Não executado --version novamente.
+
+```powershell
+.\mvnw.cmd "-Dtest=OrderControllerTest" test
+```
+
+14:37:12.327 → 14:38:02.272, código Maven **1**, **BUILD FAILURE por falhas de testes comportamentais**. Tempo Maven 44.771 s. Total **111 testes: 5 aprovados, 106 falhas, zero erros e zero ignorados**. Sem falha de compilação, contexto ou fixture. GREENs existentes não foram artificialmente quebrados. Os 106 REDs são o resultado autorizado da escrita/execução de T026; não são rejeições já implementadas ou aprovação da implementação de US2.
+
+| Suite XML atual | Testes | Aprovados | Falhas | Erros | Ignorados | Surefire (s) |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| OrderControllerTest$SuccessfulRegistration | 3 | 3 | 0 | 0 | 0 | 12.113 |
+| OrderControllerTest$InputBoundary | 108 | 2 | 106 | 0 | 0 | 12.423 |
+| OrderControllerTest (container) | 0 | 0 | 0 | 0 | 0 | 24.662 |
+
+O tempo do container inclui seus filhos; não deve ser somado como duração independente nem como testes extras. Compilar os demais fontes não significa executar outras classes. Logs/relatórios têm exatamente os três positivos preservados, dois controles de leitura e todos os 106 inválidos parametrizados/singulares. Falhas são MultipleFailuresError de assertivas, não erros de preparação.
+
+Classificação independente pelas 106 observações `T026_BOUNDARY` e mensagens XML:
+
+- **36 entradas já recebem 400 com zero chamadas ao serviço**. O status/rejeição básica dessa leitura é GREEN existente, preservado; o teste completo continua RED porque Content-Type/envelope JSON do pedido está ausente. O advice atual repropaga leitura ilegível fora de /login, e o resolvedor MVC retorna 400 sem o corpo contratual. Não se altera esse comportamento em T026.
+- **70 entradas chegam ao serviço mockado uma vez e retornam 201**. Falham status esperado 400, envelope exato e ausência de delegação. Mapper/DTOs atuais ainda aceitam parte dos nulos/estruturas/coerções, campos extras e chaves repetidas; a validação estrita da entrada permanece T033. O 201 vem do stub de fronteira, sem cálculo/gravação reais; não é evidência de pedido inválido persistido.
+
+Exemplo de causa registrada no XML: root extra accountId=99 recebe `Status expected:<400> but was:<201>`, confirmação com seis campos de pedido em vez do envelope de quatro campos e NoInteractionsWanted apontando a delegação do controller. Nos 36 já rejeitados, status e ausência de delegação passam; a assertiva JSON falha por resposta sem Content-Type. Essas causas são preservadas, sem adaptar o teste para aceitar o comportamento incompleto.
+
+### Evidências, limites e fechamento
+
+Capturas ignoradas em `target/harness-validation/feature-004-t026-2026-10-08/`: baseline.json/preserved-before.json (1502 arquivos preexistentes de Git e evidências históricas), originais de quickstart/tasks/teste, surefire-before/ com todos os relatórios anteriores, run-focused.ps1, order-controller-console.txt/result.json, reports/ com três XML/TXT, executed-sources/ e manifesto dos 74 fontes Java usados, case-results.json e input-observations.json. Captura inicial concluída antes da edição; relatórios/evidências T025 e do checkpoint commitado preservados. Runner captura stdout/stderr por cmd.exe /d /c e LASTEXITCODE real; seu término administrativo com código 0 não transforma o código Maven 1 em GREEN.
+
+`& 'target/harness-validation/feature-004-t026-2026-10-08/review.ps1'`: código 0 antes de atualizar documentação. Dos 1502 arquivos preexistentes, somente OrderControllerTest mudou; os demais 1501 preservaram SHA256. Corpos/fixtures/assertivas dos três positivos conferidos iguais após normalizar indentação, suporte compartilhado integralmente idêntico, demais fontes e evidências intactos; fontes finais iguais às capturas executadas. XML/contagens/nomes/causas/observações revisados, `git diff --check` e `git diff --cached --exit-code` códigos 0, índice vazio; whitespace/newline conferidos. Avisos LF/CRLF existentes não são erros de whitespace. Primeira tentativa de patch com âncora de import ainda ausente foi rejeitada sem escrever; patch aplicado com âncora existente, sem execução intermediária de testes.
+
+T026 marcada [X] após concluir a escrita dos testes e registrar a execução, como tarefa de testes antes da implementação. T001–T026 [X], T027–T055 abertas (29). Próxima pendente T027, sem execução. Este fechamento não afirma GREEN do contrato negativo, ausência de gravação em rejeições HTTP, segurança real pelo slice ou rollback. T033/T038 devem implementar leitura/Bean Validation e envelope; demais tarefas futuras mantêm seus próprios limites. Sem alteração de produção, parser, DTOs, segurança, advice, fixtures, pom, seeds ou checkpoint anterior. Alterados somente OrderControllerTest, quickstart e checkbox T026 em tasks. Sem suíte completa, CI, outras classes, U1/U2, stage, commit ou push; mesma raiz/branch/HEAD.
+
+Conferência após atualização documental: & 'target/harness-validation/feature-004-t026-2026-10-08/review.ps1' -Final, código 0. Dos 1502 arquivos preexistentes, somente OrderControllerTest e quickstart/tasks mudaram; 1499 mantiveram SHA256. Prefixo histórico de quickstart (251739 bytes) intacto; tasks alterou somente o byte 24166 da checkbox T026. Três positivos e suporte compartilhado preservados, 74 fontes iguais às capturas executadas, 111 testes com 5 GREEN/106 falhas comportamentais/zero erros e ignorados, observações 36 vezes 400 sem serviço e 70 vezes 201 com mock conferidos. T001–T026 [X] e T027–T055 abertas; diff/whitespace aprovados, índice vazio e base Git preservada; hooks ausentes. Resultado anterior a este acréscimo preservado em final-review-before-closing.json; conferência reaplicada em final-review.json, sem repetir testes de aplicação.
+
+## Checkpoint T027 — matriz de segurança real e guardas tardias escrita/executada (2026-10-08)
+
+Executada exclusivamente T027/US2.4–6, com parada antes de T028. Raiz real `C:/Users/ronal/dscommerce-speckit`, branch `004-registrar-pedido`, HEAD `0344dc0199fd8135f98e852e7d6fedc06b124d9a` (`feat: implement successful order registration`). Status inicial: quickstart.md, tasks.md e OrderControllerTest.java modificados por T026; índice vazio, sem arquivos não rastreados. Essas alterações e as evidências históricas foram preservadas. Skill speckit-implement aplicada ao escopo solicitado; tarefa/dependências, US2, pesquisa D1/D2/D7/D8, plano, constituição e contrato OpenAPI/README conferidos. Pré-requisitos PowerShell retornaram FEATURE_DIR correto, código 0. Checklist requirements.md: 16 concluídos, zero abertos, PASS, somente leitura. Ignore Java existente suficiente; `.specify/extensions.yml` ausente, sem hooks executáveis.
+
+### Preparação e matriz de testes
+
+Único fonte alterado nesta etapa: OrderSecurityIntegrationTest.java. Preservados integralmente os nove casos positivos, seus corpos, assertivas e fonte authorizedScenarios; OrderControllerTest.java e o suporte compartilhado da T026 permaneceram byte a byte iguais ao início desta etapa. Contexto SpringBootTest completo, filtros ativos, decoder/encoder reais, login real, serviços/repositórios reais, H2 isolado e open-in-view=false. Sem mock de autenticação, decoder, serviço ou persistência; sem @Transactional externo no teste.
+
+| Grupo / método | Casos finais | GREEN | Falhas | Erros | Ignorados |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| shouldUseSubjectAndDatabaseProfilesRegardlessOfNameAndRolesClaims | 9 | 9 | 0 | 0 | 0 |
+| shouldRejectInvalidJwtBeforeReadingBody | 44 | 0 | 44 | 0 | 0 |
+| shouldForbidAccountWithoutProfilesEvenWithAdminClaim | 2 | 0 | 2 | 0 | 0 |
+| shouldReturnInternalErrorForResolutionFailureBeforeReadingBody | 2 | 0 | 2 | 0 | 0 |
+| shouldRecheckAccountAndProfilesAfterFilterBeforeService | 12 | 0 | 12 | 0 | 0 |
+| shouldRejectInvalidIdentityThroughRealServiceProxy | 5 | 5 | 0 | 0 | 0 |
+| shouldRecheckCurrentAccountAndProfilesThroughRealServiceProxy | 8 | 8 | 0 | 0 | 0 |
+| shouldKeepRealAuthenticationAndConfirmationWithServletContextPath | 1 | 1 | 0 | 0 | 0 |
+| **Total** | **83** | **23** | **60** | **0** | **0** |
+
+Os 44 casos de JWT são 22 variantes, cada uma com corpo válido em /orders e corpo JSON ilegível contendo canary em /api/orders, usando contextPath /api e servletPath /orders. Cobrem ausência, formato ilegível, adulteração do payload conservando assinatura original, chave errada, algoritmo HS384, expiração recente, exp/iat/sub ausentes, exp igual/anterior a iat, sub com zero inicial/sinal positivo/espaço inicial/final/zero/negativo/overflow/decimal e conta ausente, iat futuro e nbf futuro. Somente ausência e formato/adulteração são deliberadamente sem JWT válido; as demais variantes têm assinatura real. A assinatura HS256 é conferida com MACVerifier; o token de chave errada é realmente assinado e não verifica com a chave original. O HS384 usa HMAC JCA com a mesma chave descartável, alterando somente o algoritmo, sem a restrição de tamanho de chave do MACSigner Nimbus para HS384. Não alterados decoder, algoritmo ou chave produtivos.
+
+Referência temporal: depois de login/fixtures, captura de Instant.now truncada a segundos, atribuída ao ControlledClock UTC existente. Base: iat = referência -120 s e exp = referência +120 s. Expiração recente = referência -5 s; iat/nbf futuros = referência +5 s. O preparo exige envio antes de referência +5 s. São intervalos próximos do relógio real, dentro da tolerância padrão do decoder compartilhado; a futura verificação estrita da operação deve usar Clock, sem tolerância adicional. exp <= iat usa iat = referência -10 s e exp = referência -10/-11 s. Nesse caso o intervalo também é expirado por consequência lógica; não se apresenta como isolamento entre duas condições incompatíveis com um token temporalmente válido. Cada variante mantém os demais dados válidos sempre que possível, sem sleeps nem exigência de instantes diferentes entre compras.
+
+Contas sem perfis fazem login real 200 e recebem JWT realmente assinado com roles ADMIN/ROLE_ADMIN; banco continua sem perfis. Cada uma é testada com corpo válido e ilegível/context path. A falha interna é injetada por MethodInterceptor temporário no proxy real de UserAccountRepository, somente em findByIdWithRoles da conta do caso, removido no teardown; demais métodos delegam normalmente. Essa falha ocorre **antes do SQL**, com causa contendo canaries de SQL, corpo e credenciais descartáveis, para testar classificação/confidencialidade; não simula uma indisponibilidade física real do banco. O converter e AuthenticatedAccountService reais são alcançados, uma chamada ao lookup em cada caso.
+
+Um GenericFilterBean de teste, importado somente nessa classe e ordenado depois de Spring Security, coordena remoção da conta ou revogação de todos os perfis. Antes de mutar, exige autenticação real, principal mínimo correspondente e ROLE_CLIENT ou ROLE_ADMIN. Faz REQUIRES_NEW, confirma retorno da transação antes de delegar ao MVC e registra que a transação estava ativa. Testados CLIENT, ADMIN isolado e ambos, nas duas URIs, para ambas as mutações: 12 casos. JDBC independente confirma conta ausente ou conta existente sem linhas de perfil. Observador temporário acrescentado dentro dos advisors do serviço real confirma uma chamada de register, com transação Spring ativa, depois da mutação. Nenhum ponto de falha entrou em produção.
+
+As 13 chamadas diretas usam o OrderService injetado e seu proxy transacional, não uma instância manual: principal ausente, id null/zero/negativo/conta ausente; conta removida e perfis revogados para conjunto vazio/CLIENT/ADMIN/ambos. Conferem BadCredentialsException ou AccessDeniedException e mensagem fixa, transação ativa no serviço, ausência de transação externa após retorno e contagens independentes intactas. Os guards já existentes ficaram GREEN. O controle positivo em /api/orders usa login de ADMIN real, confirma 201, titular/total 20.00, ausência de Location e pedido/item visíveis em conexão independente; os nove positivos originais continuam conferindo o contrato completo de confirmação.
+
+Cada tentativa negativa exige, com assertAll, status 401/403/500 conforme o caso, Content-Type JSON, árvore exata com somente status/error/message/path e mensagem fixa do contrato, path externo e WWW-Authenticate exatamente Bearer no 401. Também exige contagens de tb_order/tb_order_item iguais ao baseline, por DriverManagerDataSource/JdbcTemplate independentes depois da operação síncrona, e ausência de transação externa. Subassertivas não contam como testes adicionais. A exceção de resolução interna que atualmente escapa de MockMvc é observada somente pelo seu tipo conhecido e falha na assertiva que exige resposta HTTP; não é convertida artificialmente em 500. Outros erros inesperados continuam propagando.
+
+OutputCaptureExtension captura os logs, limitados ao intervalo da operação após fixtures/login. Corpo da resposta, headers e logs são conferidos contra token enviado/do login, hash real da conta, senha descartável, chave descartável em UTF-8/Base64, corpo bruto e canaries, além de padrões SQL, hash BCrypt e stack trace Java. Assertivas usam booleanos para não imprimir segredos na mensagem de falha. Nenhuma dessas assertivas de confidencialidade falhou na execução final. Isso é evidência dos caminhos/nível de logging executados, não auditoria de todos os níveis/configurações; stack traces do próprio JUnit/Surefire nos relatórios RED não são logs da aplicação. Não se afirma conformidade dos envelopes enquanto faltam respostas ou bodies.
+
+### Comandos, resultados reais e correção de fixture
+
+Executado somente o alvo abaixo, duas vezes serialmente; nenhuma outra classe/suíte/CI executada. Compilação dos outros fontes não constitui execução de seus testes. Windows/PowerShell, offset -03:00, Java 21.0.12.1 registrado no XML; Maven 3.9.16 selecionado pelas propriedades do Wrapper. Não repetido comando de versão.
+
+```powershell
+.\mvnw.cmd "-Dtest=OrderSecurityIntegrationTest" test
+```
+
+| Execução em 2026-10-08 | Intervalo -03:00 | Testes | GREEN | Falhas | Erros | Ignorados | Maven |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| Primeira preparação | 14:56:59.435 → 14:58:04.982 | 83 | 23 | 56 | 4 | 0 | exit 1, BUILD FAILURE, tempo 01:00 min |
+| Final, fixture corrigida | 14:59:53.338 → 15:00:57.804 | 83 | 23 | 60 | 0 | 0 | exit 1, BUILD FAILURE, tempo 59.443 s |
+
+Primeira execução: quatro erros IllegalArgumentException `expiresAt must be after issuedAt`, nos dois casos exp <= iat vezes duas variantes de request. O encoder Spring já assina, mas tenta construir um Jwt que rejeita o intervalo durante a preparação; esses erros **não são RED comportamental**. Corrigida somente a fixture local do teste: JWTClaimsSet/SignedJWT Nimbus assinados em HS256 com a mesma chave descartável, mantendo exp/iat inválidos, sem normalizar claims. A segunda execução foi necessária para efetivamente alcançar decoder/filtros nesses quatro casos. Também ampliada a inspeção para o corpo bruto válido e observada a transação real dentro do proxy do serviço; nenhuma assertiva anterior enfraquecida. Primeira execução/fontes/relatórios preservados em attempt-1/. Não houve falha de compilação/contexto em nenhuma execução; final sem erros de fixture.
+
+### GREEN existente e causas dos REDs finais
+
+- Nove positivos anteriores GREEN, mais contexto /api/orders GREEN e 13 guardas diretas pelo proxy GREEN: 23 testes completos aprovados. Nenhum GREEN foi artificialmente quebrado.
+- **30 casos JWT** (15 variantes × duas URIs/corpos) já retornam 401 e não gravam: ausência/malformado/adulterado/chave errada/algoritmo errado, sub ausente, exp igual/anterior a iat, espaços inicial/final, zero/negativo/overflow/decimal e conta ausente. Testes completos RED por Content-Type/body contratual ausente e, em parte deles, challenge padrão com error/error_description/error_uri em vez de Bearer sem diagnóstico. Exemplo real: token malformado retorna 401, body vazio e challenge contendo descrição de decoder `Malformed token`.
+- **14 casos JWT** (sete variantes × duas URIs/corpos) revelam regras estritas ainda ausentes: expiração há 5 s, exp ausente, iat ausente, sub com zero inicial, sub com sinal +, iat futuro e nbf futuro. Com corpo válido: **sete respostas 201, cada uma com +1 pedido/+1 item** visíveis por leitura independente. Com corpo ilegível: sete respostas 400, zero gravações, em vez do 401 que deveria preceder a leitura. Não se declara rejeição/ausência de gravação nesses sete envios aceitos. Fixtures e pedidos indevidos de teste são limpos explicitamente somente depois das assertivas.
+- **Dois casos sem perfis** retornam 403 e zero gravações, inclusive com roles ADMIN no token e corpo inválido; login real 200 preservado. RED pelo envelope/Content-Type ausentes.
+- **Dois casos de lookup interno** alcançam o resolver e deixam zero gravações, mas OrderAccountResolutionException escapa sem resposta HTTP. Falha de assertiva pela ausência do 500/envelope; não erro de fixture, não 401 e não um 500 já demonstrado.
+- **12 guardas tardias HTTP** alcançam filtro de mutação, transação separada confirmada e serviço real dentro da transação. Conta removida: seis 401; perfis revogados: seis 403; zero gravações em todos. Status/guardas já GREEN; testes completos RED somente pelo envelope/Content-Type ausentes. A adaptação MVC/segurança permanece futura.
+
+As 60 observações HTTP negativas finais são: 36 respostas 401, oito 403, sete 201, sete 400 e duas exceções de resolução sem resposta. **53 observações sem novas linhas e sete com gravações indevidas**; não confundir com 83 testes completos ou com rollback. Envelope contratual ainda não aprovado. Regras estritas/envelopes e adaptação das exceções permanecem para T035–T038, sem correção produtiva nesta etapa.
+
+### Evidências, preservação e limite do checkpoint
+
+Capturas ignoradas em `target/harness-validation/feature-004-t027-2026-10-08/`: baseline.json, preserved-before.json com 1661 arquivos preexistentes (Git/evidências históricas), originals/ com documentos e ambos os testes de controller/segurança, surefire-before/, run-focused.ps1, result.json e order-security-console.txt, reports/ com XML/TXT atuais, executed-sources/ e manifesto dos 74 fontes Java, attempt-1/ com resultado/console/relatórios/fontes anteriores, case-results.json, method-results.json e http-observations.json/txt. Runner captura stdout/stderr via cmd.exe /d /c e LASTEXITCODE Maven real; código administrativo 0 do runner não significa GREEN do Maven.
+
+`& 'target/harness-validation/feature-004-t027-2026-10-08/review.ps1'`: código 0 antes da documentação; 1660 dos 1661 arquivos preexistentes preservados, único alterado OrderSecurityIntegrationTest.java. Corpos/fonte dos nove positivos intactos, 74 fontes finais iguais aos efetivamente executados, T026/relatórios e demais históricos preservados, contagens/observações/XML conferidos; `git diff --check` e índice vazio conferidos com código 0. Uma leitura auxiliar usou inicialmente o diretório orders para OrderTestFixture e recebeu caminho inexistente; localização corrigida por rg --files para fixtures antes de editar/testar, sem alterar arquivos ou produzir RED de aplicação.
+
+T027 marcada [X] depois de concluir testes e registrar execução, como tarefa de escrita de testes antes da implementação. T001–T027 [X], T028–T055 abertas (28). Não se afirma rejeição integral GREEN, rollback após SQL, persistência desfeita ou aprovação das regressões futuras. Não realizada simulação/falha real de transporte; permanecem os limites históricos de T024/T025. MockMvc síncrono não comprova entrega de resposta por rede. Sem GET, endpoint fictício, mudança produtiva, parser/DTO/advice/segurança/Clock, fixtures comuns, pom ou seeds; sem T028+, U1/U2, suíte completa, CI, stage, commit ou push. Próximo ponto de retomada: **T028**.
+
+### Conferência final T027 — isolamento da adulteração e terceira execução (2026-10-08)
+
+Após o registro acima, a revisão encontrou uma condição adicional no caso adulterado: o payload alterava sub para uma conta ausente. Corrigido somente o teste para adulterar **name**, uma claim ignorada, mantendo sub de conta existente, iat/exp válidos e perfis permitidos. O teste confere que a claim mudou, preservou sub/iat/exp e que a assinatura original deixou de verificar com MACVerifier. Isso impede atribuir 401 à ausência da conta em vez da assinatura inválida. Incluída a claim name de controle na base dos tokens; produção e assertivas anteriores preservadas.
+
+Executado novamente, exclusivamente `.\mvnw.cmd "-Dtest=OrderSecurityIntegrationTest" test`: **15:07:24.601 → 15:08:29.141 -03:00**, exit Maven **1**, **BUILD FAILURE por assertivas comportamentais**, tempo Maven **59.549 s**. Resultado final: **83 testes, 23 GREEN, 60 falhas, zero erros, zero ignorados**. Mesma distribuição por método e mesmas causas descritas acima; nove positivos anteriores GREEN, 13 guards diretos GREEN e um controle de context path GREEN. Sem falha de compilação/contexto/fixture. As 60 observações HTTP mantiveram 36 respostas 401, oito 403, sete 201, sete 400 e duas exceções de resolução sem resposta; 53 baselines intactos e sete pedidos/itens indevidos visíveis. Confidencialidade das respostas/headers/logs capturados não apresentou falhas nas assertivas. A adulteração corrigida recebeu 401 sem novas gravações nas duas variantes de corpo/URI, mas o teste completo continua RED pelo contrato de erro.
+
+Esta é a **execução final atual**; a tabela denominada final acima descreve a segunda execução, anterior ao refinamento. Foram três execuções seriais da mesma classe: primeira com quatro erros de fixture, segunda após corrigir a assinatura dos intervalos exp <= iat, terceira após isolar a adulteração. Não somar execuções repetidas como nova cobertura: permanecem 83 casos únicos na matriz. Nenhuma outra classe executada. As duas repetições decorreram de correções demonstradas no próprio teste, sem provocar RED artificial ou alterar produção.
+
+Resultado/console/XML/fontes/observações da segunda execução e o registro documental feito então foram preservados em attempt-2/. attempt-1/ conserva a primeira. Arquivos na raiz da captura T027 e reports/executed-sources refletem a terceira execução atual. case-results.json, method-results.json e http-observations.json/txt regenerados das evidências finais reais.
+
+Conferência final por `& 'target/harness-validation/feature-004-t027-2026-10-08/review.ps1' -Final`: código 0. Dos 1661 arquivos preexistentes, 1658 mantiveram SHA256; somente OrderSecurityIntegrationTest e os documentos quickstart/tasks mudaram nesta etapa. Prefixo histórico de quickstart com **262856 bytes** intacto, abrangendo toda T026; tasks igual ao início exceto checkbox T027. OrderControllerTest/T026 integralmente preservado, nove positivos intactos e 74 fontes iguais às capturas executadas. T001–T027 [X] e T028–T055 abertas; diff/whitespace aprovados, índice vazio e raiz/branch/HEAD preservados, sem arquivos não rastreados. Hooks continuam ausentes. Sem teste adicional após este registro, produção, T028+, suíte completa, CI, U1/U2, stage, commit ou push. Próxima tarefa: **T028**.
+
+## Checkpoint T028 — rejeições e limites unitários do serviço escritos/executados (2026-10-08)
+
+Executada exclusivamente T028/US2.3/8/10–12, com parada antes de T029. Raiz real `C:/Users/ronal/dscommerce-speckit`, branch `004-registrar-pedido`, HEAD `0344dc0199fd8135f98e852e7d6fedc06b124d9a` (`feat: implement successful order registration`). Status inicial: quickstart.md, tasks.md, OrderControllerTest.java e OrderSecurityIntegrationTest.java modificados pelas etapas T026/T027; índice vazio, nenhum arquivo não rastreado. Preservados integralmente os fontes e as evidências dessas etapas e os positivos anteriores. Skill speckit-implement aplicada somente ao escopo autorizado; T028/dependência T025, requisitos US2, contrato OpenAPI/README, modelo monetário, pesquisa D4/D6/D7, plano/constituição e registros anteriores revisados. Pré-requisitos PowerShell: código 0, FEATURE_DIR correto. Checklist requirements.md: 16/16 concluídos, zero abertos, PASS, somente leitura. Ignore Java existente suficiente; `.specify/extensions.yml` ausente antes/depois, sem hooks executáveis.
+
+### Preparação compilável e fronteira da prova
+
+Único fonte alterado: OrderServiceTest.java. Mantidos integralmente os corpos/assertivas dos 11 positivos anteriores e seus helpers. Continuam a provar, somente na unidade, preços vigentes, busca em lote, ordem restaurada, alteração anterior/posterior de preço, normalização exata de 1.000, aritmética 42.50 e novo agregado/itens por chamada. O serviço continua instanciado diretamente com Clock fixo e repositórios Mockito; não foi criado contexto Spring ou chamado proxy nesta tarefa.
+
+As rejeições usam catchThrowable somente ao invocar register, seguido de assertAll: exigir exceção, nome completo do tipo, mensagem fixa, reconsulta de accountId no repositório de contas e zero interações com OrderRepository. Nada é lançado artificialmente pelo stub para simular rejeição. O saveAndFlush mockado conserva o agregado recebido, como nos positivos anteriores, permitindo detectar duplicata aceita sem NPE/erro de fixture artificial. O nome completo `com.devsuperior.dscommerce.services.exceptions.InvalidOrderException` é conferido como string, sem import, Class.forName ou criação da classe produtiva ausente. Assim os testes compilam contra o estado atual e falham por exceção/taxonomia comportamental incorreta; implementação e motivos explícitos continuam em T034. ProductNotFoundException existente corresponde ao 404 planejado; InvalidOrderException corresponde ao 422 planejado, sem alegar resposta HTTP nesta prova unitária.
+
+Preço null/indisponível é uma única representação definida em research D4: Product existente com price null. Não inventada indisponibilidade física ou getter que lance falha interna. Preço zero/negativo/fração também são fixtures unitárias em memória; nenhum EntityManager, Bean Validation, schema ou JDBC é usado aqui. Product, suas validações e schema foram preservados; preparação JDBC de negativo permanece para a integração própria. Preços são BigDecimal construídos de strings, sem float/double, MathContext ou arredondamento.
+
+### Matriz e resultados efetivamente obtidos
+
+| Grupo / método | Testes | GREEN | Falhas | Erros | Ignorados |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Positivos anteriores preservados | 11 | 11 | 0 | 0 | 0 |
+| shouldRejectAMissingProductBetweenValidLinesWithoutSaving | 1 | 1 | 0 | 0 | 0 |
+| shouldRejectRepeatedProductWithDifferentQuantitiesWithoutConsolidatingOrSaving | 1 | 0 | 1 | 0 | 0 |
+| shouldRejectInvalidPriceBetweenPositiveLinesWithoutSaving | 3 | 0 | 3 | 0 | 0 |
+| shouldAcceptExactMinimumMaximumAndIntegerMaximumQuantity | 5 | 5 | 0 | 0 | 0 |
+| shouldAcceptAnExactSumAtTheDecimalCapacity | 1 | 1 | 0 | 0 | 0 |
+| shouldRejectPrecisionLossOrUnitAndSubtotalOverflowBetweenValidLines | 6 | 0 | 6 | 0 | 0 |
+| shouldRejectSumOverflowEvenWhenEachPriceAndSubtotalFits | 1 | 0 | 1 | 0 | 0 |
+| shouldRejectInvalidPrincipalBeforeRepositories | 4 | 4 | 0 | 0 | 0 |
+| shouldRejectMissingAccountOrEmptyProfilesBeforeReadingProducts | 2 | 2 | 0 | 0 | 0 |
+| shouldRequeryIdentityAndProfilesOnEveryCallAndNotSaveAfterRevocation | 6 | 6 | 0 | 0 | 0 |
+| shouldResolveTheIdentityPassedToEachCallWithoutReusingPreviousBuyer | 1 | 1 | 0 | 0 | 0 |
+| **Total** | **42** | **31** | **11** | **0** | **0** |
+
+- US2.3: produto ausente no meio de dois válidos, lote retornando os existentes fora da ordem; ProductNotFoundException / `Product not found`, sem chamada ao repositório de pedidos: GREEN.
+- US2.8: linhas FIRST quantity=2, SECOND quantity=3, FIRST quantity=4, com preços válidos. Exigida rejeição `Duplicate product in order`, sem consolidação/mutação das linhas e sem save; request permanece com as três quantidades originais. **RED**: nenhuma exceção; uma chamada a saveAndFlush no mock. Isso demonstra aceitação do agregado na unidade, não gravação no banco nem comportamento da constraint JPA.
+- US2.11/12 e complemento preço indisponível: item intermediário com null/zero/-0.01, entre dois preços positivos. Exigidos InvalidOrderException / `Product price is not valid for order`, preços originais intactos e nenhum save. **Três REDs**: guarda numérica já rejeita antes do save, mas lança IllegalArgumentException / `Order value must be positive`, sem o motivo de domínio exigido.
+- US2.10, positivos: 0.01×1=0.01; teto 99999999999999999.99×1; 0.01×Integer.MAX_VALUE=21474836.47; 10.00×Integer.MAX_VALUE=21474836470.00; 33333333333333333.33×3=teto. Verificados subtotal/total do agregado e strings exatas no DTO, quantity intacta e preço do Product inalterado. **Cinco GREENs**. Soma 99999999999999999.98+0.01=teto: **um GREEN**, com ordem dos itens preservada.
+- US2.10, precisão: preços 1.001, 1.005 (quantity=2), 0.009 e 1.0000000000000000000001, sempre em linha entre válidas. **Quatro REDs** por ArithmeticException / `Rounding necessary` em vez de InvalidOrderException / `Order value cannot be represented`; nenhum save e Product inalterado. Rejeição numérica sem arredondamento já está GREEN como subcondição, sem quebrá-la artificialmente.
+- US2.10, capacidade: preço 100000000000000000.00; subtotal 50000000000000000.00×2; soma teto+0.01, com cada preço/subtotal da soma representável. **Três REDs** por IllegalArgumentException / `Order value exceeds decimal19,2` em vez do tipo/mensagem de domínio; nenhum save. Valores válidos anteriores não são gravados separadamente.
+- Guardas: principal ausente/id null/zero/negativo rejeitados com BadCredentialsException antes dos três repositórios: **quatro GREENs**. Conta ausente ou sem perfis: reconsulta por accountId, BadCredentialsException ou AccessDeniedException com mensagem fixa, sem leitura de produtos/save: **dois GREENs**.
+- Reconsulta entre chamadas: CLIENT, ADMIN isolado e ambos, combinados com conta removida ou todos os perfis revogados no retorno seguinte do mock: **seis GREENs**. Primeira chamada válida salva uma vez; segunda reconsulta, rejeita antes de produtos e não acrescenta save. Agregado/DTO da primeira chamada continuam históricos. Os seis diagnósticos registram saveCalls=1 e baselineSaveCalls=1, isto é, delta zero na segunda chamada; não são seis saves indevidos. Outra identidade ADMIN passada na segunda chamada resolve seu próprio id, buyer e agregado: **um GREEN**.
+
+Os **31 GREENs** são 11 positivos existentes e 20 casos novos atendidos pelo comportamento atual. Os **11 REDs** são uma duplicata não rejeitada e dez rejeições com tipo/mensagem genéricos; não representam 11 entradas salvas. Doze observações de rejeição de negócio: uma ProductNotFoundException sem save, seis IllegalArgumentException sem save, quatro ArithmeticException sem save e uma duplicata sem exceção com save. Outras 12 observações de guardas confirmam os resultados unitários descritos. Subassertivas de assertAll não são testes adicionais. Sem erro de compilação, contexto, preparação ou fixture.
+
+### Comando e execução atual
+
+Uma execução, exclusivamente esta classe, Windows/PowerShell, 2026-10-08, offset -03:00. Java 21.0.12.1 registrado no XML; Maven 3.9.16 selecionado pelo Wrapper. Não executado --version novamente.
+
+```powershell
+.\mvnw.cmd "-Dtest=OrderServiceTest" test
+```
+
+**15:19:24.137 → 15:19:54.843**, código Maven **1**, **BUILD FAILURE por falhas comportamentais**. Tempo Maven **25.640 s**, Surefire desta classe **4.990 s**. XML: **42 testes, 31 aprovados, 11 falhas, zero erros e zero ignorados**. Compilar demais fontes não significa executar outras classes. Nenhum alvo repetido, suíte completa, CI ou teste de T029+ executado. Exemplo de causa no XML: soma excedente esperava InvalidOrderException / `Order value cannot be represented`, recebeu IllegalArgumentException / `Order value exceeds decimal19,2`; duplicata falhou por ausência de exceção e NoInteractionsWanted apontando saveAndFlush do serviço real instanciado diretamente.
+
+### Evidências, preservação e limites
+
+Capturas ignoradas em `target/harness-validation/feature-004-t028-2026-10-08/`: baseline.json, preserved-before.json com 1983 arquivos preexistentes (Git/evidências históricas), originals/ com quickstart/tasks/OrderServiceTest, surefire-before/ com os relatórios anteriores, run-focused.ps1, result.json/order-service-console.txt, reports/ com XML/TXT desta execução, executed-sources/ e manifesto dos 74 fontes Java, case-results.json, method-results.json, observations.txt e source-diff.txt. Runner usa cmd.exe /d /c para stdout/stderr e captura LASTEXITCODE Maven real; código administrativo 0 do runner não transforma Maven exit 1 em aprovação.
+
+`& 'target/harness-validation/feature-004-t028-2026-10-08/review.ps1'`: código 0 antes da documentação. Dos 1983 arquivos iniciais, 1982 preservaram SHA256; único fonte alterado OrderServiceTest.java. T026/T027 e suas evidências históricas intactas, 11 positivos e helpers originais iguais, todos os 74 fontes finais iguais às capturas executadas. XML/contagens/24 observações revisados; diff/whitespace aprovados (`git diff --check`, código 0), índice vazio (`git diff --cached --exit-code`, código 0). Avisos LF/CRLF não são erros de whitespace.
+
+T028 marcada [X] somente após escrever/compilar/executar os testes e registrar o resultado, como tarefa de testes antes da implementação. T001–T028 [X]; T029–T055 abertas (27). Não implementados InvalidOrderException, rejeições produtivas ou correções de OrderService; essas responsabilidades permanecem T034/T036. Não alterados Product/validações/schema, produção, DTOs, segurança, parser, advice, Clock, fixtures comuns, pom ou seeds. Sem U1/U2, stage, commit ou push.
+
+Mocks demonstram cálculos, dados entregues ao repositório e presença/ausência de chamadas; **não comprovam persistência, commit, rollback ou execução pelo proxy Spring**. Evidência de proxy/guardas reais pertence a T027, preservada, sem repetir sua classe. Ausência de interações nesta unidade não substitui a leitura independente do banco das integrações; provas após SQL permanecem para suas tarefas próprias. Regressões e rejeições HTTP futuras não são aprovadas por estes GREENs. Próximo ponto de retomada: **T029**, sem execução nesta etapa.
+
+Conferência documental final: & 'target/harness-validation/feature-004-t028-2026-10-08/review.ps1' -Final, código 0. Dos 1983 arquivos iniciais, 1980 mantiveram SHA256; somente OrderServiceTest e quickstart/tasks mudaram nesta etapa. Prefixo histórico de quickstart de 280643 bytes intacto, incluindo T026/T027; tasks alterou exclusivamente a checkbox T028 em relação ao início. Positivos/helpers e 74 fontes executados conferidos, 42 testes com 31 GREEN/11 falhas/zero erros e ignorados, diff/whitespace aprovado e índice vazio. Git final contém os quatro caminhos modificados anteriores mais OrderServiceTest, sem não rastreados; raiz/branch/HEAD iguais ao início. Conferência reaplicada após este acréscimo sem repetir testes de aplicação.
+
+## Checkpoint T029 — falha SQL tardia e leitura independente de rollback (2026-10-08)
+
+Executada exclusivamente T029, com parada antes de T030. Raiz real `C:/Users/ronal/dscommerce-speckit`, branch `004-registrar-pedido`, HEAD `0344dc0199fd8135f98e852e7d6fedc06b124d9a` (`feat: implement successful order registration`). Status inicial: quickstart.md, tasks.md, OrderControllerTest.java, OrderSecurityIntegrationTest.java e OrderServiceTest.java modificados por T026–T028; índice vazio, nenhum arquivo não rastreado. Preservados integralmente esses fontes, positivos e evidências anteriores. Skill speckit-implement aplicada somente ao escopo autorizado; T029/dependência T025, US2, pesquisa D6/D8, modelo, plano/constituição, contrato OpenAPI e procedimentos do quickstart conferidos. Pré-requisitos PowerShell: código 0, FEATURE_DIR correto. Checklist requirements.md 16/16 concluídos, zero abertos, PASS, somente leitura. Ignore Java existente suficiente; `.specify/extensions.yml` ausente antes/depois, sem hooks executáveis.
+
+### Preparação e observação de SQL real
+
+Criado somente `src/test/java/com/devsuperior/dscommerce/controllers/OrderRollbackIntegrationTest.java` nos fontes. SpringBootTest com H2 exclusivo `order-test-<UUID>`, perfil test, open-in-view=false, MockMvc síncrono/filtros ativos, login/JWT/decoder reais, OrderService Spring com proxy e repositórios/JPA reais. Sem mocks, autenticação simulada, @Transactional no teste/classe ou transação externa envolvendo a operação. Reutilizados OrderTestConfig, Clock e OrderTestFixture sem editar seus fontes. Fixtures de conta/perfis/produtos são confirmadas em REQUIRES_NEW pelo suporte existente; presença e preço são conferidos em conexão JDBC independente antes da requisição. Produto negativo preparado por setProductPrice/JDBC em transação separada; Product, suas validações e schema produtivo preservados. Null permanece na unidade de T028.
+
+Uma TestConfiguration importada exclusivamente nesta classe decora o DataSource real, preservando conexões/PreparedStatements reais. Não substitui gravação por mock nem injeta exceção no repositório/serviço. Connection/PreparedStatement proxies delegam chamadas ao driver; só depois de executeUpdate/executeLargeUpdate/execute retornar com sucesso registram affected rows e leem pedido/itens **na mesma conexão física**, ainda na transação do serviço. Os parâmetros de product_id identificam a linha executada. Após SQLException real, registram SQLState e as linhas ainda visíveis nessa conexão, antes da propagação da exceção. Não consomem generatedKeys, não fazem commit/rollback e não usam SQL impresso em log como prova. A sonda fica desarmada nas fixtures/limpeza. Não há ponto de falha em produção.
+
+Na falha tardia, instalado CHECK temporário `ck_t029_second_<UUID>` que rejeita somente o segundo productId. DDL executado por DriverManagerDataSource independente/autocommit, antes do POST e fora da transação do pedido. Existência confirmada em information_schema; constraint permanece instalada durante todas as assertivas de SQL, baseline e HTTP. Removida no @AfterEach da subclasse, somente depois das verificações (inclusive quando falham), antes da limpeza herdada de fixtures. Baseline é snapshot completo de tb_order/tb_order_item, com IDs, vínculos, instante/estado, posições, quantidades e preços; leitura final usa nova conexão independente após retorno síncrono/saída excepcional do proxy e antes de DDL/cleanup.
+
+### Evidência 1 — inserts concluídos antes da falha tardia
+
+Execução final registrou, em ordem:
+
+| Operação JDBC real | Retorno / linhas afetadas | Linhas visíveis na conexão do pedido | Transação | Resultado |
+| --- | --- | --- | --- | --- |
+| INSERT tb_order | sucesso, 1 | um pedido, zero itens | ativa, autoCommit=false | concluído |
+| INSERT primeiro tb_order_item, productId 70 | sucesso, 1 | mesmo pedido e primeiro item | ativa, autoCommit=false | concluído |
+| INSERT segundo tb_order_item, productId 71 | SQLException 23513 | mesmo pedido e somente primeiro item | ativa, autoCommit=false | CHECK exclusivo identificado |
+
+Os IDs 70/71 são observados nesta execução, não expectativas fixas/contíguas. O primeiro item observado tem position=0, quantity=2, unitPrice=10.00 e vínculo ao pedido observado; subtotal derivado 20.00. A view após a falha é igual à view após o primeiro item. A exceção corresponde à constraint temporária identificada, não a uma rejeição de validação ORM ou falha de preparação. Todas essas assertivas passaram. Driver retornou sucesso antes da leitura das linhas: não é callback anterior ao execute, contagem só de tentativas, save mockado ou SQL no log.
+
+### Evidência 2 — rollback integral depois da saída
+
+Falha tardia: baseline independente **zero pedidos/zero itens**; após a exceção sair do proxy/requisição, snapshot independente voltou integralmente ao baseline **zero/zero**, com a constraint ainda presente e sem limpeza intermediária. Passou a assertiva de igualdade do snapshot completo. Isso comprova rollback do pedido e primeiro item realmente inseridos nessa transação, no H2 isolado desta execução. **Rollback já GREEN, preservado; nenhuma correção produtiva necessária/demonstrada para esta fronteira.** Não confundir o RED HTTP abaixo com falha de rollback.
+
+Controle positivo com ADMIN isolado: login real 200, POST /orders **201**, confirmação completa 42.50 (10.00×2 + 7.50×3), id/titular/UTC em milissegundos/WAITING_PAYMENT, ordem das linhas e strings monetárias conferidos pelo suporte positivo preservado. Após retorno, conexão independente encontrou **+1 pedido/+2 itens**, vinculados ao comprador, posições 0/1, quantidades 2/3, unitPrice 10.00/7.50, subtotais 20.00/22.50 e soma 42.50; nenhum Location de consulta. Sonda observou três inserts concluídos na transação. Esse controle demonstra persistência visível após sucesso; não se exigem IDs contíguos nem instantes diferentes.
+
+### Evidência 3 — status e envelope HTTP
+
+Falha SQL tardia exige HTTP 500 e JSON exatamente `{"status":500,"error":"Internal Server Error","message":"Order registration could not be completed","path":"/orders"}`, sem confirmação 201, Location ou token. Resultado atual: DataIntegrityViolationException **escapa de MockMvc sem resposta HTTP**, pois falta o adaptador MVC correspondente; não foi fabricado um status 500. O teste completo é RED somente na assertiva de resposta HTTP, enquanto inserts reais, rollback integral e constraint durante as verificações estão GREEN. Não se declara envelope seguro já implementado quando não há resposta.
+
+O helper registra a exceção real tanto quando escapa quanto quando futuramente for resolvida pelo MVC via MvcResult.getResolvedException; a assertiva continua exigindo DataIntegrityViolationException real na falha SQL. Capture de ServletException reconhece somente as causas atuais conhecidas DataIntegrityViolationException/IllegalArgumentException; falhas inesperadas de contexto/instrumentação/fixture continuam erros. Nunca cria endpoint/advice fake ou transforma exceção em resposta de teste. AssertAll permite conferir baseline/SQL mesmo quando o contrato HTTP falta; subassertivas não são testes adicionais.
+
+### Evidência 4 — rejeições anteriores à gravação e fronteiras atuais
+
+| Caso no mesmo contexto | HTTP previsto | HTTP atual | Inserts concluídos / falhos | Snapshot independente após operação | Resultado completo |
+| --- | ---: | --- | --- | --- | --- |
+| Controle positivo | 201 | 201, confirmação exata | 3 / 0 | +1 pedido/+2 itens | GREEN |
+| Inexistente entre válidos | 404 | 404, envelope exato Product not found | 0 / 0 | baseline intacto | GREEN |
+| Repetido com quantities 2 e 4 e outros válidos | 422 | sem resposta; DataIntegrityViolationException | 3 / 1 | baseline intacto | RED |
+| Preço zero entre positivos | 422 | sem resposta; IllegalArgumentException | 0 / 0 | baseline intacto | RED |
+| Preço negativo -0.01 entre positivos, fixture JDBC confirmada | 422 | sem resposta; IllegalArgumentException | 0 / 0 | baseline intacto | RED |
+| Quantity zero entre válidos | 400 | sem resposta; IllegalArgumentException | 0 / 0 | baseline intacto | RED |
+| CHECK SQL tardio exclusivo do segundo produto | 500 | sem resposta; DataIntegrityViolationException | 2 / 1 | baseline intacto | RED somente HTTP |
+
+Inexistente/preços zero/negativo/quantity zero: **quatro rejeições sem inserts** observadas; somente inexistente já cumpre status/envelope completos. Guardas numéricas impedem save para preços/quantity inválidos, mas não implementam ainda a taxonomia de domínio/validação e respostas contratuais. Não afirmar que o 400/422 foi entregue.
+
+Duplicata: pedido e dois primeiros itens foram inseridos com sucesso dentro da transação; terceira tentativa de item repetido falhou na unicidade real, SQLState **23505**. As views confirmam um pedido com zero/um/dois itens antes da falha; snapshot independente pós-proxy voltou a zero/zero. Portanto a defesa SQL e rollback funcionam, mas **a rejeição de negócio antes de qualquer gravação ainda falta**, além do HTTP 422/envelope. O teste exige zero SQL e permanece RED nessa dimensão, sem enfraquecer a assertiva para aceitar fallback da constraint. Não houve consolidação nem nova linha persistida após saída.
+
+### Comandos, contagens e causas reais
+
+Executado somente o alvo abaixo, duas vezes serialmente, Windows/PowerShell, 2026-10-08, offset -03:00. Java 21.0.12.1 no XML; Maven 3.9.16 pelo Wrapper. Não repetido --version, outras classes, suíte completa ou CI.
+
+```powershell
+.\mvnw.cmd "-Dtest=OrderRollbackIntegrationTest" test
+```
+
+| Execução | Início → fim -03:00 | Testes | GREEN | Falhas | Erros | Ignorados | Resultado Maven |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| Primeira | 15:39:33.128 → 15:40:20.655 | 7 | 2 | 5 | 0 | 0 | exit 1, BUILD FAILURE, 42.090 s |
+| Final | 15:41:56.417 → 15:42:42.983 | 7 | 2 | 5 | 0 | 0 | exit 1, BUILD FAILURE, 41.577 s |
+
+Surefire final **20.239 s**, **7 testes: 2 aprovados, 5 falhas comportamentais, zero erros e zero ignorados**. Os dois métodos singulares são controle positivo e falha SQL tardia; o método parametrizado tem cinco casos. GREENs não foram artificialmente quebrados. Falhas são MultipleFailuresError de assertivas: duplicata falha por SQL alcançado e ausência de resposta; late SQL/preços/quantity falham somente por ausência da resposta HTTP. Sem falha de compilação/contexto/fixture em nenhuma execução. Compilar outros fontes não significa executar seus testes.
+
+A revisão após a primeira execução identificou que a observação do Throwable deveria também usar getResolvedException quando o futuro handler entregar HTTP 500. Corrigida somente a preparação desse observador e mantidas todas as exigências de SQL/rollback/tipo/status/envelope; uma segunda execução desta mesma classe confirmou as fontes finais. Nenhuma correção de produção ou RED artificial. Primeira execução, console, relatórios e fontes preservados em attempt-1/. São sete casos únicos, não 14 cenários de cobertura.
+
+### Evidências, preservação e limite do checkpoint
+
+Capturas ignoradas em `target/harness-validation/feature-004-t029-2026-10-08/`: baseline.json e preserved-before.json com **2139 arquivos preexistentes**, originals/ (quickstart/tasks), surefire-before/, run-focused.ps1, result.json/order-rollback-console.txt, reports/ XML/TXT, executed-sources/ e manifesto dos **75 fontes Java**, attempt-1/, case-results.json, result-observations.json e observations.txt (retornos JDBC e baselines). O runner captura stdout/stderr via cmd.exe /d /c e LASTEXITCODE Maven real; código administrativo 0 não converte Maven exit 1 em GREEN. Os arquivos próprios desta captura estão ignorados e fora do stage.
+
+`& 'target/harness-validation/feature-004-t029-2026-10-08/review.ps1'`: código 0 antes da documentação. Todos os **2139 arquivos preexistentes** mantiveram SHA256; somente o novo teste estava não rastreado. T026–T028 e seus relatórios/fontes históricos integralmente preservados, 75 fontes finais iguais aos efetivamente executados, XML/contagens/observações revisados. `git diff --check` código 0; conteúdo completo do novo arquivo lido e whitespace/newline conferidos diretamente e por `git -c core.autocrlf=false diff --no-index --check -- /dev/null src/test/java/com/devsuperior/dscommerce/controllers/OrderRollbackIntegrationTest.java`: sem diagnósticos, código 1 pela diferença do arquivo novo. Índice vazio conferido com código 0. Avisos LF/CRLF não são falhas de whitespace.
+
+T029 marcada [X] somente após concluir a escrita/execução e registrar as dimensões reais da prova. T001–T029 [X]; T030–T055 abertas (26). Nenhuma mudança produtiva, Product/validações/schema permanente, mapper/advice/segurança/DTOs/serviço/repositórios/fixtures comuns/pom/seeds alterados. CHECK é temporário exclusivo deste banco de teste e foi removido depois das verificações. Não implementados spy que lança depois de saveAndFlush ou callback beforeCommit; cenários T030/T031 permanecem futuros.
+
+Limites: prova de rollback por constraint SQL no H2 local, não falha física de commit, processamento posterior ao flush, callbacks de conclusão, perda real de transporte ou segurança completa/regressões futuras. Ausência de rows após guardas que não executaram insert não é prova de rollback após SQL. Envelopes 400/422/500 continuam pendentes para implementação própria; o resultado Maven RED não invalida a evidência de rollback já GREEN. Sem T030+, suíte completa, CI, U1/U2, stage, commit ou push. Próximo ponto de retomada: **T030**.
+
+Conferência final documental por & 'target/harness-validation/feature-004-t029-2026-10-08/review.ps1' -Final: código 0. Dos 2139 arquivos preexistentes, 2137 preservaram SHA256; somente quickstart/tasks mudaram nesta etapa, além do novo OrderRollbackIntegrationTest não rastreado. Prefixo histórico de quickstart com 292751 bytes intacto, abrangendo T026–T028; tasks difere do início exclusivamente pela checkbox T029. Fontes anteriores preservados e 75 fontes finais iguais aos executados, 7 testes/2 GREEN/5 RED/zero erros e ignorados, inserts reais e retorno ao baseline conferidos separadamente do HTTP. Conteúdo/diff do novo arquivo e dos documentos registrados em new-source-diff.txt/documentation-diff.txt, whitespace/newline aprovados, índice vazio e base Git mantida. T001–T029 [X], T030–T055 abertas; única não rastreada é a classe nova. Auditoria reaplicada após este acréscimo, sem repetir testes de aplicação.
+
+## Checkpoint T030 — falha de processamento após saveAndFlush real (2026-10-08)
+
+Executada exclusivamente T030, dependente de T029, com parada antes de T031. Raiz confirmada `C:/Users/ronal/dscommerce-speckit`, branch real `004-registrar-pedido`, HEAD `0344dc0199fd8135f98e852e7d6fedc06b124d9a` (`feat: implement successful order registration`). Status inicial/final contém as modificações anteriores em quickstart.md, tasks.md, OrderControllerTest.java, OrderSecurityIntegrationTest.java e OrderServiceTest.java, além de OrderRollbackIntegrationTest.java não rastreado desde T029. Índice vazio. Nenhuma alteração anterior descartada ou incluída no stage. Skill speckit-implement aplicada somente ao pedido; T030, dependência T029, US2.9/FR-012/SC-004, plano, pesquisa D6/D8, modelo, constituição, contrato e histórico conferidos. Pré-requisitos da feature: código 0, diretório correto. Checklist requirements.md: 16/16, zero abertos, PASS, somente leitura. Ignore Java existente suficiente; `.specify/extensions.yml` ausente, sem hooks executáveis.
+
+### Preparação exclusiva de teste e preservação de T029
+
+Acrescentado o método `shouldRollbackAfterRealSaveAndFlushReturnsBeforeServiceCompletes` à classe existente OrderRollbackIntegrationTest. Mantidos SpringBootTest/H2 isolado, perfil test, MockMvc síncrono com filtros reais, login/JWT/decoder reais, serviço Spring chamado por seu proxy e JPA reais. Sem @Transactional no teste/classe e sem transação externa envolvendo o POST. Fixtures de conta/perfis/produtos são confirmadas em transações separadas pelo suporte existente e conferidas por JDBC independente antes do baseline. Product, validações, schema produtivo, serviço, DTOs, segurança, advice e fixtures comuns não foram alterados.
+
+Uma RepositorySpyConfig importada exclusivamente por esta classe cria um spy Mockito do repositório efetivamente injetado pelo construtor de OrderService. A identidade dessa referência é verificada no alvo do proxy do serviço. Uma interface de encaminhamento sem Advised evita o desembrulhamento automático de proxies pelo resolvedor Mockito do Spring Boot; cada método encaminha ao proxy Spring Data original, que não é mock. O spy chama essa implementação de encaminhamento normalmente: **nenhum save/saveAndFlush é stubado ou substituído por resultado simulado**. O saveAndFlush original executa JPA/SQL reais, com os interceptores originais do repositório preservados.
+
+Somente depois de saveAndFlush retornar normalmente, a sonda armada de T030 captura o id e observa pedido/itens por JdbcTemplate ligado ao DataSource da transação do serviço. Desembrulha o ConnectionProxy que suprime close antes de conferir DataSourceUtils.isConnectionTransactional; verifica transação ativa e autoCommit=false e lê usando essa mesma conexão vinculada. Confirma um pedido com os dois itens antes de lançar a RuntimeException exclusiva PostFlushTestFailure. O serviço ainda aguarda o retorno da chamada ao repositório: o ponto está no corpo de register, antes do mapping/retorno do DTO e da conclusão transacional pelo interceptor. Não registra TransactionSynchronization, beforeCommit/afterCommit ou callback de T031.
+
+T030 exige ausência da constraint temporária `CK_T029_SECOND_%` e não a instala. A sonda SQL de T029 continua somente observadora de retornos efetivos do driver. Seu código e as assertivas de T029 (falha SQL, cinco rejeições e controle positivo) foram preservados. O helper de saída excepcional passou a reconhecer também a causa de teste PostFlushTestFailure, além das causas já previstas; conserva a exceção real por identidade e não fabrica resposta/status HTTP. Erros inesperados de preparação/instrumentação continuam erros, não RED comportamental. A sonda nova é desarmada somente no AfterEach, depois das verificações e antes da limpeza herdada.
+
+### Evidência 1 — flush real concluído e rows na mesma transação
+
+Na execução final, houve exatamente uma chamada ao spy de saveAndFlush. O proxy real retornou o pedido com id **2** (valor observado, sem expectativa fixa ou contígua). Três inserts JDBC retornaram sucesso, uma linha afetada cada, nesta ordem: tb_order, primeiro tb_order_item e segundo tb_order_item; zero inserts falhos. A leitura depois do retorno de saveAndFlush encontrou **um pedido e dois itens**, transação ativa, conexão confirmada como vinculada, autoCommit=false. Essas assertivas passaram; não é prova baseada em SQL impresso no log ou em tentativas de insert.
+
+Conferidos no snapshot transacional: id retornado, comprador vindo do login real, createdAt UTC truncado a milissegundos, WAITING_PAYMENT, vínculo dos dois itens ao mesmo pedido, ordem/position 0 e 1, produtos na ordem solicitada, quantidades 2 e 3, unitPrice 10.00 e 7.50. Subtotais derivados exatos 20.00/22.50 e soma 42.50. Subtotais/total derivam das quantidades e preços históricos; não se afirma que sejam colunas persistidas. Nenhuma exigência de IDs contíguos ou instantes diferentes. SaveAndFlush concluído **não equivale a commit**.
+
+Observação real: `T030_FLUSH returned=true orderId=2 tx=true boundConnection=true autoCommit=false visibleOrders=1 visibleItems=2 completedInserts=3 failedInserts=0`.
+
+### Evidência 2 — RuntimeException no ponto previsto
+
+Depois de confirmar o retorno real e as linhas, a sonda lançou a RuntimeException exclusiva de teste. Passaram as assertivas de ponto alcançado e de identidade: a exceção que saiu do serviço/proxy/MVC é o mesmo objeto PostFlushTestFailure lançado pela sonda. Não ocorreu falha SQL, constraint temporária, save simulado, falha física de commit ou callback de conclusão. A chamada de repositório ainda não havia devolvido o controle ao restante do corpo do serviço.
+
+Observação real: `T030_FAULT thrown=true sameException=true http=NONE escaped=PostFlushTestFailure`.
+
+### Evidência 3 — rollback integral por leitura independente antes de limpeza
+
+Baseline completo de tb_order/tb_order_item: **zero pedidos/zero itens**. Após a operação sair do proxy/MockMvc, um bloco finally executou snapshot por DriverManagerDataSource independente, em nova conexão, sem transação de teste. Essa leitura ocorre inclusive diante de exceção MVC inesperada, antes de qualquer desarme/DDL/limpeza de fixtures. Na execução final, voltou a **zero/zero**, com igualdade do snapshot completo ao baseline; a assertiva passou. Pedido e ambos os itens efetivamente inseridos foram revertidos pelo proxy real. **Rollback desta fronteira já GREEN; preservado sem correção produtiva.**
+
+Observação real: `T030_INDEPENDENT baselineOrders=0 baselineItems=0 afterOrders=0 afterItems=0 baselineRestored=true`. Os três inserts observados e a leitura transacional antecedem a exceção; a leitura independente posterior antecede cleanup. A evidência não é ausência de escrita em mocks nem limpeza automática de uma transação externa de teste.
+
+### Evidência 4 — HTTP e envelope ainda RED
+
+Mantida a exigência de HTTP **500**, sem 201/Location, application/json e envelope exatamente `{"status":500,"error":"Internal Server Error","message":"Order registration could not be completed","path":"/orders"}`. O corpo exato e a mensagem fixa vedam dados recebidos, token/hash/segredo, SQL, stack trace e diagnósticos internos. A assertiva adicional de ausência do token permanece.
+
+Resultado real: PostFlushTestFailure escapa como causa de ServletException pelo MockMvc **sem resposta HTTP**. A única falha final é `[failure must reach MVC as an HTTP error response] Expecting actual not to be null`, agrupada por assertAll em MultipleFailuresError com **uma** subfalha. Não se fabricou um 500 nem se aprovou envelope seguro ausente. Nenhuma confirmação 201 foi recebida nesse cenário. As dimensões de flush real, exceção prevista e rollback estão GREEN; **o RED HTTP não significa falha de rollback**. Tratamento produtivo do erro permanece nas tarefas próprias; não corrigido nesta etapa.
+
+### Controle positivo preservado
+
+Executado, sem alterar suas assertivas, `shouldCommitCompleteOrderAndItemsVisibleAfterHttp201`: login ADMIN isolado real 200, POST /orders **201**, confirmação exata de 42.50 com comprador/id/instante UTC em milissegundos/WAITING_PAYMENT, itens na ordem e strings monetárias, sem Location. Leitura independente após retorno confirmou **+1 pedido/+2 itens**, snapshots anteriores preservados, vínculos/position/quantity/unitPrice/subtotais/soma corretos. Sonda observou três inserts concluídos. Nova falha fica desarmada neste controle e a delegação real persiste normalmente.
+
+Observação real: `T029_CONTROL status=201 ordersDelta=1 itemsDelta=2 completedInserts=3`. GREEN final preservado. Os métodos de constraint/rejeições de T029 não foram executados; somente suas fontes/assertivas foram conferidas por leitura.
+
+### Comando e contagens efetivamente executadas
+
+Executado **somente o filtro abaixo**, quatro vezes serialmente por necessidade demonstrada de corrigir preparação exclusiva do teste. Em todas as tentativas, apenas esta classe e estes dois métodos foram selecionados. Não executar a classe inteira, outros alvos, suíte completa ou CI. Windows/PowerShell, 2026-10-08, offset -03:00; Java 21.0.12.1 no XML, Maven 3.9.16 pelo Wrapper. Não repetido --version. Compilação dos outros fontes não equivale a executar seus testes.
+
+```powershell
+.\mvnw.cmd "-Dtest=OrderRollbackIntegrationTest#shouldRollbackAfterRealSaveAndFlushReturnsBeforeServiceCompletes+shouldCommitCompleteOrderAndItemsVisibleAfterHttp201" test
+```
+
+| Tentativa | Início → fim -03:00 | Testes | GREEN | Falhas | Erros | Ignorados | Maven / causa |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| Preparação 1 | 15:59:23.542 → 16:00:06.193 | 2 | 0 | 0 | 2 | 0 | exit 1, BUILD FAILURE, 37.314 s; contexto bloqueado por resolvedor Mockito desembrulhando proxy JPA durante stubbing |
+| Preparação 2 | 16:01:20.510 → 16:02:08.204 | 2 | 1 | 0 | 1 | 0 | exit 1, BUILD FAILURE, 42.797 s; ClassCastException antes do POST por inferência da sobrecarga de reflexão |
+| Preparação 3 | 16:02:35.495 → 16:03:24.387 | 2 | 1 | 0 | 1 | 0 | exit 1, BUILD FAILURE, 43.914 s; sonda comparava wrapper close-suppressing em vez da conexão vinculada |
+| Final | 16:04:46.169 → 16:05:34.851 | 2 | 1 | 1 | 0 | 0 | exit 1, BUILD FAILURE, 43.693 s; somente resposta HTTP 500/envelope ausentes |
+
+Surefire final **21.347 s**, **2 testes únicos: 1 GREEN, 1 falha comportamental, zero erros e zero ignorados**. Método positivo 2.860 s; novo cenário 0.547 s. Não são oito cenários distintos. As três primeiras tentativas são falhas de contexto/fixture/instrumentação e **não contam como RED comportamental**; não demonstram regra produtiva ausente. As correções foram restritas à configuração/observação do teste: interface de encaminhamento real sem Advised e sem stubbing, variável tipada OrderService antes de ReflectionTestUtils.getField e getTargetConnection antes da verificação da conexão vinculada. O código local de DataSourceUtils foi conferido por javap para esta última causa. Compilação passou em todas; na execução final contexto, fixtures e todas as sondas passaram. Não se enfraqueceu qualquer assertiva nem se provocou RED artificial de rollback ou controle positivo.
+
+### Evidências, revisão e limite da etapa
+
+Capturas ignoradas em `target/harness-validation/feature-004-t030-2026-10-08/`: baseline.json, preserved-before.json com **2376 arquivos preexistentes**, originals/ de quickstart/tasks/classe existente não rastreada, surefire-before/, run-focused.ps1, result.json, order-post-flush-console.txt, reports/ XML/TXT, executed-sources/ e manifesto dos **75 fontes Java**, case-results.json, observations.txt e review.ps1. Tentativas de preparação completas preservadas em attempt-1-fixture/, attempt-2-fixture/ e attempt-3-fixture/, cada uma com comando/tempos/console/relatórios/fontes executados. O runner captura stdout/stderr via cmd.exe /d /c e LASTEXITCODE real do Maven; código administrativo 0 do runner não transforma Maven exit 1 em GREEN.
+
+Conferência antes da documentação por `& 'target/harness-validation/feature-004-t030-2026-10-08/review.ps1'`: código 0. **2375/2376 arquivos** preservaram SHA256; somente a classe existente OrderRollbackIntegrationTest mudou até esse ponto. T026–T028 e todos os históricos T029 preservados. Conferidos literalmente os métodos/fixtures/controle positivo/rejeições/sonda SQL anteriores na classe, ressalvada a ampliação explícita do helper para reconhecer a nova exceção de teste. Os 75 fontes finais conferem com os efetivamente executados. XML contém exatamente os dois métodos filtrados e a única falha HTTP prevista. Raiz/branch/HEAD mantidos, índice vazio e nenhuma não rastreada nova além da classe já existente.
+
+Nesta etapa os únicos arquivos de trabalho alterados são `src/test/java/com/devsuperior/dscommerce/controllers/OrderRollbackIntegrationTest.java`, `specs/004-registrar-pedido/quickstart.md` (somente acréscimo) e `specs/004-registrar-pedido/tasks.md` (somente checkbox T030). Histórico de quickstart de **307538 bytes** preservado integralmente, incluindo T026–T029. T030 marcada [X] após concluir testes e registrar resultados; **T001–T030 [X], T031–T055 abertas (25)**.
+
+Limites: prova local no H2 de falha de processamento após flush real e antes da conclusão do corpo do serviço, não prova de callback beforeCommit, falha física de commit, transporte perdido ou rollback após commit. Não antecipa T031 ou implementações de rejeições/adaptadores/regressões futuras. Resultado HTTP/envelope 500 permanece pendente apesar do rollback GREEN. Sem produção, outros métodos/classes, suíte completa, CI, U1/U2, stage, commit ou push. Próximo ponto de retomada: **T031**, sem execução nesta etapa.
+
+Conferência final documental por `& 'target/harness-validation/feature-004-t030-2026-10-08/review.ps1' -Final`: código 0. Dos 2376 arquivos preexistentes, 2373 mantiveram SHA256; somente quickstart/tasks/classe de rollback mudaram nesta etapa. Prefixo histórico de 307538 bytes intacto, incluindo T026–T029; tasks difere do início somente na checkbox T030. Blocos anteriores de T029 e todos os demais fontes preservados; 75 fontes finais iguais aos efetivamente executados. Dois métodos filtrados, 1 GREEN/1 falha HTTP/zero erros e ignorados, flush real/RuntimeException/rollback conferidos separadamente do envelope. Diff da classe existente não rastreada revisado em source-diff.txt e acréscimo documental em quickstart-diff.txt. `git diff --check` código 0; fonte não rastreado conferido também por `git -c core.autocrlf=false diff --no-index --check -- /dev/null src/test/java/com/devsuperior/dscommerce/controllers/OrderRollbackIntegrationTest.java`, sem diagnósticos, código 1 por diferença de arquivo novo; whitespace/newline aprovados. Avisos LF/CRLF não são falhas de whitespace. Índice vazio, raiz/branch/HEAD mantidos. Status final permanece com cinco caminhos rastreados modificados e a classe de rollback não rastreada; três fontes de T026–T028 modificados anteriormente não foram tocados. T001–T030 [X], T031–T055 abertas. Auditoria reaplicada após este acréscimo sem repetir testes de aplicação.
+
+## Checkpoint T031 — beforeCommit após corpo real produzir o DTO (2026-10-08)
+
+Executada exclusivamente T031, dependência T030 concluída e evidenciada, com parada antes de T032. Raiz real `C:/Users/ronal/dscommerce-speckit`, branch `004-registrar-pedido`, HEAD `0344dc0199fd8135f98e852e7d6fedc06b124d9a` (`feat: implement successful order registration`). Status inicial: quickstart.md, tasks.md, OrderControllerTest.java, OrderSecurityIntegrationTest.java e OrderServiceTest.java modificados anteriormente; OrderRollbackIntegrationTest.java não rastreado desde T029. Índice vazio. Preservadas alterações e evidências de T026–T030. Skill speckit-implement aplicada somente ao pedido; T031/US2.9/FR-012/SC-004, plano, pesquisa D6/D8, modelo, constituição, contrato e histórico revisados. Pré-requisitos PowerShell: código 0, FEATURE_DIR correto. Checklist requirements.md: 16/16 concluídos, zero abertos, PASS, somente leitura. Ignore Java existente suficiente; `.specify/extensions.yml` ausente, sem hooks executáveis.
+
+### Instrumentação somente de teste e fronteira do proxy
+
+Acrescentado o método separado `shouldRollbackWhenBeforeCommitFailsAfterServiceProducesDto` à classe existente OrderRollbackIntegrationTest. Contexto/H2 exclusivos, MockMvc síncrono, login/JWT/decoder/filtros reais, OrderService Spring chamado pelo proxy e JPA/persistência reais preservados. Sem @Transactional no teste/classe ou transação externa envolvendo MockMvc. Fixtures de conta/perfis/produtos confirmadas em transação separada pelo suporte existente e verificadas por JDBC independente antes do baseline.
+
+CompletionProbe instala dois MethodInterceptors exclusivos deste método no Advised real do serviço. Confere um único TransactionInterceptor Spring, proxy não congelado e ordem relativa dos interceptores. O observador interno fica **depois do interceptor transacional**, já com transação/sincronização ativas, registra TransactionSynchronization e delega ao corpo real de register. Quando invocation.proceed retorna, captura o OrderResponseDTO efetivamente produzido pelo mapping do serviço, ainda dentro da transação, e registra DTO_PRODUCED. Ele devolve esse DTO ao interceptor transacional; isso **não é o retorno externo do proxy**. O observador externo fica antes do TransactionInterceptor e só registraria PROXY_RETURNED se a conclusão transacional devolvesse normalmente ao chamador. Nesta falha, entrou, mas nunca alcançou esse retorno.
+
+No beforeCommit da sincronização, registra o callback alcançado e o DTO que já existia, observa as linhas por conexão vinculada à mesma transação e lança a RuntimeException exclusiva BeforeCommitTestFailure. StackWalker registra que o callback ocorre durante TransactionAspectSupport.commitTransactionAfterReturning, corroborando a conclusão pelo interceptor real. DataSourceUtils.getTargetConnection remove o wrapper de close do JdbcTemplate antes de isConnectionTransactional; não abre conexão independente dentro do callback. Conexão vinculada, transação ativa e autoCommit=false são exigidos.
+
+Sem alteração do serviço, repositório ou configuração produtiva. Spy/forwarding real de T030 fica preservado e sua falha permanece desarmada; T031 não lança em saveAndFlush. A constraint exclusiva de T029 é exigida ausente e não é instalada. Não há callback afterCommit nem simulação de falha física de conexão/commit. Observadores removidos no AfterEach, depois das verificações e antes da limpeza herdada, inclusive após falha de assertiva. Helper excepcional reconhece também BeforeCommitTestFailure, conservando a exceção real sem inventar resposta HTTP; outras falhas inesperadas seguem como erros de preparação/instrumentação.
+
+### Evidência 1 — corpo concluído e DTO real produzido
+
+Passaram as assertivas de DTO não nulo com id positivo, comprador do login, createdAt igual ao Clock truncado a milissegundos, WAITING_PAYMENT, itens na ordem solicitada e strings monetárias exatas. DTO completo: produtos enviados em posições 0/1, quantities 2/3, unitPrice 10.00/7.50, subtotais 20.00/22.50 e total 42.50. O DTO foi capturado após retorno do corpo real, antes de qualquer beforeCommit, com transação ainda ativa. No callback, callbackDto é a **mesma instância** capturada. Observador externo foi alcançado, mas proxyReturned permaneceu false; nenhum DTO foi devolvido ao controller nesta falha.
+
+Observação real: `T031_BODY produced=true tx=true total=42.50 callbackBeforeBody=false proxyReturned=false`. Produção interna do DTO não é confirmação HTTP nem commit.
+
+### Evidência 2 — beforeCommit alcançado com rows presentes
+
+SaveAndFlush real terminou normalmente e o mapping também terminou. Sonda JDBC preservada observou **três inserts concluídos**, uma linha afetada cada, na ordem tb_order/primeiro tb_order_item/segundo tb_order_item; zero inserts falhos. No beforeCommit, leitura na conexão da mesma transação encontrou **um pedido e dois itens**. Conferidos id/vínculo ao comprador, instante/estado iguais ao DTO, ordem/position, quantidades, preços históricos, subtotais derivados e soma exata 42.50. Não se exigem IDs contíguos ou instantes diferentes, nem se afirmam subtotais/total como colunas persistidas. Prova baseada em retorno real do driver e leitura de rows, não SQL impresso ou save mockado.
+
+Observação real: `T031_BEFORE_COMMIT reached=true hadDto=true interceptorCompletion=true tx=true boundConnection=true autoCommit=false readOnly=false visibleOrders=1 visibleItems=2 completedInserts=3 failedInserts=0`. Essas assertivas passaram. beforeCommit ocorre durante a conclusão transacional pelo interceptor, antes do commit físico; não equivale a afterCommit.
+
+### Evidência 3 — exceção lançada no callback
+
+Passaram as assertivas do callback alcançado, da exceção lançada e de identidade entre o objeto lançado e a causa real que saiu pelo proxy/MockMvc. A ordem dos eventos foi exatamente **SYNC_REGISTERED → DTO_PRODUCED → BEFORE_COMMIT → ROWS_OBSERVED → CALLBACK_EXCEPTION**, sem PROXY_RETURNED. A exceção foi lançada depois da leitura no beforeCommit, nunca pelo saveAndFlush ou pelo corpo do serviço.
+
+Observação real: `T031_FAULT thrown=true sameException=true events=[SYNC_REGISTERED, DTO_PRODUCED, BEFORE_COMMIT, ROWS_OBSERVED, CALLBACK_EXCEPTION]`. Falhas de observação/instrumentação impediriam o lançamento previsto e continuariam erros, não RED comportamental. Não houve esse impedimento nesta execução.
+
+### Evidência 4 — rollback integral antes de qualquer limpeza
+
+Baseline independente completo de tb_order/tb_order_item: **zero pedidos/zero itens**. Bloco finally executou leitura por DriverManagerDataSource/conexão JDBC independente após saída síncrona do proxy/requisição, com transação inativa, antes de remover observadores/desarmar sondas/limpar fixtures. Esse finally também lê diante de escape MVC inesperado. Snapshot completo posterior retornou a **zero/zero**, igual ao baseline. Passou a assertiva de rollback do pedido e ambos os itens realmente inseridos e vistos no callback. **Rollback já GREEN nesta fronteira; nenhuma correção produtiva necessária/demonstrada.**
+
+Observação real: `T031_INDEPENDENT baselineOrders=0 baselineItems=0 afterOrders=0 afterItems=0 baselineRestored=true`. Não se usa cleanup como prova, rollback automático de teste, ausência de save em mocks ou rejeição antes do SQL para demonstrar atomicidade.
+
+### Evidência 5 — resultado HTTP/envelope permanece RED
+
+Exigidos HTTP **500**, sem 201/Location, application/json e envelope exatamente `{"status":500,"error":"Internal Server Error","message":"Order registration could not be completed","path":"/orders"}`. Mensagem fixa/campos exatos excluem corpo recebido, token/hash/segredo, SQL, stack trace e diagnósticos internos; assertiva adicional de ausência do token mantida.
+
+Resultado real: BeforeCommitTestFailure escapou como causa de ServletException pelo MockMvc **sem resposta HTTP**. Observação `T031_HTTP status=NONE escaped=BeforeCommitTestFailure`. O cenário completo ficou RED apenas por `[failure must reach MVC as an HTTP error response] Expecting actual not to be null`; assertAll registrou MultipleFailuresError com **uma** subfalha. Nenhuma confirmação 201 foi recebida, mas não se fabricou HTTP 500 nem se aprovou envelope seguro ausente. As quatro dimensões anteriores passaram. **Falha apenas no HTTP/envelope não significa falha de rollback.** Adaptador produtivo permanece para as tarefas próprias; produção não foi corrigida.
+
+### Controle positivo e comando efetivamente executado
+
+Preservado e executado `shouldCommitCompleteOrderAndItemsVisibleAfterHttp201`: login ADMIN isolado real 200, POST /orders **201**, confirmação exata com total 42.50, titular/id/UTC em milissegundos/WAITING_PAYMENT, ordem dos itens/strings monetárias e ausência de Location. JDBC independente após retorno confirmou **+1 pedido/+2 itens**, baseline anterior preservado, vínculos, posições, quantidades, preços históricos, subtotais e soma corretos; três inserts reais concluídos. Observação `T029_CONTROL status=201 ordersDelta=1 itemsDelta=2 completedInserts=3`. Controle GREEN, sem alterar suas assertivas. Sonda beforeCommit não é instalada nesse método.
+
+Executado **uma única vez**, somente os dois métodos abaixo; não executados outros cenários T029/T030, classe inteira ou outras classes. Windows/PowerShell, 2026-10-08, offset -03:00; Java 21.0.12.1 no XML, Maven 3.9.16 pelo Wrapper. Não repetido --version. Compilar outros fontes não significa executar seus testes.
+
+```powershell
+.\mvnw.cmd "-Dtest=OrderRollbackIntegrationTest#shouldRollbackWhenBeforeCommitFailsAfterServiceProducesDto+shouldCommitCompleteOrderAndItemsVisibleAfterHttp201" test
+```
+
+| Início → fim -03:00 | Testes | GREEN | Falhas | Erros | Ignorados | Resultado Maven |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| 16:20:27.556 → 16:21:17.490 | 2 | 1 | 1 | 0 | 0 | exit 1, BUILD FAILURE, 44.850 s |
+
+Surefire **21.667 s**. Controle positivo **2.454 s**, novo cenário **0.625 s**. São dois testes únicos, não cinco testes pelas dimensões/subassertivas. Compilação, contexto, fixtures, instalação/remoção de observadores e observação transacional passaram; **zero erros de preparação**. A única falha comportamental é resposta/envelope ausentes. Não se provocou RED artificial nem se enfraqueceram assertivas GREEN.
+
+### Evidências, preservação e limites
+
+Capturas ignoradas em `target/harness-validation/feature-004-t031-2026-10-08/`: baseline.json/preserved-before.json com **2778 arquivos preexistentes**, originals/ de quickstart/tasks/classe existente não rastreada, surefire-before/, run-focused.ps1, result.json, order-before-commit-console.txt, reports/ XML/TXT, executed-sources/ e manifesto dos **75 fontes Java**, case-results.json, observations.txt e review.ps1. Histórico de relatórios anteriores copiado antes da execução; capturas T026–T030 preservadas. Runner usa cmd.exe /d /c para stdout/stderr e captura LASTEXITCODE real do Maven; retorno administrativo 0 não converte Maven exit 1 em GREEN.
+
+Auditoria pré-documentação por `& 'target/harness-validation/feature-004-t031-2026-10-08/review.ps1'`: código 0, **2777/2778 arquivos** mantiveram SHA256; somente a classe de rollback mudou até esse ponto. Métodos T029/T030, controle positivo, rejeições, fixtures, sonda SQL, configuração do spy e sonda pós-flush conferidos literalmente contra o original; helper de saída apenas ampliado para a nova causa de teste. Os 75 fontes finais são iguais aos executados. XML confere os dois métodos filtrados, contagens e uma única subfalha HTTP. Raiz/branch/HEAD mantidos e índice vazio; única não rastreada permanece a classe criada em T029.
+
+Arquivos de trabalho desta etapa: `src/test/java/com/devsuperior/dscommerce/controllers/OrderRollbackIntegrationTest.java`, `specs/004-registrar-pedido/quickstart.md` (acréscimo) e `specs/004-registrar-pedido/tasks.md` (somente checkbox T031). Histórico de quickstart com **322938 bytes** preservado integralmente, incluindo T026–T030. T031 marcada [X] após concluir a escrita/execução dos testes e registrar evidências reais; **T001–T031 [X], T032–T055 abertas (24)**. Checkbox indica conclusão desta tarefa de teste, não implementação do envelope 500 pendente.
+
+Limites: prova local H2 de exceção em beforeCommit durante conclusão pelo interceptor, após corpo/mapping real produzirem DTO e antes do commit físico. Não é falha física de conexão no commit, callback afterCommit, rollback após commit ou perda real de transporte. Não comprova rejeições, segurança completa ou regressões ainda futuras; não repetiu outros alvos. Sem mudanças de produção, constraints temporárias, callbacks adicionais, T032+, suíte completa, CI, U1/U2, stage, commit ou push. Próximo ponto de retomada: **T032**, sem execução nesta etapa.
+
+Conferência final documental por `& 'target/harness-validation/feature-004-t031-2026-10-08/review.ps1' -Final`: código 0. Dos 2778 arquivos preexistentes, 2775 mantiveram SHA256; somente quickstart/tasks/classe de rollback mudaram nesta etapa. Prefixo histórico de 322938 bytes intacto, incluindo T026–T030; tasks difere do início exclusivamente pela checkbox T031. Métodos/sondas/configuração anteriores preservados literalmente, 75 fontes finais iguais aos efetivamente executados. XML/console conferidos: 2 testes, 1 GREEN/1 falha apenas HTTP, zero erros e ignorados, corpo/DTO-beforeCommit/exceção/rollback integral comprovados separadamente da ausência do envelope. Conteúdo e diff da classe existente não rastreada revisados em source-diff.txt e acréscimo documental em quickstart-diff.txt. `git diff --check` código 0; `git -c core.autocrlf=false diff --no-index --check -- /dev/null src/test/java/com/devsuperior/dscommerce/controllers/OrderRollbackIntegrationTest.java` sem diagnósticos, código 1 pela diferença do arquivo novo; whitespace/newline aprovados. Avisos LF/CRLF não são falhas de whitespace. Índice vazio, raiz/branch/HEAD mantidos, cinco rastreados modificados anteriores e somente a classe de rollback não rastreada. T001–T031 [X], T032–T055 abertas; .specify/extensions.yml continua ausente. Auditoria reaplicada após este acréscimo, sem repetir testes de aplicação.
+
+## Checkpoint T032 — execução serial consolidada de T026–T031 (2026-10-08)
+
+Executada exclusivamente T032, com parada antes de T033. Raiz real `C:/Users/ronal/dscommerce-speckit`, branch `004-registrar-pedido`, HEAD `0344dc0199fd8135f98e852e7d6fedc06b124d9a` (`feat: implement successful order registration`). Status inicial/final mantém quickstart.md, tasks.md, OrderControllerTest.java, OrderSecurityIntegrationTest.java e OrderServiceTest.java modificados anteriormente, mais OrderRollbackIntegrationTest.java não rastreado desde T029. Índice vazio. T026–T031, fontes, assertivas e evidências preservados. Skill speckit-implement aplicada somente ao pedido; T032/dependências, US2, plano, pesquisa D6/D8, modelo, constituição, contrato e histórico conferidos. Pré-requisitos PowerShell: código 0, FEATURE_DIR correto. Checklist requirements.md 16/16 concluídos, zero abertos, PASS, somente leitura. Ignore Java existente suficiente; `.specify/extensions.yml` ausente, sem hooks executáveis.
+
+### Comando e escopo efetivamente executados
+
+Uma única execução pelo Maven Wrapper, com filtro **somente de classes**, sem filtro de métodos: todos os casos preparados e controles nas quatro classes autorizadas, incluindo as duas classes Nested de OrderControllerTest. Paralelismo JUnit explicitamente desligado, fork único reutilizado e ordem Surefire alfabética. Não executados outros alvos, suíte completa ou CI. Não repetido --version. Compilar/carregar dependências não significa executar outras classes de teste.
+
+```powershell
+.\mvnw.cmd "-Dtest=OrderControllerTest,OrderSecurityIntegrationTest,OrderServiceTest,OrderRollbackIntegrationTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" "-Dsurefire.runOrder=alphabetical" test
+```
+
+Execução Windows/PowerShell em **2026-10-08, 16:32:54.580 → 16:34:01.885 -03:00**. Java **21.0.12.1** nos seis XMLs; Maven **3.9.16** pelo Wrapper existente. Resultado real: **Maven exit 1, BUILD FAILURE**, Total time impresso **01:02 min**. O retorno administrativo 0 do runner não converte esse resultado em GREEN.
+
+Ordem observada no mesmo processo: **OrderControllerTest** (InputBoundary → SuccessfulRegistration), **OrderRollbackIntegrationTest**, **OrderSecurityIntegrationTest**, **OrderServiceTest**. Propriedade junit.jupiter.execution.parallel.enabled=false confirmada em todos os XMLs. Não se usaram execuções Maven independentes como prova de isolamento conjunto.
+
+| Classe autorizada | Testes | GREEN existente | RED / falhas | Erros | Ignorados | Tempo Surefire s |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| OrderControllerTest, incluindo Nested | 111 | 5 | 106 | 0 | 0 | 24.761, container |
+| OrderSecurityIntegrationTest | 83 | 23 | 60 | 0 | 0 | 21.882 |
+| OrderServiceTest | 42 | 31 | 11 | 0 | 0 | 0.985 |
+| OrderRollbackIntegrationTest | 9 | 2 | 7 | 0 | 0 | 5.646 |
+| **Consolidado** | **245** | **61** | **184** | **0** | **0** | não somar containers/nested |
+
+Controller: InputBoundary **108 testes, 2 GREEN/106 falhas**, 12.641 s; SuccessfulRegistration **3 GREEN**, 12.010 s. XML do container externo registra zero testes próprios e tempo 24.761 s; não somado como cobertura adicional. Foram seis relatórios de suítes, quatro classes de escopo e **245 casos únicos**. Nenhum teste ignorado/desabilitado; nenhuma falha de compilação, contexto, fixture ou desmontagem. Os 184 REDs são falhas de assertivas pela implementação ainda incompleta, não erros de preparação.
+
+### GREEN existente e causas reais dos REDs
+
+**OrderControllerTest:** três confirmações HTTP reais continuam GREEN (shape exato, teto decimal19,2 como string, duas casas). Os dois controles de leitura do slice preservam Long.MAX_VALUE/Integer.MAX_VALUE sem coerção. Slice usa serviço mockado apenas para leitura/delegação; não prova segurança, persistência ou rollback. Os 106 REDs distribuem-se em 24 corpos/containers, 28 tokens/campos inteiros, 40 extras/dados do sistema, 13 repetições de chaves JSON bruto e um quantity zero entre válidos. Há coerções/extras aceitos com 201 e chamada indevida do serviço, ausências/nulos sem validação ou erros de leitura sem o envelope contratual. Assertivas continuam exigindo 400 exato e nenhuma chamada; produção/parser/DTO/advice não corrigidos. Não se transformaram esses casos em GREEN por aceitar o comportamento atual.
+
+**OrderSecurityIntegrationTest:** 23 GREENs = nove variações de perfis/claims com confirmação real, um controle real com servlet context /api e treze guardas diretas pelo proxy Spring (cinco identidades inválidas e oito alterações de conta/perfis). JWTs, login, filtros, decoder e banco reais. Os 60 REDs = 44 casos JWT/corpo/contexto, dois sem perfis mesmo com claim ADMIN, dois lookup interno e doze guardas tardias via HTTP. Faltam verificações estritas e/ou respostas/envelopes de 401/403/500; falha interna e guardas tardias ainda podem escapar do MVC sem resposta. Guardas diretas GREEN não aprovam adaptação HTTP pendente.
+
+Nesta execução, **sete casos JWT com corpo válido indevidamente receberam 201 e persistiram um pedido/um item cada**, comprovados por leitura independente antes da limpeza: expiração recente, exp ausente, iat ausente, sub com zero inicial, sub com sinal +, iat futuro e nbf futuro. Os sete correspondentes com corpo inválido também divergem da precedência exigida; são quatorze divergências comportamentais de regras estritas, além das falhas de envelope dos demais casos. O token é assinado de verdade para isolar a regra. Referência temporal renovada imediatamente antes do dispatch; expiração/claims futuros ±5 s ficam intencionalmente dentro da tolerância padrão do decoder, e a assertiva de intervalo da fixture passou. Não se atribui esse RED a expiração incidental durante a execução conjunta. As linhas indevidas são lacuna produtiva já registrada em T027, não contaminação de fixture entre casos, e não foram corrigidas nesta tarefa.
+
+**OrderServiceTest:** 31 GREENs mantêm cálculos exatos, ordem das linhas, preços históricos, nova leitura/nova identidade em chamadas sucessivas, agregado novo para entrada igual, centavo mínimo/teto decimal19,2/quantity Integer.MAX_VALUE em cálculo representável e guardas sem gravação. Onze REDs: duplicata aceita com save mockado (um), preços null/zero/negativo (três), precisão/preço/subtotal (seis) e soma excedente (um). Dez regras numéricas já lançam IllegalArgumentException/ArithmeticException sem save, mas não a exceção/mensagem de domínio correspondente a 422; duplicata ainda não é rejeitada antes de save. Não implementada InvalidOrderException, não alterados Product/validações/schema. Mocks não são prova de persistência, rollback ou proxy real.
+
+**OrderRollbackIntegrationTest:** nove casos executados juntos: controle positivo e inexistente GREEN; três provas de rollback, duplicata, preço zero, preço negativo e quantity zero RED. As três provas de rollback falham **somente** na resposta HTTP; suas assertivas de execução SQL/ponto da exceção/baseline estão GREEN. Duplicata também falha pela exigência de rejeição antes de qualquer insert, enquanto seu rollback SQL funciona. Zero/negativo/quantity zero não executam insert e mantêm baseline, mas não entregam 422/422/400 contratuais. Nenhuma dessas ausências de insert é apresentada como rollback depois de SQL.
+
+### Três provas de rollback — dimensões observadas separadamente
+
+| Prova | Ponto e SQL efetivamente alcançados | Leitura na transação | Leitura independente após saída do proxy, antes de limpeza | HTTP/envelope |
+| --- | --- | --- | --- | --- |
+| T029, constraint SQL tardia | INSERT pedido e primeiro item concluídos, affected=1 cada; segundo item falha real SQLState 23513, CHECK exclusivo identificado | mesma conexão física: um pedido/um item; tx ativa, autoCommit=false | baseline 0/0 → após 0/0, snapshot completo igual; constraint ainda instalada durante verificações | sem resposta, DataIntegrityViolationException escapa; RED apenas 500/envelope |
+| T030, processamento pós-flush | saveAndFlush delegado ao proxy/implementação real terminou; três inserts concluídos; RuntimeException da sonda ainda no corpo do serviço | conexão vinculada: um pedido/dois itens; tx ativa, autoCommit=false; mesma exceção confirmada | baseline 0/0 → após 0/0, snapshot completo igual em finally antes de teardown | sem resposta, PostFlushTestFailure escapa; RED apenas 500/envelope |
+| T031, conclusão beforeCommit | saveAndFlush real e mapping concluíram; três inserts concluídos; callback visto via interceptor e RuntimeException nele | DTO real produzido antes do callback, proxyReturned=false; beforeCommit vê mesmo DTO e um pedido/dois itens na conexão vinculada | baseline 0/0 → após 0/0, snapshot completo igual em finally antes de teardown | sem resposta, BeforeCommitTestFailure escapa; RED apenas 500/envelope |
+
+T029 nesta execução: productIds **72/73** observados, sem expectativa fixa/contígua; primeiro item visível e segunda falha no CHECK real. Sonda registra retorno efetivo do driver, não só SQL impresso. Constraint instalada fora da transação do pedido, antes do POST, e removida somente depois de todas as verificações.
+
+T030: `T030_FLUSH returned=true orderId=2 tx=true boundConnection=true autoCommit=false visibleOrders=1 visibleItems=2 completedInserts=3 failedInserts=0`; `T030_FAULT thrown=true sameException=true http=NONE escaped=PostFlushTestFailure`; baselineRestored=true na leitura independente. Id 2 é observação, não assertiva fixa. Corpo do serviço não conclui o mapping nesta prova: a exceção ocorre enquanto ainda aguarda retorno da chamada ao spy.
+
+T031: `T031_BODY produced=true tx=true total=42.50 callbackBeforeBody=false proxyReturned=false`; beforeCommit reached/hadDto/interceptorCompletion=true, tx/boundConnection=true, autoCommit/readOnly=false, visibleOrders=1/visibleItems=2, três inserts concluídos/zero falhos. Ordem exata: **SYNC_REGISTERED → DTO_PRODUCED → BEFORE_COMMIT → ROWS_OBSERVED → CALLBACK_EXCEPTION**. Objeto lançado corresponde à causa que saiu do proxy. Produção interna de DTO não é retorno externo/201. Sem constraint T029 ou falha do spy T030 armada.
+
+Conferidos nas views/snapshots: comprador do login, id/vínculos, instante UTC em milissegundos, WAITING_PAYMENT, ordem/posição dos itens, quantities 2/3, unitPrice históricos 10.00/7.50, subtotais derivados 20.00/22.50 e soma 42.50 (na falha SQL, somente primeiro item efetivamente concluído). Sem IDs contíguos ou instantes diferentes exigidos. O teste positivo preservado devolveu 201 e JDBC independente confirmou **+1 pedido/+2 itens**, total 42.50, baseline anterior preservado, sem Location.
+
+Todas as três provas continuam exigindo HTTP 500 e envelope exatamente `{"status":500,"error":"Internal Server Error","message":"Order registration could not be completed","path":"/orders"}`, sem 201/Location/token/dados internos. Cada relatório registra MultipleFailuresError com **uma** subfalha: resposta HTTP nula. Não se aprovou envelope seguro ausente nem se fabricou status. **Rollback integral GREEN em todas as três; falha apenas HTTP não é falha de rollback.** Não há necessidade demonstrada de correção produtiva de atomicidade desta fronteira.
+
+Rejeições no mesmo contexto: inexistente 404/envelope exato, zero inserts e baseline íntegro; duplicata três inserts concluídos e falha de unicidade 23505 no item repetido, rollback ao baseline, mas falta rejeição de negócio antecipada/422; zero/negativo/quantity zero zero inserts, baseline íntegro e IllegalArgumentException sem resposta. Preço negativo preparado por JDBC isolado e confirmado; preço null permanece somente na unidade. Product e schema produtivo preservados.
+
+### Isolamento conjunto e comparação histórica
+
+Processo **6084**, thread main nos quatro startups Spring; três bancos H2 reais distintos, conferidos no console: Controller SuccessfulRegistration `order-test-693ad40a-6bb7-47d9-8ed7-ed88986eda5b`, Rollback `order-test-491da02b-6a51-4d47-af3c-68da8c290867`, Security `order-test-075b1c38-71fb-43c9-9fba-79c506be7d8a`. Slice não recebe repositórios reais e unidade usa mocks próprios. Configurações/spies/sondas importadas somente nos contextos que as exigem; não há mudança global de Jackson, segurança ou transação.
+
+Na classe de rollback, a ordem observada foi controle positivo → T030 → cinco rejeições → T029 SQL tardio → T031. Assim, o teste beforeCommit passou após a remoção do CHECK T029 e o desarme da falha T030, ambos exigidos nas assertivas. Sonda SQL limpa antes/depois de cada caso, baseline zero/zero em cada rejeição/prova; observadores T031 removidos em AfterEach com assertivas de sucesso e transação inativa, antes da limpeza de fixtures. Em seguida, Security e unidade mantiveram todos os resultados anteriores. Probes de segurança removidos/desarmados por caso, guardas/preparação sem erros, fixtures limpas explicitamente e contas/produtos próprios. Não se usou cleanup como prova de rollback nem como desculpa para as sete gravações indevidas vistas antes dele.
+
+`& 'target/harness-validation/feature-004-t032-2026-10-08/compare-history.ps1'`: código 0, **245/245 casos** mantêm resultado GREEN/FAILURE e tipo da falha em comparação aos relatórios finais preservados de T026–T031; zero divergências. A comparação usa identidade de classe/método/índice da invocação, sem duplicar o controle positivo nos relatórios T029/T030/T031. Causas atuais revisadas nos XMLs/por grupos, não deduzidas apenas do histórico. Portanto não apareceu interferência observável nesta sequência; não se promete isolamento em toda permutação/paralelismo futuro. **Nenhum ajuste de preparação foi necessário e nenhum fonte/assertiva foi editado nesta etapa.**
+
+### Capturas, preservação e limite do checkpoint
+
+Evidências ignoradas em `target/harness-validation/feature-004-t032-2026-10-08/`: baseline.json/preserved-before.json com **2937 arquivos preexistentes**, originals/ dos documentos/quatro testes, surefire-before/ com relatórios anteriores copiados antes da execução, run-focused.ps1, result.json, us2-phase-console.txt, reports/ com seis XMLs/TXTs atuais, executed-sources/ e manifesto dos **75 fontes Java**, summarize.ps1, case-results.json, suite-results.json, class-totals.json, method-totals.json, observations.txt, context-isolation.txt, compare-history.ps1/historical-comparison.json e review.ps1. Capturas T026–T031 preservadas. Runner usa cmd.exe /d /c para stdout/stderr e LASTEXITCODE real; não confundir código administrativo 0 com Maven GREEN.
+
+Auditoria antes da documentação por `& 'target/harness-validation/feature-004-t032-2026-10-08/review.ps1'`: código 0, **2937/2937 arquivos** preexistentes mantiveram SHA256, zero fontes alterados. Todos os 75 fontes executados conferem com o início e o estado final; relatórios atuais conferidos como posteriores ao início da execução, seis suites/paralelismo false/scope exato/245 casos únicos/61 GREEN/184 falhas/zero erros e ignorados. Preservados T026–T031, incluindo a classe não rastreada e históricos. Três rollbacks conferidos separadamente do HTTP, sete gaps de segurança com leitura independente e estados históricos iguais verificados. Índice vazio, raiz/branch/HEAD mantidos.
+
+Alterados nesta etapa somente `specs/004-registrar-pedido/quickstart.md` (acréscimo) e `specs/004-registrar-pedido/tasks.md` (checkbox T032). Prefixo histórico de quickstart com **337417 bytes** preservado integralmente. T032 marcada [X] somente após executar/revisar e registrar resultados reais; **T001–T032 [X], T033–T055 abertas (23)**. A checkbox fecha esta tarefa de validação RED/GREEN, não aprova rejeições ou envelopes que continuam ausentes.
+
+Limites: execução local, serial, um único fork/ordem observada e H2 de teste, sem CI. Slice/mocks não comprovam segurança/persistência/rollback; provas transacionais usam proxy/banco reais e leitura independente antes da limpeza. As provas de falha não representam conexão física falhando no commit, afterCommit, rollback após commit ou falha real de transporte. Positivos preservados não aprovam rejeições/rollback/regressões futuras por inferência; apenas dimensões efetivamente observadas foram registradas. Nenhuma produção, preparação de testes, parser/DTO/advice/segurança/entidades/schema alterados; sem T033+, outros alvos, suíte completa, U1/U2, stage, commit ou push. Próximo ponto de retomada: **T033**, sem execução nesta etapa.
+
+Conferência final documental por `& 'target/harness-validation/feature-004-t032-2026-10-08/review.ps1' -Final`: código 0. Dos 2937 arquivos preexistentes, 2935 mantiveram SHA256; somente quickstart/tasks mudaram nesta etapa. Prefixo histórico de 337417 bytes intacto, incluindo T026–T031; tasks difere do início exclusivamente pela checkbox T032. Todos os 75 fontes iguais ao início e aos executados; classe de rollback não rastreada preservada sem edição. Seis relatórios atuais conferidos, 245 casos únicos/61 GREEN/184 falhas/zero erros e ignorados; 245 resultados/tipos iguais ao histórico. Scope de classes, paralelismo false, processo 6084/três bancos distintos, três pontos de falha/SQL efetivo/baselines anteriores à limpeza e HTTP ausente separados, além das sete gravações indevidas de JWT, conferidos. Acréscimo documental/diff revisado em quickstart-diff.txt; diff de tasks somente T032. `git diff --check` código 0; fonte não rastreado também conferido por `git -c core.autocrlf=false diff --no-index --check -- /dev/null src/test/java/com/devsuperior/dscommerce/controllers/OrderRollbackIntegrationTest.java`, sem diagnósticos, código 1 pela diferença do arquivo novo; whitespace/newline aprovados. Avisos LF/CRLF não são falhas de whitespace. Índice vazio e base Git mantida. Status final conserva cinco rastreados modificados e a única não rastreada anterior; T001–T032 [X], T033–T055 abertas. .specify/extensions.yml permanece ausente. Auditoria reaplicada após este acréscimo sem repetir testes de aplicação.
+
+## T033 — leitura estrita e Bean Validation de pedidos — 2026-10-08
+
+Execução exclusivamente de T033, após T032; parada antes de T034. Raiz `C:/Users/ronal/dscommerce-speckit`, branch real `004-registrar-pedido`, HEAD inicial/final `0344dc0199fd8135f98e852e7d6fedc06b124d9a` (`feat: implement successful order registration`). Conferidos por `git rev-parse --show-toplevel`, `git branch --show-current`, `git rev-parse HEAD` e `git status --short`. Estado inicial: quickstart/tasks e OrderControllerTest/OrderSecurityIntegrationTest/OrderServiceTest modificados, OrderRollbackIntegrationTest não rastreado. Essas alterações de T026–T032 foram preservadas; não houve stage/commit/push/troca de branch.
+
+Skill `speckit-implement` aplicada apenas ao escopo autorizado. Pré-requisitos identificam Feature 004; requirements.md com 16/16 itens concluídos, zero abertos. Consultados constituição, plano, T033/dependências, D3/D4 de research, modelo, contrato e testes existentes. `.specify/extensions.yml` ausente, sem hooks a executar. `.gitignore` existente cobre target/ e artefatos Java; preservado. A execução RED histórica de T032 permanece registrada acima, sem repetição de outros alvos nesta tarefa.
+
+### Implementação restrita à entrada
+
+Criado `src/main/java/com/devsuperior/dscommerce/config/OrderRequestJsonConfig.java`, com `@JsonComponent` e dois StdDeserializer tipados, somente para OrderRequestDTO e OrderItemRequestDTO. Leitura streaming: root e linha exigem objetos; somente items é permitido no root, e somente productId/quantity na linha. Booleano de presença no root e conjunto de nomes por linha rejeitam chaves repetidas durante a leitura dos tokens, antes de criar DTO ou árvore JSON. Extras são recusados mesmo quando null, inclusive titular/preços/total/id/instante/estado; nenhum readTree é usado para processar esses inputs.
+
+Items exige array ou null encaminhado à validação; cada linha não nula usa o leitor de OrderItemRequestDTO. Campos numéricos aceitam apenas VALUE_NUMBER_INT ou null encaminhado à validação. Strings/booleanos/arrays/objetos e VALUE_NUMBER_FLOAT (incluindo 1.0/1.5/1e0) não são convertidos. getLongValue/getIntValue verificam os limites sem truncamento, arredondamento, float/double ou coerção textual. Valores inteiros representáveis, inclusive os dois máximos, não recebem limite comercial adicional. Ausências/nulos/zero/negativos ficam sujeitos à Bean Validation antes do serviço.
+
+OrderRequestDTO agora tem `@NotEmpty @Valid List<@NotNull OrderItemRequestDTO>`; OrderItemRequestDTO tem `@NotNull @Positive` nos dois campos e `@Max(2147483647)` em quantity. Mantidas imutabilidade e cópia defensiva da lista de entrada. Os construtores continuam permitindo representar dados incompletos para validação na fronteira; o teste de construção direta preexistente continua GREEN. OrderController mantém seu `@Valid @RequestBody` antes da delegação, sem edição.
+
+JacksonConfig, configurações/coerções globais, leitor de login, APIs de catálogo/detalhes, DTOs/serialização de saída, OrderService, JWT, segurança, GlobalExceptionHandler, entidades/schema, testes e fixtures permanecem byte a byte iguais ao início. Não foi implementado o envelope de T038 nem qualquer tarefa T034+. A preservação de código dessas outras rotas não equivale a executar suas regressões; estas não foram executadas nesta etapa.
+
+### Comando e resultados efetivamente executados
+
+Uma única execução local pelo Maven Wrapper, sem filtro de métodos, serial, um fork reutilizado e ordem alfabética de classes:
+
+```powershell
+.\mvnw.cmd "-Dtest=OrderControllerTest,OrderDtoContractTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" "-Dsurefire.runOrder=alphabetical" test
+```
+
+Início **2026-10-08T16:53:53.5924002-03:00**, fim **16:54:51.9878467-03:00**; Total time Maven **52.941 s**, Java **21.0.12.1**, Maven **3.9.16**. Compilação de produção/testes e inicialização dos contextos concluídas. Maven **código 1, BUILD FAILURE**, pelas 106 falhas contratuais de envelope abaixo. O runner PowerShell terminou com código administrativo 0; isso não transforma o resultado Maven em GREEN.
+
+| Classe efetivamente executada | Casos | GREEN integral | Falhas | Erros | Ignorados |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| OrderControllerTest (duas classes Nested) | 111 | 5 | 106 | 0 | 0 |
+| OrderDtoContractTest | 36 | 36 | 0 | 0 | 0 |
+| **Total de casos únicos** | **147** | **41** | **106** | **0** | **0** |
+
+Surefire registra InputBoundary: 108 casos/2 GREEN/106 falhas, 13.289 s; SuccessfulRegistration: 3/3 GREEN, 11.942 s; OrderDtoContractTest: 36/36 GREEN, 0.858 s. O relatório externo de OrderControllerTest tem zero casos próprios e 25.372 s de duração agregada: não foi contado novamente. Sequência real: InputBoundary → SuccessfulRegistration → OrderDtoContractTest, paralelismo false, processo 3212. Nenhuma outra classe foi executada; nenhum erro de compilação/contexto/fixture foi classificado como RED comportamental. Não foram modificados testes, assertivas ou preparação.
+
+### Provas separadas da fronteira e envelope ainda pendente
+
+**1. Entradas inválidas: 106/106 receberam HTTP 400.** As linhas `T026_BOUNDARY case=... status=400 serviceCalls=0`, já emitidas pelo teste, foram extraídas do console com regex ancorada no status final, inclusive quando a descrição contém um campo chamado status. São 106 descrições únicas, todas correspondentes aos casos executados: corpos/containers/linhas/campos ausentes (24), tokens numéricos inválidos/nulos/zero/negativos/overflow (28), extras/sistema inclusive null (40), chaves repetidas em JSON bruto (13) e quantity zero entre válidos (1). Não se deduziu o status a partir da exceção do parser.
+
+**2. Nenhum desses 106 inputs chamou OrderService.** As 106 observações têm serviceCalls=0. O assertAll existente executa status, envelope e verifyNoInteractions separadamente; nos XMLs cada caso registra exatamente **uma** subfalha, sempre em `lambda$assertInvalidInput$1` (envelope), sem subfalha em `$0` (status) ou `$2` (serviço). Conferida a correspondência individual entre descrição/falha/observação. O serviço observado é mock exclusivo do slice MVC, sem filtros/repositórios reais; esta prova não é evidência de autenticação real, persistência ou rollback desses inputs.
+
+**3. Controles positivos e DTOs: 41 GREEN integrais.** Dois controles do slice aceitaram 1/1 e Long.MAX_VALUE/Integer.MAX_VALUE, devolveram 201 e o ArgumentCaptor confirmou os dois inteiros exatos, sem interações adicionais. Três positivos HTTP de contexto completo, preservados, passaram: contrato exato/order/42.50, teto decimal19,2 como texto sem expoente e 0.10 × 3 = 0.30 com duas casas; seus filtros/JWT/login/serviço/persistência reais continuam usados. Não se ampliou o alcance das evidências além das assertivas desses testes. Os 36 testes JsonTest com mapper Boot mantêm leitura/serialização dos campos exatos/tipos/limites, instante UTC em milissegundos, strings monetárias de 0.01 ao teto, rejeição de 19 formatos monetários inválidos sem arredondamento e proteção/cópia das coleções. DTOs de saída não foram alterados.
+
+**4. RED restante apenas pelo envelope de T038: 106 casos.** Em **92**, o JSON Content-Type da resposta está ausente (assertiva de Content-Type recebeu null); o teste não chega às assertivas seguintes de corpo/igualdade nessa lambda. Não se declara um envelope aprovado nem se infere conteúdo não inspecionado. Em **14**, Bean Validation fornece status/error/path corretos, mas `message: "Validation failed"` diverge de `"Invalid order data"`. São sete containers/linhas/campos ausentes, seis productId/quantity null/zero/negativo e o caso quantity zero entre válidos. Todos têm status 400 e zero chamadas ao serviço, comprovados separadamente. As assertivas exigem sem flexibilização o envelope exato `{"status":400,"error":"Bad Request","message":"Invalid order data","path":"/orders"}`. Não foi alterado GlobalExceptionHandler para obter GREEN completo; o número de casos integralmente RED permanece 106 mesmo com as dimensões de leitura/validação/delegação agora GREEN.
+
+Análise read-only após a execução por `& 'target/harness-validation/feature-004-t033-2026-10-08/summarize.ps1'` e `& 'target/harness-validation/feature-004-t033-2026-10-08/verify-boundary.ps1'`: ambos código 0; conferidos os 147 casos únicos, 106 status 400/zero chamadas, 92+14 falhas exclusivamente da lambda de envelope, cinco controles positivos e 36 DTOs GREEN. Não executam testes de aplicação.
+
+### Preservação, revisão e limites
+
+Capturas ignoradas em `target/harness-validation/feature-004-t033-2026-10-08/`: baseline.json/preserved-before.json de **3115 arquivos preexistentes**, originals/ dos documentos/DTOs/testes, surefire-before/ antes da execução, run-focused.ps1/result.json/strict-input-console.txt, reports/ com quatro XMLs/TXTs atuais, executed-sources/ e manifesto dos **76 fontes Java**, summarize.ps1/case-results.json/suite-results.json/class-totals.json/method-totals.json, verify-boundary.ps1/boundary-observations.json/boundary-verification.json e review.ps1. Os relatórios atuais são posteriores ao início do comando; todos os fontes executados correspondem ao estado após a implementação, sem edição posterior que exigisse repetir a prova. Capturas e evidências T026–T032 preservadas.
+
+Antes da documentação, `& 'target/harness-validation/feature-004-t033-2026-10-08/review.ps1'` concluiu com código 0: **3113/3115 arquivos** preexistentes intactos, só os dois DTOs de entrada alterados; o leitor é novo. A primeira conferência do helper havia forçado core.autocrlf=false também no diff de rastreados, apontando CRLF em duas linhas históricas de quickstart (392/394), cujo SHA256 inicial estava preservado. Corrigido somente o helper ignorado para usar `git diff --check` com a configuração real do repositório (`core.autocrlf=true`), que passou; nenhum byte histórico foi reescrito. Arquivos não rastreados continuam verificados individualmente com no-index/core.autocrlf=false, sem diagnósticos. A repetição foi de auditoria documental, sem repetir testes.
+
+T033 marcada [X] somente após execução, análise e registro do escopo comprovado. **T001–T033 [X], T034–T055 abertas (22)**; a checkbox não aprova o envelope pendente. Alterações desta etapa: OrderRequestJsonConfig novo, dois DTOs de entrada, acréscimo em quickstart e somente checkbox T033 em tasks. Testes de T026–T032 e suas evidências permanecem intactos. Próximo ponto de retomada: **T034**, sem execução nesta etapa.
+
+Limites: prova de inputs inválidos é slice MVC com serviço observado; as 106 falhas de envelope continuam reais. Não se aprovam regras de serviço, JWT estrito, envelopes, rejeições/rollback/regressões posteriores com base nesta execução. Transporte real não foi simulado nem demonstrado; nenhum GET, deduplicação/idempotência ou endpoint adicional. Sem outras classes, suíte completa, CI, T034+, U1/U2, stage, commit ou push.
+
+Conferência final por `& 'target/harness-validation/feature-004-t033-2026-10-08/review.ps1' -Final`: código 0. Dos 3115 arquivos preexistentes, 3111 preservam SHA256; somente os dois DTOs de entrada e quickstart/tasks mudaram nesta etapa. Leitor novo revisado integralmente; testes/código fora do escopo e capturas anteriores intactos. Prefixo histórico de quickstart com 355733 bytes preservado; tasks difere do início somente pela checkbox T033. Os 76 fontes executados correspondem ao estado final; quatro relatórios atuais/147 casos únicos/41 GREEN/106 falhas exclusivamente de envelope/zero erros e ignorados conferidos, com 106 status 400 e zero chamadas ao serviço. Diff dos DTOs/acréscimo documental e conteúdo dos não rastreados revisados; `git diff --check` código 0 e no-index --check de ambos os não rastreados sem diagnósticos (código 1 pela diferença contra /dev/null). Índice vazio; raiz/branch/HEAD mantidos. Status final: sete rastreados modificados e duas não rastreadas, incluindo as alterações anteriores preservadas. T001–T033 [X], T034–T055 abertas; hooks ausentes. Auditoria documental reaplicada após este acréscimo sem repetir testes de aplicação.
+
+## T034 — rejeições de negócio e valores exatos no serviço — 2026-10-08
+
+Executada exclusivamente T034, após T033, com parada antes de T035. Raiz `C:/Users/ronal/dscommerce-speckit`, branch real `004-registrar-pedido`, HEAD inicial/final `0344dc0199fd8135f98e852e7d6fedc06b124d9a` (`feat: implement successful order registration`). Conferidos `git rev-parse --show-toplevel`, `git branch --show-current`, `git rev-parse HEAD` e `git status --short`. Estado inicial: sete rastreados modificados (quickstart/tasks, dois DTOs de entrada e três testes) e duas não rastreadas (OrderRequestJsonConfig e OrderRollbackIntegrationTest), todos preservados fora dos acréscimos autorizados nos documentos.
+
+Skill `speckit-implement` aplicada ao escopo solicitado. Pré-requisitos confirmam Feature 004; checklist requirements.md: 16/16 concluídos, zero abertos, PASS. Consultados T034/dependências T033/T028, spec FR-004/005/008/012/014, plano/constituição já revisados, research D3/D4/D6, modelo, contrato e OrderServiceTest integralmente. `.specify/extensions.yml` ausente, sem hooks; ignore existente cobre target/ e artefatos Java, sem alteração.
+
+### Implementação e fronteira preservada
+
+Criada `src/main/java/com/devsuperior/dscommerce/services/exceptions/InvalidOrderException.java`, RuntimeException com enum Reason e getter do motivo, limitado às três mensagens fixas do contrato:
+
+| Motivo | Mensagem |
+| --- | --- |
+| DUPLICATE_PRODUCT | Duplicate product in order |
+| INVALID_PRODUCT_PRICE | Product price is not valid for order |
+| UNREPRESENTABLE_VALUE | Order value cannot be represented |
+
+Sem @ResponseStatus, handler ou envelope novo; HTTP 422 correspondente continua para T038. Mensagens não incorporam dados do consumidor nem diagnósticos internos.
+
+Em OrderService, conjunto de ids detecta duplicatas antes da consulta/gravação; a lista original não é consolidada/reordenada. Mesmo produto com quantidades diferentes rejeita integralmente. Mantidos findAllById em lote no ProductRepository existente e reconstrução das linhas na ordem da solicitação. Produto não retornado usa a classe/mensagem existentes `ProductNotFoundException("Product not found")`; nenhuma alteração nessa exceção ou nos detalhes públicos.
+
+Preço vigente é capturado uma vez por linha. Null/indisponível, zero ou negativo rejeitam com INVALID_PRODUCT_PRICE antes de normalizar/construir item, sem NPE. Para preço positivo/subtotal/soma, setScale(2, UNNECESSARY) e precision <= 19 verificam a capacidade decimal19,2. ArithmeticException é capturada **somente na chamada setScale** e traduzida como UNREPRESENTABLE_VALUE; excesso de precisão recebe o mesmo motivo. Nenhum catch amplo envolve lookup, construção, cálculo, saveAndFlush, Clock, mapping ou conclusão transacional. Falhas internas não são indiscriminadamente convertidas em rejeição de negócio.
+
+BigDecimal permanece exato, sem MathContext/arredondamento/float/double; 1.000 normaliza para 1.00 sem alterar Product. Multiplicação inteira e somas usam snapshots históricos, verificando cada subtotal e soma antes de save. Não há persistência item a item: todos os itens devem passar para construir o agregado completo e realizar a única chamada saveAndFlush. Rejeição pode encerrar a validação assim que encontrada, sem prometer precedência entre múltiplos erros de negócio.
+
+Preservados método público Spring, injeção por construtor, REQUIRED/rollbackFor Exception, reconsulta de conta/perfis, Clock UTC/milissegundos, WAITING_PAYMENT, mapping dentro da transação, ordem/posições e novo agregado/itens por envio válido. saveAndFlush continua sendo flush, não commit; proxy/contexto não foram novamente exercitados por esta execução unitária. Guardas já existentes não foram modificadas nem se executou T036.
+
+Product/validações/schema, repositórios, parser, DTOs, Jackson global, JWT/segurança, ClockConfig, controller/advice, testes/fixtures e evidências T026–T033 preservados por hash. Nenhuma implementação de T035–T038, U1/U2 ou outros endpoints.
+
+### Única execução de testes desta etapa
+
+Sem filtro de métodos; somente OrderServiceTest, serial e com um fork:
+
+```powershell
+.\mvnw.cmd "-Dtest=OrderServiceTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" "-Dsurefire.runOrder=alphabetical" test
+```
+
+Início **2026-10-08T17:05:05.6361096-03:00**, fim **17:05:39.1213415-03:00**; Maven **3.9.16**, Java **21.0.12.1**, Total time Maven **28.108 s**, duração Surefire **4.833 s**. Compilação concluída. Maven **código 0, BUILD SUCCESS**: **42 testes, 42 GREEN, zero falhas, zero erros, zero ignorados**. Nenhuma outra classe executada; paralelismo false no relatório atual.
+
+| Grupo efetivamente executado | Casos | GREEN | Falhas/erros/ignorados |
+| --- | ---: | ---: | --- |
+| Positivos e limites representáveis | 18 | 18 | 0/0/0 |
+| Guardas/reconsulta de identidade e perfis já existentes | 12 | 12 | 0/0/0 |
+| Rejeições de negócio (incluindo inexistente) | 12 | 12 | 0/0/0 |
+| **Total** | **42** | **42** | **0/0/0** |
+
+Rejeições: inexistente entre válidos (1), duplicata com quantidades diferentes (1), preço null/zero/negativo entre positivos (3), frações não nulas além de duas casas/overflow unitário ou subtotal (6) e overflow da soma em um centavo (1). Todos os **12** registros T028_REJECTION têm **saveCalls=0**; onze com InvalidOrderException e um ProductNotFoundException. Assertivas mantidas exigem tipo exato, mensagem exata, verifyNoInteractions(orders) e reconsulta de conta/perfis. Nenhuma assertiva flexibilizada para aceitar exceções genéricas. Preço null/fração permanece fixture unitária; não se mudou Product para persistir valores inválidos.
+
+Os 18 positivos preservam preços vigentes, ids enviados em lote, ordem restabelecida, preço alterado antes da leitura, preço histórico após mudança, normalização sem perda de 1.000, 10.00 × 2 + 7.50 × 3 = 42.50, agregado/itens novos em chamadas iguais, nova leitura de preços a cada envio e titular correspondente à identidade de cada chamada. Incluem cinco casos de limite (0.01, teto 99999999999999999.99, quantity Integer.MAX_VALUE com preço 0.01 e 10.00, subtotal exatamente no teto) e soma exatamente no teto. Não exigem IDs contíguos/instantes diferentes; o mock não gera IDs, portanto não se alegam IDs persistidos.
+
+Doze guardas preexistentes continuam GREEN: principal ausente/id null/zero/negativo (4), conta ausente/perfis vazios (2), remoção/revogação após uma chamada válida com CLIENT/ADMIN/ambos (6). Zero saves nos seis casos iniciais; nos seis sequenciais somente o save da primeira chamada válida permanece (baselineSaveCalls=1), sem nova gravação após rejeição. Esta é evidência unitária de chamadas, não de JDBC/proxy/commit/rollback.
+
+Comparação read-only com os relatórios T032: os mesmos **42 casos**, **31 GREEN anteriores mantidos** e **11 RED anteriores agora GREEN** (duplicata 1, preço inválido 3, precisão/preço/subtotal 6, soma 1). O inexistente já era GREEN e permaneceu. Nenhum RED artificial e nenhum teste de aplicação repetido antes da implementação; os REDs históricos compiláveis de T028/T032 e os fontes correspondentes permanecem intactos.
+
+### Capturas, auditoria e limites
+
+Captura ignorada `target/harness-validation/feature-004-t034-2026-10-08/`: baseline/preserved-before dos **3293 arquivos preexistentes**, originals/ dos documentos/serviço/testes, surefire-before/ anterior à execução, run-focused.ps1/result.json/order-service-console.txt, reports/ XML/TXT atuais, executed-sources/ e manifesto dos **77 fontes Java**, summarize.ps1/case-results/suite-results/class-totals/method-totals, review.ps1/business-rejections/historical-comparison e auditorias. Relatório atual posterior ao início do comando; estado executado preservado, sem fontes alterados após o teste.
+
+`& 'target/harness-validation/feature-004-t034-2026-10-08/summarize.ps1'`: código 0, conferidos 42/42 GREEN e os vinte grupos de métodos. Auditoria documental por review.ps1 inicialmente encontrou erro no próprio helper ao filtrar diretamente o array JSON de T032 em pipeline PowerShell 5.1. Corrigido **somente helper ignorado**, separando parsing da filtragem; original preservado em review-first-audit.ps1 e causa em review-preparation.txt. Não houve falha de aplicação/teste/fixture nem edição de relatórios históricos ou repetição de Maven por isso.
+
+Após o ajuste, `& 'target/harness-validation/feature-004-t034-2026-10-08/review.ps1'` concluiu com código 0: **3292/3293 arquivos** preexistentes intactos, somente OrderService alterado antes da documentação; InvalidOrderException é novo. Conferidos 42 casos únicos/GREEN, comando/código 0, scope de uma classe, relatório atual, 12 rejeições sem save, 31 GREEN mantidos/11 RED corrigidos e todos os 77 fontes executados iguais ao estado final. Não confundir análise de relatórios com nova execução de testes.
+
+Alterações desta etapa: OrderService, InvalidOrderException novo, acréscimo neste quickstart e somente checkbox T034 em tasks. T034 marcada [X] apenas após execução GREEN, análise e registro. **T001–T034 [X], T035–T055 abertas (21)**. Próxima retomada: **T035**, sem execução nesta etapa.
+
+Limites: OrderServiceTest usa construção direta/mocks; não comprova HTTP 422/envelope, decoder/filtros reais, persistência, commit/rollback nem chamada pelo proxy Spring. Histórico dessas outras provas preservado, sem reexecutá-las nem atribuir sua aprovação ao código novo. Rejeições unitárias sem save não são prova de rollback após SQL. Transporte real, falha física de commit e regressões públicas não foram executados. Sem outras classes, suíte completa, CI, T035+, stage, commit ou push.
+
+Conferência final por `& 'target/harness-validation/feature-004-t034-2026-10-08/review.ps1' -Final`: código 0. Dos 3293 arquivos preexistentes, 3290 mantiveram SHA256; somente OrderService/quickstart/tasks mudaram nesta etapa, além da nova InvalidOrderException revisada integralmente. Prefixo histórico de quickstart com 368142 bytes intacto, incluindo T026–T033; tasks difere do início apenas pela checkbox T034. Todos os 77 fontes correspondem aos efetivamente executados; relatório atual/42 casos únicos GREEN/zero falhas, erros e ignorados/12 rejeições sem save/31 GREEN anteriores e 11 RED corrigidos conferidos. Diff do serviço, novo fonte e acréscimo documental revisados. `git diff --check` código 0; no-index --check dos três não rastreados sem diagnósticos, código 1 pela diferença contra /dev/null. Não reescritas linhas históricas por avisos LF/CRLF. Índice vazio, base Git preservada; status final mantém oito rastreados modificados e três não rastreados, incluindo o trabalho anterior intacto. T001–T034 [X], T035–T055 abertas; hooks ausentes. Auditoria documental reaplicada após este acréscimo, sem repetir testes de aplicação.
+
+## T035 — validação JWT estrita da operação — 2026-10-09
+
+Executada exclusivamente T035; parada antes de T036. Raiz `C:/Users/ronal/dscommerce-speckit`, branch real `004-registrar-pedido`, HEAD inicial/final `0344dc0199fd8135f98e852e7d6fedc06b124d9a`, conferidos com os quatro comandos Git solicitados. Alterações locais e evidências T026–T034 preservadas. A implementação estrita do converter, sua injeção de Clock em SecurityConfig, os testes unitários ampliados e a observação T035_SERVICE já estavam presentes no início desta retomada. A captura preexistente `target/harness-validation/feature-004-t035-2026-10-08/` foi preservada como execução anterior, sem reatribuir seus resultados à execução atual.
+
+Skill speckit-implement aplicada somente a esta task; pré-requisitos identificaram a Feature 004 e requirements.md apresentou 16/16 marcados, zero pendentes. Consultados task/dependências T034/T027, constituição, spec, plano, pesquisa D1/D2/D7/D8, modelo, contratos e harness. Ignore Java existente suficiente. `.specify/extensions.yml` ausente antes/depois, sem hooks executáveis.
+
+### Implementação conferida e cobertura complementada
+
+OrderJwtAuthenticationConverter exige exp/iat como Instant utilizáveis; nbf presente também deve ser utilizável. Usa uma leitura do Clock UTC injetado por autenticação: exp > agora, exp > iat, iat <= agora e nbf <= agora, sem tolerância adicional. Subject precisa ser String correspondente integralmente a `[1-9][0-9]*`, positivo e representável como Long. Não há trim ou coerção para aceitar formatos inválidos. Como Nimbus pode normalizar um sub numérico para String, a adaptação compara também o tipo/valor do subject no payload original, somente após o decoder verificar o token. O fluxo real JwtAuthenticationProvider decodifica/verifica antes de chamar o converter; accounts.resolve ocorre depois das validações temporais e de subject.
+
+BadCredentialsException e OrderAccountResolutionException mantêm tipos distintos; os testes preservam a mesma instância da exceção de resolução. Name/roles não escolhem identidade ou authorities; sem novos claims obrigatórios iss/aud/roles. Decoder compartilhado, encoder/login, Clock produtivo e fontes produtivos permaneceram iguais ao início desta retomada. Não implementados handlers/envelopes nem guardas de T036.
+
+Acrescentado `src/test/java/com/devsuperior/dscommerce/security/OrderJwtAuthenticationPipelineTest.java`: JwtConfig/decoder e JwtAuthenticationProvider reais, converter real e somente resolvedor mockado. Seus 25 casos verificam assinatura adulterada/chave incorreta/token malformado, claims temporais ausentes ou inutilizáveis, limites temporais, subjects inválidos inclusive JSON numérico normalizado pelo decoder, limites positivos 1/42/Long.MAX_VALUE e releitura do Clock entre autenticações. Toda rejeição exige zero novas interações com a resolução. Esta prova usa criptografia real, mas não é uma prova HTTP/banco; a integração separada cobre essas dimensões.
+
+A regressão OrderSecurityChainTest inicialmente apresentou quatro falhas de preparação temporal: Clock controlável ainda fixo em 2030 e tokens do login emitidos no instante real. Ajustados somente import/injeção do Clock existente e alinhamento de seu instante imediatamente após o login/decoder. Preservadas todas as assertivas, inclusive CLIENT/ADMIN/ambos, conta sem perfil, titularidade, stateless e rotas. Nenhuma tolerância produtiva foi adicionada.
+
+### Execuções atuais pelo Wrapper
+
+Maven 3.9.16 e Java Zulu 21.0.12.1 confirmados por `.\mvnw.cmd --version`. Todos os comandos abaixo usam `-Djunit.jupiter.execution.parallel.enabled=false`, a partir da raiz, com stdout/stderr capturados via cmd.exe /d /c; relatórios XML/TXT copiados após cada execução.
+
+| Comando (além da opção serial) | Casos | GREEN | Falhas/erros/ignorados | Código Maven |
+| --- | ---: | ---: | --- | ---: |
+| `.\mvnw.cmd "-Dtest=OrderJwtAuthenticationConverterTest,OrderJwtAuthenticationPipelineTest" test` | 73 | 73 | 0/0/0 | 0 |
+| `.\mvnw.cmd "-Dtest=OrderSecurityIntegrationTest#shouldUseSubjectAndDatabaseProfilesRegardlessOfNameAndRolesClaims+shouldRejectInvalidJwtBeforeReadingBody" test` | 55 | 9 | 46/0/0 | 1 |
+| `.\mvnw.cmd "-Dtest=OrderSecurityChainTest,JwtTokenServiceTest,PublicCatalogSecurityIntegrationTest,PublicProductDetailSecurityIntegrationTest" test` (antes de alinhar a fixture) | 30 | 26 | 4/0/0 | 1 |
+| `.\mvnw.cmd "-Dtest=OrderSecurityChainTest" test` (após alinhar a fixture) | 20 | 20 | 0/0/0 | 0 |
+
+Intervalos atuais: unidade/pipeline 2026-10-09T14:50:18.1674020-03:00 → 2026-10-09T14:50:37.5125547-03:00; HTTP 2026-10-09T14:52:19.0174866-03:00 → 2026-10-09T14:53:14.0277797-03:00; regressões iniciais 2026-10-09T14:54:10.0746576-03:00 → 2026-10-09T14:54:48.1006171-03:00; chain corrigida 2026-10-09T14:57:57.0589792-03:00 → 2026-10-09T14:58:45.0356679-03:00. Primeira tentativa administrativa de unidade interrompida por PowerShell NativeCommandError ao receber aviso ByteBuddy em stderr; preservada separadamente, sem LASTEXITCODE confiável nem alegação de RED. A repetição com captura corrigida produziu os 73 GREEN acima.
+
+Converter: 48/48 GREEN, incluindo fronteiras de um nanossegundo, exp/iat obrigatórios/utilizáveis, nbf opcional, sub sem coerção e distinção das exceções. Pipeline: 25/25 GREEN. HTTP real: nove positivos com CLIENT/ADMIN/ambos e claims falsos preservaram 201/titular correto/linhas confirmadas. Nas 46 rejeições, incluindo corpo inválido em /api/orders, observados 401, serviceCalls=0 e ordersDelta=itemsDelta=0 em leitura independente antes da limpeza. Nenhuma gravação indevida dos sete gaps temporais/subject históricos voltou a ocorrer.
+
+**A execução HTTP não está GREEN como contrato completo**: todas as 46 falhas são MultipleFailuresError relativas a Content-Type/envelope JSON ausente; 12 também apontam challenge detalhado padrão em lugar de Bearer exato. Status, confidencialidade verificada pelas assertivas existentes, ausência de serviço/gravação e precedência sobre leitura do corpo não falharam. Envelopes/challenge ficam em T037, sem alteração de assertivas ou implementação antecipada. Não executados os métodos de guardas tardias/chamada direta/resolução interna dessa classe nesta retomada. Não se aprova HTTP 500 de resolução por inferência da unidade.
+
+Regressões finais: 20/20 da chain, 7/7 catálogo público, 2/2 detalhes públicos e 1/1 emissão JWT, zero falhas/erros/ignorados nessas execuções finais. Só a classe que exigiu ajuste de fixture foi repetida. Sem suíte completa, CI ou tarefas posteriores; fechamento integrado e demais cenários continuam nos checkpoints próprios.
+
+### Preservação e fechamento
+
+Capturas ignoradas em `target/harness-validation/feature-004-t035-2026-10-09/`: baseline/manifesto de 3723 arquivos preexistentes, cópias de quickstart/tasks e surefire-before, versões, comandos/intervalos/códigos em result.json por execução, consoles e relatórios por execução, causas HTTP, manifesto dos fontes executados e auditoria final. Evidências anteriores, inclusive T026–T034 e a captura anterior de T035, não foram sobrescritas. Prefixo histórico de quickstart preservado byte a byte; tasks difere da entrada somente pela checkbox T035.
+
+Nesta retomada, alterados somente OrderSecurityChainTest (preparação do Clock), quickstart (acréscimo) e checkbox T035; novo OrderJwtAuthenticationPipelineTest. Implementação estrita preexistente preservada. Diff e fonte novo revisados; git diff --check e no-index --check do teste novo executados, sem diagnósticos de whitespace. Auditoria compara todos os arquivos preexistentes e permite diferenças somente nesses três arquivos. Índice permanece vazio, raiz/branch/HEAD mantidos, sem stage/commit/push/merge/troca de branch. T001–T035 [X], T036–T055 abertas (20). T035 concluída no seu escopo; parada antes de T036.
+
+## T035 — complemento: duas classes completas, serialmente — 2026-10-09
+
+Após o checkpoint anterior, executadas exclusivamente as duas classes solicitadas, nesta ordem: OrderJwtAuthenticationConverterTest e OrderSecurityIntegrationTest. A segunda foi executada completa, sem filtro de métodos. Estas execuções complementam o registro anterior; não o substituem nem reatribuem seus resultados. Raiz `C:/Users/ronal/dscommerce-speckit`, branch real `004-registrar-pedido` e HEAD `0344dc0199fd8135f98e852e7d6fedc06b124d9a` reconfirmados com git rev-parse --show-toplevel, git branch --show-current, git rev-parse HEAD e git status --short. Sem troca de branch, stage, commit, push ou merge.
+
+### Comandos e resultados atuais
+
+Na raiz, pelo Maven Wrapper, mantendo Maven 3.9.16/Java 21 do ambiente confirmado acima. Cada comando teve um fork e paralelismo JUnit desabilitado; stdout/stderr capturados por cmd.exe /d /c, com LASTEXITCODE registrado. As execuções não se sobrepuseram.
+
+```powershell
+.\mvnw.cmd "-Dtest=OrderJwtAuthenticationConverterTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=OrderSecurityIntegrationTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+```
+
+| Classe | Intervalo local (-03:00), 2026-10-09 | Testes | GREEN | Falhas | Erros | Ignorados | Código Maven |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| OrderJwtAuthenticationConverterTest | 15:06:57.8691517 → 15:07:15.1697522 | 48 | 48 | 0 | 0 | 0 | 0 |
+| OrderSecurityIntegrationTest | 15:08:07.7228473 → 15:09:01.8385929 | 85 | 23 | 62 | 0 | 0 | 0 | 1 |
+
+Os arquivos result.json registram comandos/horários completos, código real, classe única efetivamente executada e ausência de alteração de fontes/status. Capturas novas, com relatórios anteriores copiados antes de cada execução:
+
+- [Resultado do converter](../../target/harness-validation/feature-004-t035-converter-only-2026-10-09-150657/result.json), console.txt e reports/ XML/TXT no mesmo diretório.
+- [Resultado da integração completa](../../target/harness-validation/feature-004-t035-security-only-2026-10-09-150807/result.json), console.txt, reports/ XML/TXT, method-results.json e http-observations.txt no mesmo diretório.
+
+Esses caminhos em target/ são evidências locais ignoradas pelo Git. As contagens e causas ficam registradas aqui para manter o relato compartilhável, sem pressupor que outro checkout contenha as capturas.
+
+### Comprovações separadas
+
+**JWT inválido antes do serviço e sem novas linhas:** 46 casos, correspondentes a 23 variantes em dois contextos, todos retornaram 401, escaped=false, serviceCalls=0, ordersDelta=0 e itemsDelta=0. Há 23 casos com corpo válido e 23 com corpo ilegível em /api/orders. As contagens de tb_order/tb_order_item são lidas por JdbcTemplate/conexão independente depois da solicitação síncrona e antes da limpeza, sem transação de teste externa. Conta ausente está entre os casos de autenticação rejeitada; não se confunde seu lookup necessário com uma falha anterior de validação. [Observações por caso](../../target/harness-validation/feature-004-t035-security-only-2026-10-09-150807/invalid-jwt-proof.json).
+
+**Sem lookup quando a validação anterior falha:** 39 testes atuais do converter passaram exigindo verifyNoInteractions(accounts): 20 de exp/iat/nbf inválidos ou inutilizáveis, cinco de accountId inutilizável, 13 de sub não canônico/não textual e um de sub numérico original normalizado pelo decoder. O único caminho de lookup é converter → AuthenticatedAccountService.resolve → UserAccountRepository.findByIdWithRoles, depois das validações. Essa prova unitária observa ausência de chamada ao resolvedor mockado; não é instrumentação de SQL. [Resumo e métodos](../../target/harness-validation/feature-004-t035-converter-only-2026-10-09-150657/no-lookup-proof-summary.json).
+
+Para a etapa criptográfica, o resumo identifica separadamente a evidência anterior do pipeline real, executada às 14:50:18.1674020 → 14:50:37.5125547: 21 rejeições com verifyNoInteractions(accounts), incluindo assinatura adulterada/chave incorreta, decoder/provider reais e somente resolvedor mockado. Hashes dos fontes continuam iguais aos daquela execução. OrderJwtAuthenticationPipelineTest não foi executado novamente nesta rodada restrita às duas classes solicitadas; o resultado anterior não é contado entre seus 48/85 casos.
+
+**Segurança antes do corpo inválido:** 23 casos de autenticação inválida retornaram 401 e um de conta sem perfis retornou 403, sem chegar ao 400 de leitura. No caso de falha interna com corpo inválido, a resolução foi alcançada e OrderAccountResolutionException escapou; não foi convertida em 401/400. Falta seu adaptador HTTP 500 de T037. Nos 25 casos, zero chamadas ao OrderService e zero novas linhas. [Comprovação por caso](../../target/harness-validation/feature-004-t035-security-only-2026-10-09-150807/security-before-invalid-body-proof.json).
+
+**Positivos preservados:** dez controles HTTP passaram com login/JWT/decoder/filtros reais: nove combinações CLIENT/ADMIN/ambos com variantes de claims name/roles e um controle positivo em /api/orders. Mantidas assertivas 201, titular da conta correta, valores/itens e persistência após retorno. Testes, suporte OrderHttpTestSupport (definido em OrderControllerTest.java) e OrderTestFixture permanecem iguais por hash ao início da retomada de T035. Os outros 13 GREEN da integração são cinco identidades inválidas e oito reconsultas de conta/perfis através do proxy real; exercitam guardas preexistentes, sem nova implementação de T036. [Controles positivos e hashes](../../target/harness-validation/feature-004-t035-security-only-2026-10-09-150807/positive-controls-proof.json).
+
+### Causas restantes e atribuição às tarefas futuras
+
+As 62 falhas da integração são MultipleFailuresError em assertivas de resposta HTTP. Não houve erros de compilação/startup/fixture, remoção de cenários ou relaxamento de assertivas.
+
+| Grupo de falhas | Quantidade | Causa observada | Tarefa futura |
+| --- | ---: | --- | --- |
+| JWT inválido | 46 | Content-Type/envelope JSON ausente; 12 casos também têm challenge detalhado padrão em lugar de Bearer exato | T037 |
+| Conta sem perfis | 2 | 403 correto, envelope JSON ausente | T037 |
+| Falha interna na resolução | 2 | OrderAccountResolutionException escapa sem resposta HTTP; falta 500 seguro. Um caso tem corpo válido, outro inválido | T037 |
+| Conta removida/perfis revogados após o filtro | 12 | 401/403 corretos, uma chamada real ao serviço, zero novas linhas, mas envelope ausente | T038, coordenada com T037 |
+| **Total** | **62** | **Contrato HTTP de erros ainda pendente** | **T037/T038** |
+
+[Classificação por teste e mensagem observada](../../target/harness-validation/feature-004-t035-security-only-2026-10-09-150807/future-task-failures.json). As 46 rejeições JWT e as 12 guardas tardias mantiveram contagens independentes de pedidos/itens. A causa de falha interna conserva seu tipo; a classificação distingue conta ausente/credencial inválida de OrderAccountResolutionException, sem conversão indiscriminada em 401. A ausência de resposta nos dois casos internos não é apresentada como HTTP 500 aprovado.
+
+Não se exige GREEN completo da integração para concluir o escopo de T035 antecipando T037/T038. T035 continua marcada; T036, T037 e T038 permanecem abertas. Guardas novas, adaptadores de segurança e ControllerAdvice não foram implementados nesta rodada. Perfis continuam vindo do banco, CLIENT ou ADMIN autoriza; claims name/roles são ignoradas, sem novos iss/aud/roles obrigatórios e com nbf opcional. JwtConfig, chave/assinatura HS256 e emissão de login preservados. Wiring mínimo do Clock já documentado no checkpoint anterior; nenhum fonte ou preparo de testes foi alterado nestas duas execuções ou nas análises posteriores.
+
+### Revisão documental desta complementação
+
+Alterado somente este quickstart por acréscimo. Prefixo anterior preservado byte a byte; todos os demais arquivos rastreados/não rastreados e as capturas atuais selecionadas conferidos por hash. Tasks não alterado, índice vazio e Git na mesma raiz/branch/HEAD, com 12 rastreados modificados e quatro não rastreados preexistentes. Comandos/contagens conferidos nos XMLs e JSONs; links locais revisados e git diff --check executado. As análises de evidência não constituem novas execuções Maven. Sem nova suíte completa, regressões adicionais, CI ou avanço para T036–T038.
+
+## T036 — guardas transacionais de identidade e perfis — 2026-10-09
+
+Escopo autorizado exclusivamente T036, com parada antes de T037. Raiz `C:/Users/ronal/dscommerce-speckit`, branch real `004-registrar-pedido` e HEAD `0344dc0199fd8135f98e852e7d6fedc06b124d9a` confirmados com `git rev-parse --show-toplevel`, `git branch --show-current`, `git rev-parse HEAD` e `git status --short`. Entrada: 12 arquivos rastreados modificados e quatro não rastreados; índice vazio. Alterações anteriores preservadas. Skill speckit-implement aplicada ao escopo restrito; prerequisites apontam Feature 004, checklist requirements.md com 16/16 marcados e zero abertos. `.specify/extensions.yml` ausente, sem hooks.
+
+### Gate de T035: consulta histórica, sem repetir a execução
+
+Antes da validação de T036 foram consultados os registros existentes de T035, seus comandos/resultados, XMLs e provas por caso. Evidência de conclusão presente; nenhuma lacuna impeditiva. Os 81 fontes de src/ continuam iguais por SHA-256 aos executados no último checkpoint de T035. Não foram reexecutadas classes de converter, pipeline ou chain nesta etapa. Auditoria local: [t035-gate.json](../../target/harness-validation/feature-004-t036-2026-10-09-153101/t035-gate.json).
+
+Os comandos históricos abaixo foram executados em 2026-10-09, pelo Wrapper, na forma `.\mvnw.cmd "-Dtest=<seleção>" "-Djunit.jupiter.execution.parallel.enabled=false" test`. As duas últimas linhas acrescentaram `"-DforkCount=1" "-DreuseForks=true"` antes de test. Não se atribuem esses resultados às novas execuções de T036.
+
+| Seleção histórica de -Dtest | Classes/contagens | Resultado | Código Maven |
+| --- | --- | --- | ---: |
+| OrderJwtAuthenticationConverterTest,OrderJwtAuthenticationPipelineTest | converter 48; pipeline 25 | 73 aprovados, zero falhas | 0 |
+| OrderSecurityIntegrationTest#shouldUseSubjectAndDatabaseProfilesRegardlessOfNameAndRolesClaims+shouldRejectInvalidJwtBeforeReadingBody | integração, 55 | 9 aprovados; 46 falhas de envelope/challenge | 1 |
+| OrderSecurityChainTest,JwtTokenServiceTest,PublicCatalogSecurityIntegrationTest,PublicProductDetailSecurityIntegrationTest | chain 20; emissão 1; catálogo 7; detalhe 2 | 26 aprovados; quatro falhas da fixture de Clock na chain | 1 |
+| OrderSecurityChainTest, após alinhamento da fixture | chain, 20 | 20 aprovados, zero falhas | 0 |
+| OrderJwtAuthenticationConverterTest, classe completa | converter, 48 | 48 aprovados, zero falhas | 0 |
+| OrderSecurityIntegrationTest, classe completa | integração, 85 | 23 aprovados; 62 falhas de contrato HTTP | 1 |
+
+Todas essas execuções históricas tiveram zero erros e zero ignorados. Capturas anteriores preservadas em feature-004-t035-2026-10-09/, feature-004-t035-converter-only-2026-10-09-150657/ e feature-004-t035-security-only-2026-10-09-150807/ dentro de target/harness-validation/. Comandos integrais, intervalos e códigos constam dos JSONs/console/XML nesses diretórios e das seções anteriores deste quickstart.
+
+As sete variantes anteriormente aceitas — EXPIRED_RECENTLY, MISSING_EXP, MISSING_IAT, SUB_LEADING_ZERO, SUB_PLUS, FUTURE_IAT e FUTURE_NBF — estão comprovadamente impedidas: 14 casos (sete com corpo válido e sete com corpo inválido em /api/orders), todos 401, escaped=false, serviceCalls=0, ordersDelta=0 e itemsDelta=0. A prova histórica completa cobre 46 rejeições/23 variantes. As verificações unitárias de ausência de lookup e o pipeline real são evidências distintas da ausência de chamadas ao OrderService observada por HTTP. Validação JWT concluída não significa aprovação dos envelopes ainda pendentes em T037/T038.
+
+Em OrderSecurityChainTest, a fixture de Clock inicialmente fixa em 2030 fazia o JWT de login real parecer expirado depois da validação estrita. T035 acrescentou a injeção do ControlledClock existente e `clock.setInstant(Instant.now())` após decodificar o login, com import de Instant. Cenários, perfis, rotas e assertivas foram preservados; nenhuma tolerância de produção foi acrescentada. O novo OrderJwtAuthenticationPipelineTest usa decoder de JwtConfig, JwtAuthenticationProvider e converter reais, com chave descartável e somente resolução da conta mockada. Seus 25 testes históricos são 21 rejeições sem lookup, três subjects canônicos positivos e uma reautenticação que reconsulta o Clock e impede lookup adicional em exp. Comprova a ordem criptografia/claims/lookup; não substitui os controles HTTP de login/persistência reais. Nenhum desses dois arquivos foi alterado ou executado novamente em T036.
+
+### Revisão das guardas existentes: correção dispensada
+
+OrderService.register já atende ao planejamento; preservada a implementação, sem alteração artificial de produção ou testes:
+
+- Método público chamado externamente pelo controller e pelo proxy Spring, com `@Transactional(propagation = Propagation.REQUIRED, rollbackFor = Exception.class)`. Reconsulta, leituras, construção e única chamada saveAndFlush pertencem à mesma transação pública; não há self-invocation nem transação separada de guarda no serviço.
+- Principal ausente, accountId null, zero ou negativo são rejeitados por BadCredentialsException antes de qualquer repositório. AccountId positivo é consultado por findByIdWithRoles; conta ausente também gera BadCredentialsException.
+- Perfis são novamente lidos do banco pela consulta com left join fetch de roles. Exige pelo menos CLIENT ou ADMIN (OR); sem ambos, AccessDeniedException. Não confia nas authorities antigas do filtro, em claims name/roles, nem substitui o comprador por identidade alternativa.
+- Consulta/guardas precedem inclusive request.items, leitura de produtos e qualquer gravação. Mensagens fixas de autenticação/acesso permanecem distinguíveis. Falhas internas de resolução continuam OrderAccountResolutionException; não foram capturadas indiscriminadamente como credencial inválida.
+- OrderController recebe AuthenticatedAccountPrincipal via @AuthenticationPrincipal e chama o método público do serviço. Verificados POST /orders e /api/orders com servlet context /api, além das chamadas diretas pelo bean/proxy real.
+
+### Execuções atuais: somente duas classes completas e serialmente
+
+Java 21.0.12.1, Azul (runtime 21.0.12.1+1-LTS), confirmado nas propriedades dos XMLs. Wrapper configurado para Maven 3.9.16. Na raiz, comandos completos, um fork e paralelismo JUnit desabilitado:
+
+```powershell
+.\mvnw.cmd "-Dtest=OrderServiceTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=OrderSecurityIntegrationTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+```
+
+Stdout/stderr capturados por cmd.exe /d /c; LASTEXITCODE registrado imediatamente. A segunda execução começou depois da conclusão e inspeção da primeira; sem seleção de métodos, outras classes, suíte completa ou CI.
+
+| Classe | Intervalo local (-03:00), 2026-10-09 | Testes | Aprovados | Falhas | Erros | Ignorados | Código Maven |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| OrderServiceTest | 15:31:32.9287810 → 15:31:50.4578762 | 42 | 42 | 0 | 0 | 0 | 0 |
+| OrderSecurityIntegrationTest | 15:32:06.5578452 → 15:33:00.9288985 | 85 | 23 | 62 | 0 | 0 | 0 | 1 |
+
+Captura nova: `target/harness-validation/feature-004-t036-2026-10-09-153101/`. [service-result.json](../../target/harness-validation/feature-004-t036-2026-10-09-153101/service-result.json) e [security-result.json](../../target/harness-validation/feature-004-t036-2026-10-09-153101/security-result.json) registram comando/intervalo/código e a única classe efetivamente executada em cada comando. Consoles service-console.txt/security-console.txt, XMLs/TXTs em service-reports/security-reports e cópia dos relatórios anteriores em reports-before. Essas capturas são locais e ignoradas pelo Git; este registro mantém as contagens/causas compartilháveis.
+
+### Guardas, transação, ausência de gravação e positivos
+
+**Unidade: 12 casos de guarda aprovados**, dentro dos 42/42: quatro identidades inválidas sem interação com qualquer repositório; conta ausente e conta sem perfis, sem leitura de produtos ou gravação; seis combinações CLIENT/ADMIN/ambos × conta removida/perfis revogados entre duas chamadas. Nos seis, a primeira chamada positiva realiza a gravação de referência, a segunda reconsulta a conta e é rejeitada: duas consultas de conta, somente uma leitura de produtos e um saveAndFlush total (baselineSaveCalls=1), sem gravação adicional. Mensagens/tipos BadCredentialsException e AccessDeniedException exigidos. O teste de identidade por chamada também confirma compradores diferentes 42/43 sem reutilização do anterior. [unit-guards-proof.json](../../target/harness-validation/feature-004-t036-2026-10-09-153101/unit-guards-proof.json), service-cases.json e XML da unidade.
+
+**Proxy Spring real: 13/13 aprovados**: cinco identidades inválidas (incluindo conta inexistente Long.MAX_VALUE) e oito cenários DELETE_ACCOUNT/REVOKE_PROFILES × perfis originais vazio/CLIENT/ADMIN/ambos. Conta removida gera BadCredentialsException; conta existente sem perfis permitidos gera AccessDeniedException. Cada chamada entra uma vez no serviço com transação ativa. Não há transação externa de teste; mutações de fixture são concluídas antes da chamada. Contagens por conexão JDBC independente permanecem iguais depois da chamada, antes da limpeza. A preparação exige AopUtils.isAopProxy(orderService); advice de observação somente de teste é colocado dentro do interceptor transacional e removido na limpeza. [direct-proxy-proof.json](../../target/harness-validation/feature-004-t036-2026-10-09-153101/direct-proxy-proof.json).
+
+**HTTP tardio: 12 casos com guardas/status/sem gravação comprovados**, mas com contrato de envelope pendente. Depois de autenticação/autorização reais, uma fixture de teste confirma remoção da conta ou revogação dos perfis em transação separada concluída antes do controller. Matriz CLIENT/ADMIN/ambos × duas mutações × /orders ou /api/orders. O serviço é chamado uma vez, dentro da própria transação, reconsulta o mesmo accountId e impede a gravação: seis contas removidas retornam 401, seis revogações retornam 403; escaped=false, ordersDelta=0 e itemsDelta=0 nos 12. Assertivas de mutação concluída, transação do serviço ativa, estado atual de conta/perfis e confidencialidade não falharam. Os 12 XMLs têm somente uma falha agregada de Content-Type null em assertRejected: JSON/envelope ausente, não falha das guardas. [late-http-proof.json](../../target/harness-validation/feature-004-t036-2026-10-09-153101/late-http-proof.json) contém observações e mensagens/stack por caso. O 401/403 observado é separado da aprovação do envelope.
+
+**Positivos preservados**: dez controles HTTP aprovados com login/JWT/decoder/filtros/persistência reais. Nove combinam CLIENT/ADMIN/ambos com claims name/roles normais, falsos/vazios ou alheios; um confirma ADMIN em /api/orders. Assertivas 201, comprador autenticado correto, valores/itens e gravação observada após retorno permanecem intactas. Os 23 aprovados da integração são esses dez positivos mais 13 diretos pelo proxy. Nenhum cenário/assertiva/preparo de Clock/claims foi alterado. [positive-controls-proof.json](../../target/harness-validation/feature-004-t036-2026-10-09-153101/positive-controls-proof.json) e [scope-proof-summary.json](../../target/harness-validation/feature-004-t036-2026-10-09-153101/scope-proof-summary.json).
+
+### Pendências HTTP separadas do escopo comprovado de T036
+
+| Grupo atual | Casos | Resultado observado e causa restante | Tarefa futura |
+| --- | ---: | --- | --- |
+| JWT inválido | 46 | 401, zero chamadas ao serviço e zero novas linhas; Content-Type/envelope ausente, 12 também com challenge detalhado em lugar de Bearer exato | T037 |
+| Conta sem perfis mesmo com claim ADMIN | 2 | 403, zero chamadas ao serviço e zero novas linhas; envelope ausente | T037 |
+| Falha interna de resolução | 2 | OrderAccountResolutionException escapa, sem resposta HTTP e sem gravação; adaptador 500 seguro ausente. Não é 401 nem HTTP 500 aprovado | T037 |
+| Guardas tardias | 12 | 401/403 corretos, serviço/transação reais e zero novas linhas; envelope ausente | T038, coordenada com T037 |
+| **Total de falhas contratuais** | **62** | **Zero erros de execução; contrato HTTP completo ainda não GREEN** | **T037/T038** |
+
+Classificação por teste em [future-task-failures.json](../../target/harness-validation/feature-004-t036-2026-10-09-153101/future-task-failures.json). Em corpo inválido, os 23 casos JWT retornam 401 e o caso sem perfis retorna 403 antes de leitura/400; a falha interna preserva seu tipo e ainda não recebe 500 HTTP. Não houve novos adaptadores, ControllerAdvice, wiring, requisitos de claims ou alterações de JwtConfig/HS256/emissão de login. Não se antecipa T037/T038 para forçar GREEN completo.
+
+T036 comprovada no seu escopo por revisão e execução dos testes existentes, sem correção de código necessária. Autorizada a marcação somente de T036; T001–T036 ficam [X] e T037–T055 abertas (19). Parada antes de T037. Não aplicados U1/U2, stage, commit ou push.
+
+### Preservação, diff e Git final de T036
+
+Alterados nesta etapa somente quickstart.md por acréscimo e tasks.md pela checkbox T036. Manifesto de entrada de 3927 arquivos: 3773 evidências históricas em target/harness-validation e 154 arquivos do inventário Git; comparação SHA-256 permite somente esses dois documentos como diferenças. Todos os fontes/testes, arquivos não rastreados anteriores e evidências de T026–T035 preservados. Prefixo histórico do quickstart mantido byte a byte; tasks difere da entrada exclusivamente de `[ ] T036` para `[X] T036`. [Auditoria de preservação](../../target/harness-validation/feature-004-t036-2026-10-09-153101/final-preservation.json).
+
+Diff incremental contra as cópias de entrada revisado (quickstart-incremental.diff/tasks-incremental.diff); estatística do diff total distingue alterações preexistentes da entrega documental atual. Links de evidências conferidos. `git diff --check` executado com código 0, sem erro de whitespace. Também executado `git -c core.autocrlf=false diff --no-index --check -- /dev/null <arquivo>` para cada um dos quatro não rastreados preexistentes: código 1 por comparação com arquivo novo, zero diagnósticos de whitespace. Revisão em review-checks.json/untracked-whitespace-check.json; causas de falha de envelope conferidas também nos stacks (Content-Type na linha 521; challenge na linha 525 de OrderSecurityIntegrationTest).
+
+Conferidos 55 IDs únicos: T001–T036 [X] (36), T037–T055 abertas (19). Pós-hook dispensado por ausência de .specify/extensions.yml. Raiz/branch/HEAD finais iguais aos de entrada; git status --short mantém os mesmos 12 rastreados modificados e quatro não rastreados, índice vazio. OrderService continua modificado apenas pelo trabalho anterior, sem edição em T036. HEAD final `0344dc0199fd8135f98e852e7d6fedc06b124d9a`, branch `004-registrar-pedido`. Sem outras classes, suíte completa, CI, T037+, U1/U2, stage, commit, push, merge ou troca de branch. Encerramento em T036 com pendências HTTP explicitamente reservadas a T037/T038.
+
+## T037 — adaptadores de erros dos filtros de pedidos — 2026-10-09
+
+Retomada exclusivamente de T037 após a auditoria da interrupção elétrica, com parada antes de T038. Raiz `C:/Users/ronal/dscommerce-speckit`, branch real `004-registrar-pedido` e HEAD `0344dc0199fd8135f98e852e7d6fedc06b124d9a` confirmados inicialmente e no fechamento. Entrada: 12 arquivos rastreados modificados, quatro não rastreados e índice vazio; trabalho anterior de T001–T036 preservado. O diff total contra HEAD inclui esse trabalho anterior e não representa somente T037.
+
+Skill speckit-implement aplicada ao escopo autorizado. `.specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks` concluiu com código 0, FEATURE_DIR absoluto desta feature e os artefatos de planejamento disponíveis. Checklist requirements.md conferido somente em leitura: 16/16 marcados, zero abertos. Constituição, tarefas, plano, pesquisa, modelo, contrato e registros pertinentes do quickstart consultados. Git/ignores verificados: target, classes, JARs, build e artefatos locais já cobertos; nenhuma alteração de ignore necessária. `.specify/extensions.yml` ausente antes e depois, sem hooks before_implement/after_implement.
+
+### Base de testes anterior e preservação
+
+A auditoria e a captura anterior de T036 demonstravam a ausência dos dois adaptadores e o RED contratual de OrderSecurityIntegrationTest: 85 casos concluídos, 23 aprovados, 62 falhas, zero erros/ignorados e exit code 1. Dessas falhas, 50 eram dos filtros (46 JWT, duas permissões, duas resoluções internas); 12 eram guardas tardias. Essa evidência foi consultada como histórica; não houve nova execução RED nem modificação dos testes para provocar falha.
+
+Captura nova em `target/harness-validation/feature-004-t037-2026-10-09-170505/`, ignorada pelo Git: manifesto de entrada de 4025 arquivos (154 do inventário Git e 3871 evidências históricas), cópias anteriores de SecurityConfig/converter/quickstart/tasks e reports-before com os relatórios Surefire preexistentes. Os relatórios antigos substituídos pelo Maven permanecem nessa cópia e nas capturas históricas. Fontes executados copiados para executed-sources antes das execuções.
+
+Uma primeira conferência administrativa de hashes usou Convert.ToHexString, indisponível no .NET deste PowerShell. Seu resultado em preservation-incompatible-net-invalid.json é inválido e não comprova preservação; código de saída isolado não seria aprovação. A repetição com SHA256.ComputeHash e BitConverter.ToString concluiu corretamente: todos os 4025 arquivos comparados, única diferença antes da documentação em SecurityConfig; evidências históricas e testes intactos. Resultado em preservation-before-documentation.json. Essa correção do auxiliar não alterou a aplicação nem exigiu repetir testes.
+
+### Implementação exclusivamente de T037
+
+- Criados OrderAuthenticationEntryPoint.java e OrderAccessDeniedHandler.java, serializando ErrorResponseDTO com exatamente status, error, message e path, application/json e mensagens fixas. 401 / Unauthorized / Authentication required or invalid; 403 / Forbidden / Order registration not permitted; 500 / Internal Server Error / Order registration could not be completed.
+- O 401 inclui exatamente WWW-Authenticate: Bearer. O 403 não emite challenge opcional. Path usa request.getRequestURI(), preservando o URI externo e o context path /api. Adaptadores não usam sendError, ControllerAdvice, mensagem da exceção ou causa como conteúdo, nem registram credencial, corpo, SQL ou stack trace.
+- Instâncias locais ligadas somente à orderSecurityFilterChain em SecurityConfig, tanto no Resource Server quanto na tradução de exceções dessa chain. Matcher permanece somente POST /orders; fallback público, métodos/rotas restantes, H2/SAMEORIGIN, stateless e CSRF preservados.
+- A ligação JWT delega ao converter existente e captura somente OrderAccountResolutionException, encapsulando-a em OAuth2AuthenticationException com código server_error e causa tipada. O entry point reconhece essa causa e produz 500 genérico; não converte falha interna em BadCredentialsException/401. Outros erros mantêm seu fluxo de autenticação.
+- OrderJwtAuthenticationConverter.java permanece igual à entrada: validação criptográfica pelo decoder antes da conversão, validação temporal/sub antes do lookup, perfis derivados do banco e claims name/roles ignorados. Preservados também decoder/chave/login, OrderService, controller, ControllerAdvice e todos os testes/assertions.
+
+Arquivos desta entrega: SecurityConfig.java, os dois adaptadores novos, este acréscimo no quickstart e a checkbox T037 em tasks.md. Demais diffs e os quatro não rastreados anteriores pertencem ao trabalho preexistente.
+
+### Duas execuções atuais, completas e serializadas
+
+Executadas somente as classes autorizadas, sem seleção de métodos, outras classes, suíte completa ou CI. A segunda começou após a conclusão e inspeção do resultado da primeira. Comandos na raiz:
+
+```powershell
+.\mvnw.cmd "-Dtest=OrderSecurityIntegrationTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=OrderSecurityChainTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+```
+
+Wrapper fixa Maven 3.9.16; propriedades dos XMLs confirmam Java 21.0.12.1, Azul. Stdout/stderr capturados por cmd.exe /d /c e LASTEXITCODE registrado imediatamente. XMLs novos, escritos após o início de cada execução, corroboram os totais; consoles registram BUILD SUCCESS e Finished at.
+
+| Classe | Intervalo local (-03:00), 2026-10-09 | Testes | Aprovados | Falhas | Erros | Ignorados | Exit code |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| OrderSecurityIntegrationTest | 17:08:29.2355565 → 17:10:19.8214626 | 85 | 85 | 0 | 0 | 0 | 0 |
+| OrderSecurityChainTest | 17:10:26.8250812 → 17:10:59.4307181 | 20 | 20 | 0 | 0 | 0 | 0 |
+
+Resultados: [security-result.json](../../target/harness-validation/feature-004-t037-2026-10-09-170505/security-result.json) e [chain-result.json](../../target/harness-validation/feature-004-t037-2026-10-09-170505/chain-result.json). Logs security-console.txt/chain-console.txt e cópias XML/TXT em security-reports/chain-reports registram as duas execuções separadamente; run-selected.ps1 preserva o procedimento de captura. Estes 105 casos aprovados são novos e distintos dos resultados históricos de T035/T036.
+
+### Comprovação por grupo e limites de T038
+
+Os 85 testes da integração passam sem alteração dos fontes de teste, fixtures ou assertions:
+
+| Grupo | Casos aprovados | Comprovação |
+| --- | ---: | --- |
+| JWT inválido/ausente e conta inexistente | 46 | 23 variantes × /orders com corpo válido ou /api/orders com corpo inválido; 401, JSON exato e Bearer exato |
+| Conta sem perfis com claim ADMIN falso | 2 | Login válido preservado; 403 e JSON contratual antes da leitura do corpo |
+| Falha interna de lookup | 2 | 500 HTTP real, genérico, sem exceção escapando; inclui /api/orders e corpo inválido |
+| Guardas tardias | 12 | Conta removida → 401, perfis revogados → 403; uma chamada real ao serviço por caso e nenhuma nova linha |
+| Positivos de login/JWT/persistência | 10 | CLIENT/ADMIN/ambos, claims name/roles e confirmação em /api/orders preservados |
+| Chamadas diretas pelo proxy Spring | 13 | Identidade/existência/perfis atuais e ausência de gravação nas rejeições preservados |
+
+As 50 rejeições dos filtros têm zero chamadas ao OrderService, nenhuma nova linha de pedido/item e nenhuma exceção escapando. Metade (25) combina corpo inválido e context path /api, demonstrando precedência da segurança sobre a leitura. Assertivas existentes de igualdade integral do JSON conferem os quatro campos, mensagens e path; as de confidencialidade em resposta, headers e logs conferem token, senha/hash, segredo, corpo, SQL e stack trace. Não houve falha dessas assertivas. [security-proof.json](../../target/harness-validation/feature-004-t037-2026-10-09-170505/security-proof.json), http-observations.json e service-observations.json contêm grupos e observações sanitizadas.
+
+Os 20 casos da chain passam: 15 seleções de rota/método com context path, três perfis autorizados, uma rejeição de token/perfis e uma preservação do fallback público com Bearer malformado irrelevante. Catálogo, detalhe e login são exercitados por esse controle dentro da classe autorizada.
+
+Não restam falhas nas duas classes executadas. Os 12 casos de guardas tardias receberam o envelope pela tradução de exceções da chain, consequência da ligação dos adaptadores; não houve implementação MVC. T038 continua aberta: o ControllerAdvice de pedidos para leitura/validação, negócio, processamento/gravação/flush/conclusão e seus demais cenários não foi implementado ou validado nesta etapa. GREEN destas classes não comprova toda T038, US2, rollback ou a suíte completa.
+
+### Fechamento restrito
+
+T037 comprovada e marcada somente após os resultados. T001–T037 [X] (37), T038–T055 abertas (18); checklists intactos. Diff incremental comparado com as cópias de entrada; diff total e conteúdo dos dois adaptadores revisados. Whitespace conferido por git diff --check e no-index --check de todos os seis não rastreados, sem diagnósticos; código 1 de no-index representa diferença contra arquivo vazio, não erro de whitespace. Prefixo histórico do quickstart preservado byte a byte; tasks difere da entrada somente de [ ] T037 para [X] T037. Auditoria final de hashes permite diferenças somente em SecurityConfig, quickstart e tasks, com os dois adaptadores como únicos novos arquivos do inventário Git. Resultados em final-preservation.json, review-checks.json e git-final.json nesta captura.
+
+Raiz/branch/HEAD finais mantidos; git status --short: 12 rastreados modificados e seis não rastreados (quatro anteriores e os dois adaptadores), índice vazio. Nenhuma alteração de testes, ControllerAdvice, T038+, U1/U2, stage, commit, push, merge ou troca de branch; nenhuma suíte completa ou CI. Encerramento exclusivamente em T037.
+
+
+## T038 — tradução dos erros MVC de pedidos — 2026-10-09
+
+Execução exclusivamente de T038, com parada antes de T039. Skill speckit-implement aplicada ao escopo autorizado. Raiz `C:/Users/ronal/dscommerce-speckit`, branch real `004-registrar-pedido` e HEAD `0344dc0199fd8135f98e852e7d6fedc06b124d9a` confirmados na entrada. Git inicial: 12 rastreados modificados, seis não rastreados, índice vazio; T001–T037 [X], T038–T055 abertas. O diff total contra HEAD inclui as alterações anteriores e não identifica isoladamente o trabalho de T038.
+
+Pré-requisitos do Spec Kit executados com `-Json -RequireTasks -IncludeTasks`: código 0, FEATURE_DIR absoluto desta feature. Checklist requirements.md conferido somente em leitura: 16/16 marcados, zero abertos. T038/dependências, contrato, handlers, implementação e evidências existentes consultados; constituição e artefatos de planejamento preservados. Ignores existentes suficientes; nenhuma alteração de configuração de ignore. Ausência de `.specify/extensions.yml` confirmada antes e depois, sem hooks de implementação.
+
+### Implementação e limites
+
+- Alterado GlobalExceptionHandler exclusivamente para `POST /orders`, comparando o caminho da aplicação sem context path e devolvendo `request.getRequestURI()` no envelope. `/api/orders` conserva o URI externo. DTO ErrorResponseDTO mantém exatamente status, error, message e path.
+- Leitura/desserialização e Bean Validation do DTO: 400 / Bad Request / Invalid order data. Produto ausente: 404 / Not Found / Product not found. Rejeições explícitas de InvalidOrderException: 422 / Unprocessable Entity e mensagem fixa selecionada pelo motivo (Duplicate product in order; Product price is not valid for order; Order value cannot be represented), sem usar a mensagem diagnóstica da exceção.
+- Guardas tardias MVC: 401 / Unauthorized / Authentication required or invalid, com WWW-Authenticate: Bearer; 403 / Forbidden / Order registration not permitted. Os handlers existentes de credenciais/processamento conservam suas mensagens fora de pedidos.
+- Falhas internas de processamento, resolução no serviço, gravação, flush e conclusão da transação: 500 / Internal Server Error / Order registration could not be completed. O fallback captura Exception somente para a operação de pedidos; fora dela, relança a mesma exceção. ConstraintViolationException proveniente do serviço/persistência é falha interna 500; validação do corpo por @Valid chega como MethodArgumentNotValidException e permanece 400. Nenhuma falha interna foi convertida em rejeição de negócio ou sucesso.
+- Sem logging de exceções/corpo/token/SQL no advice. Respostas usam apenas campos e mensagens fixos; testes verificam envelope exato e ausência dos canários diagnósticos na resposta e nos logs capturados da matriz MVC. Sem try/catch no controller, mudanças no serviço, entidades, fronteira transacional ou segurança produtiva. Adaptadores dos filtros de T037 preservados; as 12 guardas tardias já válidas não foram alteradas para fabricar RED.
+- OrderControllerTest recebeu 28 casos MVC de exceções (14 por URI, com serviço mockado e filtros desabilitados) e dois casos adicionais de context path para leitura/Bean Validation. Assertions/fixtures anteriores preservadas. Essa matriz prova tradução MVC, sem substituir a integração de JWT/banco.
+- GlobalExceptionHandlerRegressionTest recebeu três casos: mensagem pública de produto e URI com/sem context path, e propagação de falha pública inesperada sem transformá-la em erro de pedidos. A preparação passou a importar OrderClockConfig existente para satisfazer o Clock requerido pela segurança. Não foi alterada a configuração produtiva nem a fixture compartilhada de segurança.
+- OrderSecurityIntegrationTest e OrderRollbackIntegrationTest ficaram byte a byte intactos. Os testes de rollback existentes já exigiam a resposta 500 exata, ausência de Location/token e leitura JDBC independente após a saída do proxy e antes da limpeza; aproveitados sem enfraquecer assertions.
+
+### Execuções atuais, seriais e restritas
+
+Somente as quatro classes autorizadas foram selecionadas pelo Maven Wrapper, com Java 21.0.12.1 e Maven 3.9.16. Comandos reais, em ordem:
+
+```powershell
+.\mvnw.cmd "-Dtest=OrderControllerTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=OrderControllerTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=OrderSecurityIntegrationTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=OrderRollbackIntegrationTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=GlobalExceptionHandlerRegressionTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=GlobalExceptionHandlerRegressionTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+```
+
+Horários locais UTC−03:00. Contagens extraídas exclusivamente dos XMLs Surefire novos de cada execução; suites externas com zero casos não foram contadas como testes adicionais. Todos os comandos tiveram término Maven e exit code capturado imediatamente.
+
+| Etapa / classe | Início → término | Testes | Falhas | Erros | Ignorados | Exit Maven / término |
+|---|---|---:|---:|---:|---:|---|
+| RED OrderControllerTest, antes do advice | 17:25:33 → 17:26:30 | 137 | 132 | 0 | 0 | 1 / BUILD FAILURE |
+| GREEN OrderControllerTest | 17:29:11 → 17:30:08 | 141 | 0 | 0 | 0 | 0 / BUILD SUCCESS |
+| GREEN OrderSecurityIntegrationTest | 17:30:13 → 17:31:06 | 85 | 0 | 0 | 0 | 0 / BUILD SUCCESS |
+| GREEN OrderRollbackIntegrationTest | 17:31:20 → 17:31:57 | 9 | 0 | 0 | 0 | 0 / BUILD SUCCESS |
+| GlobalExceptionHandlerRegressionTest, preparação bloqueada | 17:32:13 → 17:32:34 | 12 | 0 | 12 | 0 | 1 / BUILD FAILURE |
+| GREEN GlobalExceptionHandlerRegressionTest, após importar Clock existente | 17:33:45 → 17:34:25 | 12 | 0 | 0 | 0 | 0 / BUILD SUCCESS |
+
+RED comportamental: 106 casos anteriores de entrada rejeitada, dois de context path e 24 novos de tradução MVC falharam por envelope/mensagem ausentes, inadequados ou exceção conhecida escapando do MVC. Zero erros de preparação; cinco controles positivos aprovados (dois de leitura e três de registro). Antes do GREEN foram acrescentadas mais quatro combinações para os tipos de exceção já tratados pelo advice de login, garantindo que a operação de pedidos não herdasse mensagens de login. A diferença 137 → 141 é expansão explícita da cobertura, não desaparecimento de casos.
+
+A primeira execução da regressão pública foi bloqueada por NoSuchBeanDefinitionException de java.time.Clock na inicialização do slice. Os 12 erros não provam comportamento ausente nem aprovação; nenhuma assertion chegou a ser comprovada nessa tentativa. Importada somente OrderClockConfig produtiva existente no próprio teste; repetida exclusivamente a mesma classe. Todos os 12 casos então concluídos com sucesso. Entre as duas capturas de fontes, apenas esse import/preparação mudou; fontes produtivos e demais testes permaneceram idênticos, dispensando repetição das outras classes já aprovadas.
+
+Total das quatro execuções finais GREEN: **247 testes, zero falhas, zero erros, zero ignorados**. Não somar RED ou a tentativa bloqueada como testes aprovados, nem reutilizar reports antigos como prova desta revisão.
+
+### Evidências comprovadas
+
+- OrderControllerTest: 138 casos InputBoundary (106 rejeições anteriores, dois limites inteiros positivos, 28 traduções MVC e dois context paths) e três SuccessfulRegistration. Traduções MVC verificam exatamente os quatro campos, mensagens/status, /orders e /api/orders, challenge dos 401, causa original resolvida e ausência de canários diagnósticos. Incluem os três motivos 422, produto 404, autenticação/permissão e sete tipos internos: IllegalStateException, AuthenticationProcessingException, DataIntegrityViolationException, TransactionSystemException, OrderAccountResolutionException, ConstraintViolationException e IllegalArgumentException. Erros internos permanecem 500.
+- OrderSecurityIntegrationTest: 50 rejeições dos filtros preservadas (46 JWT, duas permissões e duas falhas internas de resolução); 12 guardas tardias HTTP; 13 chamadas diretas ao proxy; dez controles positivos com JWT/login/decoder/perfis do banco e persistência reais. Precedência de segurança sobre corpo inválido, identidade e /api/orders continuam comprovados. Nenhuma assertion, token fixture ou chain foi alterada nesta etapa.
+- OrderRollbackIntegrationTest: três falhas reais/injetadas após SQL efetivo, cinco rejeições integrais e um controle positivo de commit, todos aprovados. No erro SQL tardio, dois INSERTs concluídos e o terceiro falhou: HTTP 500, baseline de zero pedidos/itens restaurado. Após saveAndFlush real, três INSERTs concluídos e linhas visíveis na conexão transacional antes da exceção: HTTP 500, baseline restaurado. Na conclusão pelo interceptor, DTO produzido com total 42.50, callback beforeCommit depois do corpo, três INSERTs concluídos/um pedido/dois itens visíveis na mesma conexão, proxy sem retornar sucesso: HTTP 500, baseline restaurado. Leitura independente fora da transação da operação, antes da limpeza, para cada falha; não se usa rollback automático do teste como evidência.
+- GlobalExceptionHandlerRegressionTest: nove casos anteriores de validação pública/detalhes/login e três casos novos aprovados, mantendo mensagens públicas, mensagens genéricas próprias do login e context path; exceção pública inesperada conserva a causa original.
+
+Captura desta etapa: `target/harness-validation/feature-004-t038-2026-10-09-172320/`. [Resultados do controller](../../target/harness-validation/feature-004-t038-2026-10-09-172320/green-OrderControllerTest-result.json), [segurança](../../target/harness-validation/feature-004-t038-2026-10-09-172320/green-OrderSecurityIntegrationTest-result.json), [rollback](../../target/harness-validation/feature-004-t038-2026-10-09-172320/green-OrderRollbackIntegrationTest-result.json) e [regressão final](../../target/harness-validation/feature-004-t038-2026-10-09-172320/green-retry-GlobalExceptionHandlerRegressionTest-result.json). Cada resultado tem comando, timestamps, exit code, classes, contagens e término; consoles e XML/TXT estão nos diretórios correspondentes. [RED atual](../../target/harness-validation/feature-004-t038-2026-10-09-172320/red-OrderControllerTest-result.json) e [preparação bloqueada](../../target/harness-validation/feature-004-t038-2026-10-09-172320/green-GlobalExceptionHandlerRegressionTest-result.json) preservados separadamente. [Observações independentes de rollback](../../target/harness-validation/feature-004-t038-2026-10-09-172320/rollback-observations.txt), [contagens dos casos de segurança](../../target/harness-validation/feature-004-t038-2026-10-09-172320/security-case-counts.json) e [transição dos fontes executados](../../target/harness-validation/feature-004-t038-2026-10-09-172320/validation-source-transition.json).
+
+Limitações: matriz MVC com serviço mockado prova tradução, não atomicidade; atomicidade demonstrada separadamente em H2 pelas três falhas e controle positivo existentes. Não testada falha de transmissão após commit nem crash de processo. O console da falha SQL sintética contém avisos do ORM sobre a constraint; isso não é vazamento no envelope HTTP nem aprovação global de sanitização de todos os logs da aplicação. Nenhum corpo/token/SQL/stack foi adicionado às respostas ou ao logging dos handlers. Não executadas outras classes, suíte completa, CI ou matriz integral das histórias posteriores. T039 e tarefas seguintes continuam abertas; não se declara a feature inteira concluída.
+
+### Preservação e fechamento de T038
+
+Capturados antes de editar 4204 arquivos: 156 do inventário Git e 4048 evidências históricas de target/harness-validation, além das cópias de entrada dos cinco arquivos envolvidos e reports-before. Relatórios Surefire anteriores sobrescritos pelo Maven continuam nessa cópia e nas capturas históricas. Duas cópias dos 83 fontes executados conservam a preparação anterior/final da regressão. Uma comparação auxiliar de transição inicialmente encapsulou o array JSON no PowerShell e abortou sem comprovar os arquivos; corrigida a leitura, confirmou 83 fontes e apenas a preparação da regressão alterada. Esse impedimento administrativo não foi contado como verificação aprovada nem exigiu mudança na aplicação.
+
+Auditoria final SHA-256 contra o manifesto de entrada permite diferenças somente em GlobalExceptionHandler.java, OrderControllerTest.java, GlobalExceptionHandlerRegressionTest.java, quickstart.md e tasks.md. Todos os outros fontes, os seis não rastreados anteriores e as 4048 evidências históricas preservados. Prefixo histórico do quickstart conservado byte a byte; tasks difere exclusivamente na checkbox T038. [Auditoria final](../../target/harness-validation/feature-004-t038-2026-10-09-172320/final-preservation.json).
+
+Diff incremental dos cinco arquivos revisado, sem remoção/enfraquecimento de assertions. `git -c core.safecrlf=false diff --check`: código 0, sem diagnósticos de whitespace. Os seis arquivos não rastreados revisados também com `git -c core.autocrlf=false diff --no-index --check -- /dev/null <arquivo>`: diferenças de arquivo novo não significam whitespace inválido; zero diagnósticos. [Conferências de revisão/Git](../../target/harness-validation/feature-004-t038-2026-10-09-172320/review-checks.json).
+
+Marcada somente T038 com escopo comprovado. T001–T038 [X] (38); T039–T055 abertas (17), 55 IDs únicos. Próximo passo, somente após autorização: ler a condição de T039 e avaliar as evidências já disponíveis, sem criar mudanças artificiais para reproduzir falha. Nesta etapa T039 não foi executada nem marcada.
+
+Raiz/branch/HEAD finais iguais aos de entrada; `git status --short` final: 14 rastreados modificados, os mesmos seis não rastreados, índice vazio. Alterações próprias de T038 limitadas aos cinco arquivos citados; demais alterações são anteriores. HEAD final `0344dc0199fd8135f98e852e7d6fedc06b124d9a`, branch `004-registrar-pedido`. Sem T039+, U1/U2, stage, commit, push, merge, troca de branch, suíte completa ou CI.
+
+
+## T039 — decisão sobre a condição de correção da atomicidade — 2026-10-09
+
+**Correção dispensada por condição: atomicidade já comprovada**.
+
+Executada exclusivamente a avaliação de T039, com parada antes de T040. Raiz `C:/Users/ronal/dscommerce-speckit`, branch real `004-registrar-pedido`, HEAD `0344dc0199fd8135f98e852e7d6fedc06b124d9a` confirmados. Entrada: 14 rastreados modificados, seis não rastreados, índice vazio; T001–T038 [X], T039–T055 abertas. Skill speckit-implement aplicada ao escopo autorizado; pré-requisitos PowerShell `-Json -RequireTasks -IncludeTasks` concluídos com código 0 e FEATURE_DIR correto; checklist requirements.md 16/16 marcados, zero abertos, somente leitura. Ignores existentes suficientes. `.specify/extensions.yml` ausente antes/depois, sem hooks.
+
+### Condição, código e provas existentes
+
+T039 exige correção somente se T029–T031 demonstrarem falha de atomicidade. Os registros históricos desses checkpoints distinguiam rollback já comprovado de RED do envelope HTTP. A execução final de T038 demonstrou também as respostas contratuais; não há lacuna ou contradição que justifique alteração produtiva.
+
+Conferidos em leitura:
+
+- OrderController chama o método público OrderService.register pelo bean Spring; só devolve 201 depois do retorno do proxy, sem try/catch.
+- Register usa `@Transactional(propagation = Propagation.REQUIRED, rollbackFor = Exception.class)`. Revalidação de conta/perfis, leituras de produtos, snapshot dos preços em OrderItem, cálculos, construção do agregado, saveAndFlush e mapping do DTO estão dentro do mesmo método/fronteira. Não há REQUIRES_NEW ou gravação independente de itens nesse fluxo.
+- Order agrega os itens com CascadeType.PERSIST; OrderRepository é JpaRepository real. Os testes exigem AopUtils.isAopProxy e, na sonda de conclusão, exatamente um TransactionInterceptor Spring; o spy de repositório encaminha para o proxy/JPA reais, sem stubbing de save.
+- Falhas SQL, pós-flush e beforeCommit propagam até MVC; o advice de T038 produz 500 / Internal Server Error / Order registration could not be completed, com exatamente status, error, message e path. O resultado preserva a exceção original e exige ausência de 201/Location/token.
+- CHECK temporário, PostFlushProbe/PostFlushTestFailure e CompletionProbe/BeforeCommitTestFailure existem exclusivamente em OrderRollbackIntegrationTest. Nenhuma sonda/ponto de falha produtivo. Os testes não usam @Transactional externo nem rollback automático para comprovar o serviço.
+
+| Prova distinta | Ponto efetivamente observado em T038 | HTTP e leitura independente depois da saída do proxy, antes da limpeza |
+|---|---|---|
+| T029 — SQL tardio | Pedido e primeiro item inseridos: dois INSERTs concluídos. Segundo item falha no CHECK exclusivo, SQLState 23513; terceiro INSERT falho. Observação na conexão transacional com autoCommit=false. | 500 contratual; snapshot completo baseline 0 pedidos/0 itens → 0/0, igualdade integral; constraint ainda instalada nas verificações. |
+| T030 — após saveAndFlush | Implementação JPA real retorna; três INSERTs concluídos e um pedido/dois itens visíveis na conexão vinculada. Sonda lança a mesma PostFlushTestFailure enquanto o corpo de register aguarda a chamada de repositório, antes do DTO/conclusão. Sem callback de T031 armado. | 500 contratual; snapshot completo baseline 0/0 → 0/0, em finally antes do desarme/cleanup. |
+| T031 — beforeCommit após corpo | Corpo real produz DTO total 42.50 com transação ativa. Depois, callback vê a mesma instância e um pedido/dois itens, três INSERTs concluídos, conexão vinculada e autoCommit=false. Ordem SYNC_REGISTERED → DTO_PRODUCED → BEFORE_COMMIT → ROWS_OBSERVED → CALLBACK_EXCEPTION; proxyReturned=false e interceptorCompletion=true. | 500 contratual; mesma BeforeCommitTestFailure propagada; snapshot completo baseline 0/0 → 0/0, em finally antes de remover observadores/cleanup. |
+
+**A falha de T031 ocorre no callback beforeCommit, anterior ao commit físico**, durante a conclusão transacional pelo interceptor, após o corpo produzir o DTO. Não foi simulada/comprovada falha física do commit, de conexão durante commit ou de transmissão após commit.
+
+Leitura posterior usa JdbcTemplate com DriverManagerDataSource independente, e snapshot exige transação inativa. Nos três casos, ocorre depois da saída síncrona do proxy/MockMvc e antes de @AfterEach/limpeza herdada; não se atribui o rollback ao teardown. Controle positivo `shouldCommitCompleteOrderAndItemsVisibleAfterHttp201`: 201, confirmação exata total 42.50, três INSERTs concluídos e leitura independente com **+1 pedido/+2 itens** completos e vínculos/posições/preços corretos, antes da limpeza. Assim, sucesso realmente grava e falha realmente desfaz inserções anteriores.
+
+### Execução histórica utilizada, sem repetição
+
+Execução final de OrderRollbackIntegrationTest em T038, **2026-10-09 17:31:20.054 → 17:31:57.975 UTC−03:00**:
+
+```powershell
+.\mvnw.cmd "-Dtest=OrderRollbackIntegrationTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+```
+
+**9 testes, zero falhas, zero erros, zero ignorados; exit Maven 0 e BUILD SUCCESS**. XML/TXT e console conferem os três métodos de falha, o controle positivo e cinco rejeições integrais. As nove aprovações são de T038, não execução nova de T039. Nenhum teste foi repetido nesta etapa.
+
+Evidências consultadas: checkpoints T029/T030/T031 e fechamento T038 acima; [resultado completo de T038](../../target/harness-validation/feature-004-t038-2026-10-09-172320/green-OrderRollbackIntegrationTest-result.json), [XML com os nove casos](../../target/harness-validation/feature-004-t038-2026-10-09-172320/green-OrderRollbackIntegrationTest-reports/TEST-com.devsuperior.dscommerce.controllers.OrderRollbackIntegrationTest.xml), [console com controle positivo e término](../../target/harness-validation/feature-004-t038-2026-10-09-172320/green-OrderRollbackIntegrationTest-console.txt) e [observações das falhas/leituras independentes](../../target/harness-validation/feature-004-t038-2026-10-09-172320/rollback-observations.txt). Hashes atuais dos 83 fontes coincidem com a captura final de fontes de T038; produção e teste de rollback correspondem à revisão efetivamente executada. Não usar relatórios antigos/parciais ou o RED histórico do envelope como aprovação completa ou falha de atomicidade.
+
+### Alterações documentais e estado final
+
+Alterados somente quickstart.md por acréscimo e a checkbox T039 de tasks.md. Conferência SHA-256 de entrada/saída dos **4555 arquivos fora desses dois documentos**: 154 arquivos do inventário Git, 4335 evidências históricas em target/harness-validation e 66 reports Surefire; conteúdo e inventário preservados. SHA-256 agregado ordenado (caminho + hash do arquivo): `3A1CABD6D802E915D855384A155D52690572A8A61E208F5FCDC55FDAD2AF674B`. Prefixo histórico de quickstart de 436204 bytes conservado; tasks difere exclusivamente de [ ] T039 para [X] T039. Nenhum arquivo de produção/teste ou evidência anterior modificado; nenhum arquivo novo criado.
+
+Diff incremental documental revisado. `git -c core.safecrlf=false diff --check` concluído com código 0 e sem diagnósticos de whitespace. Os seis não rastreados anteriores também conferidos com no-index --check, sem diagnósticos; nenhuma alteração neles. Links das quatro evidências conferidos.
+
+T001–T039 [X] (39), **T040–T055 abertas (16)**; somente T039 marcada nesta etapa. Raiz/branch/HEAD mantidos. Git final: mesmos 14 rastreados modificados e seis não rastreados, índice vazio; o diff contra HEAD ainda inclui trabalho anterior. Sem T040+, U1/U2, testes, suíte completa, CI, stage, commit, push, merge ou troca de branch. Próxima tarefa é T040, não executada.
+
+
+## T040 — execução serial de US2 e conferência da cobertura — 2026-10-09
+
+**Seis classes GREEN; T040 permanece aberta por lacuna de cobertura no complemento de precedência.** Nenhuma alteração de produção ou testes foi feita para ampliar o escopo ou fabricar aprovação. Parada antes de T041.
+
+Raiz `C:/Users/ronal/dscommerce-speckit`, branch real `004-registrar-pedido` e HEAD `0344dc0199fd8135f98e852e7d6fedc06b124d9a` confirmados inicialmente e no fechamento. Entrada: 14 rastreados modificados, seis não rastreados, índice vazio; T001–T039 [X], T040–T055 abertas. O diff contra HEAD inclui trabalho anterior e não representa somente esta etapa.
+
+Skill speckit-implement aplicada exclusivamente a T040. Pré-requisitos PowerShell `-Json -RequireTasks -IncludeTasks` concluídos com código 0 e FEATURE_DIR absoluto correto; requirements.md 16/16 marcados, zero abertos, somente leitura. T040/dependência T039, US2.1–13, complementos do quickstart, contrato, fontes e decisões pertinentes de plano/pesquisa/modelo/constituição conferidos. Ignores existentes suficientes; `.specify/extensions.yml` ausente antes/depois, sem hooks de implementação.
+
+### Comandos, horários e resultados atuais
+
+Somente as seis classes autorizadas, uma execução por classe, serialmente e na ordem abaixo. Nenhuma repetição, alvo extra, suíte completa ou CI. Maven Wrapper configurado para 3.9.16; XMLs atuais registram Java 21.0.12.1. Preservadas as configurações existentes: perfil test, H2 `order-test-<UUID>` isolado, open-in-view=false nos contextos integrados, Clock/fixtures existentes. Consoles comprovam cinco URLs H2 distintas (controller integrado, segurança, rollback e dois repositórios); unidade não usa banco e slice MVC não usa JPA. [Prova de isolamento](../../target/harness-validation/feature-004-t040-2026-10-09-175211/isolation-proof.json).
+
+```powershell
+.\mvnw.cmd "-Dtest=OrderControllerTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=OrderSecurityIntegrationTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=OrderServiceTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=OrderRollbackIntegrationTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=OrderRepositoryTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=UserAccountRoleRepositoryTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+```
+
+2026-10-09, horários UTC−03:00. Exit codes Maven capturados imediatamente; todos os comandos têm término BUILD SUCCESS e relatórios novos. A soma usa exclusivamente os XMLs da classe selecionada e seus nested tests produzidos naquela execução. Relatórios antigos não foram somados; a suite externa de OrderControllerTest com zero casos não acrescenta testes.
+
+| Classe | Início → término | Testes | Falhas | Erros | Ignorados | Exit Maven |
+|---|---|---:|---:|---:|---:|---:|
+| OrderControllerTest | 17:52:41.906 → 17:53:20.795 | 141 | 0 | 0 | 0 | 0 |
+| OrderSecurityIntegrationTest | 17:53:39.007 → 17:54:30.807 | 85 | 0 | 0 | 0 | 0 |
+| OrderServiceTest | 17:55:18.625 → 17:55:35.984 | 42 | 0 | 0 | 0 | 0 |
+| OrderRollbackIntegrationTest | 17:55:56.824 → 17:56:33.431 | 9 | 0 | 0 | 0 | 0 |
+| OrderRepositoryTest | 17:56:51.714 → 17:57:24.329 | 23 | 0 | 0 | 0 | 0 |
+| UserAccountRoleRepositoryTest | 17:57:34.034 → 17:58:06.220 | 11 | 0 | 0 | 0 | 0 |
+| **Total atual** | **seis execuções sem sobreposição** | **311** | **0** | **0** | **0** | **todos 0** |
+
+[Resumo das seis execuções](../../target/harness-validation/feature-004-t040-2026-10-09-175211/results-summary.json). Na captura `target/harness-validation/feature-004-t040-2026-10-09-175211/`, cada `<Classe>-result.json` contém comando, início/término, exit code, classes, contagens e término Maven; `<Classe>-console.txt` e `<Classe>-reports/` conservam console e XML/TXT daquela execução. [Contagens por método/caso](../../target/harness-validation/feature-004-t040-2026-10-09-175211/case-counts.json). Não há falha de compilação, contexto, preparação ou comportamento nessas seis execuções; isso não elimina a lacuna de cobertura abaixo.
+
+### Cobertura da matriz US2.1–13 por camada
+
+| Cenário | Evidência atual e limite |
+|---|---|
+| US2.1 — estruturas ausentes/nulas/vazias/inválidas | InputBoundary envia JSON bruto e exige 400 exato e zero interações com serviço. Slice MVC, filtros desabilitados/serviço mockado; não prova JWT/banco. |
+| US2.2 — quantidades e tipos/limites inteiros | Slice verifica null/zero/negativo/overflow e tokens decimal/expoente/string/bool/array/objeto, sem coerção; dois controles positivos leem Long.MAX_VALUE/Integer.MAX_VALUE exatamente. O 201 desses dois controles é do mock, não compra real desses IDs. |
+| US2.3 — produto inexistente entre válidos | Unidade rejeita sem save; rollback integrado retorna 404 exato, zero INSERTs e snapshot independente igual ao baseline. |
+| US2.4 — autenticação/token inválido | 46 rejeições HTTP com decoder/filtros reais, JWTs assinados/adulterados ou malformados, sem escrita/chamada ao serviço. Combinações com corpo ilegível estão comprovadas; itens inválidos em JSON bem formado não estão. |
+| US2.5 — subject/conta | Subject ausente/inválido/numérico/não canônico/fora Long e conta ausente; guardas tardias e chamadas diretas ao proxy verificam identidade atual. Falha interna de resolução distingue 500 de 401. |
+| US2.6 — permissões | Perfis reais do banco, CLIENT/ADMIN/ambos, conta sem perfis mesmo com claim ADMIN; 403 e revogação tardia preservados. Guardas tardias usam serviço/proxy/transação reais. |
+| US2.7 — dados determinados pelo sistema | 40 casos de extras/titular/preços/total/id/instante/estado no root/linhas, inclusive nulos; 13 casos de chaves repetidas. 400 antes do serviço; prova slice. |
+| US2.8 — produto repetido | Unidade exige rejeição sem consolidação/save; integração retorna 422 exato e baseline independente intacto, nenhum INSERT. |
+| US2.9 — falhas internas/atomicidade | Três falhas distintas após SQL real, todas com 500 contratual e rollback integral; controle positivo de commit separado, descrito abaixo. |
+| US2.10 — precisão/capacidade | Unidade: normalização exata, cinco combinações de mínimo/teto/quantity máxima, soma no teto, seis rejeições de fração/preço/subtotal e overflow de soma. Controller integrado: capacidade decimal como texto e duas casas; JDBC: decimal19,2 e limites de quantity/preço. Tradução MVC de motivo 422 também coberta com mock. Não atribuir a unidade/JDBC raw uma execução HTTP real de todas as combinações. |
+| US2.11 — preço zero | Unidade e integração 422 entre positivos; zero gravações e leitura independente sem linhas novas. |
+| US2.12 — preço negativo | Unidade e integração 422; fixture JDBC negativa isolada, sem alterar Product/@PositiveOrZero/schema; baseline intacto. Preço null/indisponível usa unidade, não foi persistido contra NOT NULL de Product. |
+| US2.13 — quantity zero entre válidos | Slice 400 antes do serviço; integração HTTP com JWT real retorna 400, sem INSERTs e com baseline independente preservado. |
+
+OrderControllerTest: 138 InputBoundary (106 entradas rejeitadas, dois controles de leitura, 28 traduções MVC de exceções e dois context paths) + três SuccessfulRegistration com Spring/HTTP/JWT reais. Segurança: 50 rejeições dos filtros, 12 guardas tardias HTTP, 13 chamadas diretas ao proxy e dez controles positivos. Unidade: 42 casos de leitura, regra, aritmética, snapshot e guardas com construção direta/mocks, sem comprovar transação, commit ou rollback de operação.
+
+### Precedência, constraints, IDs e rollback
+
+Segurança → leitura: filtros reais aprovam precedência de 401/403/500 sobre **JSON ilegível**, com zero chamadas ao serviço de pedidos/novas linhas. Leitura → negócio: os casos de leitura/Bean Validation no slice impedem qualquer chamada ao serviço, portanto não consultam produtos nem gravam. Negócio → persistência: rejeições unitárias exigem zero save e as cinco rejeições integradas mostram zero INSERTs/baseline preservado. Guardas tardias são adicionais dentro da transação; continuam válidas após a autenticação inicial.
+
+Contrato não promete prioridade entre múltiplos erros de negócio 404/422; os casos isolam a causa que pretendem provar e não acrescentam uma assertion ou promessa de ordem entre causas simultâneas. A ordem observada no algoritmo não é uma nova garantia pública.
+
+OrderRepositoryTest: dois casos de metadata, round-trip JPA/JDBC do agregado, IDs positivos/distintos, oito NOT NULL, três FKs, duas unicidades por pedido (produto e position), cinco CHECKs nomeados e um controle de limites JDBC. Rejeições SQL chegam como SQLException/SQLState verificado, não validação Bean anterior ao driver. Decimal19,2, centavo mínimo, teto 99999999999999999.99, quantity Integer.MAX_VALUE e position zero conferidos. Inserts raw provam constraints/capacidade das colunas, não aceitação de um agregado completo pelas regras do serviço. IDs de pedidos/itens são distintos e positivos, sem exigir IDs consecutivos ou reutilização após rollback.
+
+O round-trip JPA do repositório usa TransactionTemplate com rollbackOnly para testar mapping/flush/reload; **não é prova de atomicidade da operação**. UserAccountRoleRepositoryTest: 11 casos de metadata/FK/NOT NULL/unicidade, conta ausente/sem perfis e quatro conjuntos de perfis, com lookup já carregado e leitura detached; SQL direto verifica as constraints. Contextos/repositórios não substituem o proxy de registro nas provas de rollback.
+
+Rollback atual, sem @Transactional externo de teste, com fixtures confirmadas e JDBC independente após saída do proxy, antes de limpeza:
+
+| Falha | Observação anterior à falha | Resposta e leitura posterior |
+|---|---|---|
+| SQL tardio T029 | Pedido + primeiro item: dois INSERTs concluídos; segundo item falha no CHECK, terceiro INSERT falho. | 500 exato, baseline 0/0 → 0/0; constraint ainda instalada nas verificações. |
+| Pós-flush T030, corpo ainda não concluído | saveAndFlush real retorna; três INSERTs, um pedido/dois itens visíveis na conexão vinculada, autoCommit=false; PostFlushTestFailure lançada pela sonda. | 500 exato, mesma exceção e baseline 0/0 → 0/0 em finally antes do desarme/cleanup. |
+| beforeCommit T031, depois do corpo | DTO 42.50 produzido; callback/interceptor alcançados depois dele, três INSERTs, um pedido/dois itens visíveis, mesma conexão/transação; proxyReturned=false. | 500 exato, mesma BeforeCommitTestFailure e baseline 0/0 → 0/0 em finally antes da remoção/cleanup. |
+
+Controle positivo: 201, três INSERTs concluídos, +1 pedido/+2 itens completos visíveis em conexão independente após retorno, antes da limpeza. Flush não é commit; beforeCommit é falha no callback anterior ao commit físico, não falha física do commit/conexão. [Observações atuais](../../target/harness-validation/feature-004-t040-2026-10-09-175211/rollback-observations.txt).
+
+### Lacuna impeditiva e demais limites
+
+O complemento do quickstart pede repetir a precedência com **JSON ilegível e itens inválidos**. Em OrderSecurityIntegrationTest, `INVALID_BODY` na linha 95 é somente `{"T027_BODY_CANARY":`, JSON ilegível. As linhas 210/238/264 selecionam esse texto ou `validBody`; este contém itens válidos/quantity 2 (linha 565). Assim, as 46 rejeições JWT, duas de perfis e duas de resolução interna não exercitam **JSON bem formado com itens inválidos**. Os demais testes selecionados não suprem essa combinação: InputBoundary desabilita filtros e mocka serviço; o 400 integrado de quantity zero usa conta autorizada, sem falha de segurança concorrente.
+
+Essa lacuna não demonstra defeito produtivo ou falha dos 311 testes. Impede declarar comprovada a matriz completa de T040. **T040 fica [ ]**, preservando todas as checkboxes anteriores. Para fechar, será necessária autorização específica para complementar os casos integrados com itens inválidos em JSON bem formado e autenticação ausente/inválida, ausência de perfis e falha interna de resolução; exigir 401/403/500 contratuais antes de 400, challenge do 401, zero serviço/escrita, incluindo context path. Nenhum desses casos foi acrescentado/executado nesta etapa.
+
+Complementos de snapshot e novo agregado em envios iguais têm prova unitária atual; IDs distintos têm prova JDBC atual. As provas HTTP/banco de alteração de preço após compra e reenvio com confirmação recebida/descartada estão em OrderRegistrationIntegrationTest e evidências históricas de US1: essa classe não foi executada agora, e resultados históricos não aprovam automaticamente a revisão atual. Não declarada nova cobertura integrada desses complementos. Regressões públicas/login/handlers fora da seleção, transporte perdido após commit, falha física de commit, suíte completa e CI não foram executados. Consoles podem conter avisos JVM/ORM da preparação/constraint sintética; o envelope HTTP permanece seguro. [Revisão de cobertura e limites](../../target/harness-validation/feature-004-t040-2026-10-09-175211/coverage-review.json).
+
+### Preservação, diff e Git final
+
+Captura de entrada de 4491 arquivos: 156 do inventário Git e 4335 evidências históricas. Quickstart/tasks copiados antes de editar, 66 reports Surefire anteriores arquivados em reports-before antes de substituição pelo Maven, 83 fontes executados copiados/hashados antes das seis execuções. Relatórios atuais separados por classe. Nenhuma evidência histórica foi reescrita ou tratada como execução atual.
+
+Auditoria SHA-256 final contra entrada permite diferença **somente em quickstart.md**, por acréscimo. Todos os 83 fontes, demais arquivos do inventário e 4335 evidências históricas preservados; inventário Git igual. Prefixo histórico de quickstart de 444130 bytes intacto; tasks.md byte a byte igual à entrada. [Auditoria final](../../target/harness-validation/feature-004-t040-2026-10-09-175211/final-preservation.json).
+
+Diff incremental documental revisado; `git -c core.safecrlf=false diff --check`: código 0, sem diagnósticos de whitespace. Os seis não rastreados anteriores também conferidos com no-index --check, sem diagnósticos; nenhum modificado. Links de evidências conferidos. [Conferências finais](../../target/harness-validation/feature-004-t040-2026-10-09-175211/review-checks.json).
+
+**T001–T039 [X] (39); T040–T055 abertas (16). Nenhuma checkbox alterada.** Raiz/branch/HEAD mantidos, Git final com os mesmos 14 rastreados modificados e seis não rastreados, índice vazio. Alterado nesta etapa somente quickstart.md, além da nova captura ignorada de evidências. Sem produção/testes, T041+, U1/U2, outras classes, suíte completa, CI, stage, commit, push, merge ou troca de branch. Encerramento da execução autorizada com T040 ainda pendente por cobertura.
+
+
+## T040 — fechamento exclusivo da lacuna de precedência — 2026-10-09
+
+**Lacuna fechada, execução GREEN e T040 [X]. Parada antes de T041.** Este complemento atualiza a decisão histórica imediatamente acima, sem apagar a execução anterior de 311 testes ou seus limites. Não houve alteração de produção.
+
+Entrada confirmada: raiz `C:/Users/ronal/dscommerce-speckit`, branch real `004-registrar-pedido`, HEAD `0344dc0199fd8135f98e852e7d6fedc06b124d9a`; 14 rastreados modificados, seis não rastreados, índice vazio. T001–T039 [X], T040–T055 abertas na entrada. Skill speckit-implement aplicada somente à lacuna autorizada; pré-requisitos concluídos com código 0, feature correta e checklist requirements.md 16/16, somente leitura. T040, contrato e matriz anterior conferidos. Não executadas tarefas posteriores.
+
+### Ampliação integrada e preservação dos casos anteriores
+
+Alterada somente `src/test/java/com/devsuperior/dscommerce/controllers/OrderSecurityIntegrationTest.java` entre os fontes. Preservados contexto Spring completo, filtros habilitados, perfil test, banco isolado, login/encoder/decoder reais, assinatura/adulteração de JWT e sondas anteriores. Não usada autenticação simulada. Os dois corpos novos são enviados como JSON bruto bem formado: `{"items":[]}` e `{"items":[{"productId":<ID existente da fixture>,"quantity":0}]}`. O helper verifica a forma do JSON e, para quantity zero, confirma por JDBC independente que o produto existe.
+
+A matriz original tinha 23 cenários de token × duas combinações corpo/path, mais duas rejeições de perfis e duas de resolução: 50 casos de filtros. Essas combinações permanecem: corpo válido em `/orders` e corpo ilegível em `/api/orders`. Acrescentados dois corpos inválidos × dois paths × (23 cenários de token + conta sem perfil + falha interna de resolução), **100 novos casos**. Cada corpo/contexto cobre ausência de token e todas as variantes já existentes: formato/assinatura/chave/algoritmo, claims temporais/ausentes/inconsistentes, subject inválido/numérico e conta inexistente. Conta sem perfil mantém claim ADMIN forjado e perfis reais do banco; falha de lookup mantém a instrumentação exclusiva de teste no repositório real e exige uma chamada ao lookup.
+
+| Casos novos | `/orders` | `/api/orders` | Total | Resultado esperado e observado |
+|---|---:|---:|---:|---|
+| items vazio + ausência/variantes inválidas de token | 23 | 23 | 46 | 401 |
+| quantity zero + ausência/variantes inválidas de token | 23 | 23 | 46 | 401 |
+| items vazio + conta sem perfil / falha interna | 2 | 2 | 4 | dois 403, dois 500 |
+| quantity zero + conta sem perfil / falha interna | 2 | 2 | 4 | dois 403, dois 500 |
+| **Total acrescentado** | **50** | **50** | **100** | **92 × 401, 4 × 403, 4 × 500** |
+
+Todos usam as assertions anteriores de HTTP: JSON exato com somente status/error/message/path, `401 / Unauthorized / Authentication required or invalid`, `403 / Forbidden / Order registration not permitted` ou `500 / Internal Server Error / Order registration could not be completed`; `WWW-Authenticate: Bearer` no 401 e path externo exato, incluindo `/api`. Comparação integral dos counts de pedidos/itens pela conexão independente depois da resposta síncrona, antes da limpeza, com transação de teste inativa. Acrescentada assertion explícita de **zero chamadas a OrderService** nos três grupos de rejeição pelos filtros, inclusive nas combinações antigas. As assertions de confidencialidade do corpo/headers/logs continuam presentes. Falha interna permanece 500, não 401/400/erro de negócio.
+
+Os 35 outros casos permanecem: dez positivos, 12 guardas tardias HTTP e 13 guardas diretas pelo proxy. Guardas tardias conservam a passagem válida pela chain e a chamada real ao serviço; não lhes foi imposta a assertion de zero chamadas dos filtros. Helpers/assertions anteriores, positivos, guardas e fixtures de JWT conferidos sem alteração textual. [Preservação das assertions](../../target/harness-validation/feature-004-t040-gap-2026-10-09-181144/assertion-preservation.json), [diff incremental do teste](../../target/harness-validation/feature-004-t040-gap-2026-10-09-181144/test-incremental.diff) e [matriz observada, casos e contagens](../../target/harness-validation/feature-004-t040-gap-2026-10-09-181144/coverage-completion.json).
+
+### Única execução nesta etapa
+
+```powershell
+.\mvnw.cmd "-Dtest=OrderSecurityIntegrationTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+```
+
+**2026-10-09 18:14:57.643 → 18:16:31.530 UTC−03:00**. Maven Wrapper 3.9.16, mesmas configurações de isolamento; execução serial, um fork. **185 testes, zero falhas, zero erros, zero ignorados; exit Maven 0, BUILD SUCCESS**, um XML novo da classe selecionada. Não houve repetição das outras cinco classes. Comando, horários, exit code capturado imediatamente e término: [resultado atual](../../target/harness-validation/feature-004-t040-gap-2026-10-09-181144/OrderSecurityIntegrationTest-result.json); [XML atual](../../target/harness-validation/feature-004-t040-gap-2026-10-09-181144/OrderSecurityIntegrationTest-reports/TEST-com.devsuperior.dscommerce.controllers.OrderSecurityIntegrationTest.xml); [console completo](../../target/harness-validation/feature-004-t040-gap-2026-10-09-181144/OrderSecurityIntegrationTest-console.txt). Os reports anteriores foram arquivados em reports-before antes da execução; não foram usados como resultado novo.
+
+### Consolidação de T040 sem contagem repetida
+
+Usada a última execução relevante de cada classe. Os 83 fontes foram capturados antes da execução; comparação com a captura dos 311 testes identifica diferença somente em OrderSecurityIntegrationTest. Produção, suporte/fixtures e outras cinco classes permanecem idênticos, justificando utilizar suas aprovações anteriores sem repetição. [Comparação de fontes](../../target/harness-validation/feature-004-t040-gap-2026-10-09-181144/source-comparison.json).
+
+| Classe | Execução selecionada, 2026-10-09 UTC−03:00 | Testes | Falhas / erros / ignorados | Exit Maven |
+|---|---|---:|---|---:|
+| OrderControllerTest | histórica T040, 17:52:41.906 → 17:53:20.795 | 141 | 0 / 0 / 0 | 0 |
+| OrderSecurityIntegrationTest | atual, 18:14:57.643 → 18:16:31.530 | 185 | 0 / 0 / 0 | 0 |
+| OrderServiceTest | histórica T040, 17:55:18.625 → 17:55:35.984 | 42 | 0 / 0 / 0 | 0 |
+| OrderRollbackIntegrationTest | histórica T040, 17:55:56.824 → 17:56:33.431 | 9 | 0 / 0 / 0 | 0 |
+| OrderRepositoryTest | histórica T040, 17:56:51.714 → 17:57:24.329 | 23 | 0 / 0 / 0 | 0 |
+| UserAccountRoleRepositoryTest | histórica T040, 17:57:34.034 → 17:58:06.220 | 11 | 0 / 0 / 0 | 0 |
+| **Total consolidado** | **uma execução relevante por classe** | **411** | **0 / 0 / 0** | **todos 0** |
+
+**311 − 85 + 185 = 411 casos consolidados**, com 100 novos; não somar novamente os 85 casos de segurança nem apresentar as cinco execuções históricas como executadas agora. [Consolidação com comandos, horários e resultados selecionados](../../target/harness-validation/feature-004-t040-gap-2026-10-09-181144/consolidated-results.json).
+
+A matriz US2.1–13 e os complementos previstos em T040 mantêm as evidências por camada descritas na seção anterior; o complemento de segurança com itens inválidos está agora comprovado pela integração HTTP/MockMvc com JWT real, filtros e banco. O slice MVC continua distinto da unidade e da integração/persistência. A precedência segurança → leitura → negócio → persistência está coberta; não se promete prioridade entre múltiplos erros de negócio. Mantidas provas de limites monetários, constraints JDBC e IDs únicos sem exigir sequência contínua. Atomicidade continua comprovada pelas três falhas distintas e controle positivo de commit em OrderRollbackIntegrationTest, com leitura independente após saída do proxy e antes da limpeza, sem rollback automático de teste. beforeCommit comprova falha na conclusão pelo interceptor anterior ao commit físico; não comprova falha física do commit.
+
+Mantidos os limites históricos: snapshot/reenvio são unitários nesta seleção; provas HTTP/banco de preço alterado/reenvio estão fora dessas seis classes e não foram novamente executadas. Regressões de login/catálogo/detalhes, retomada de positivos US1 e revisão adicional pertencem a T041 ou tarefas posteriores; não há nova aprovação delas, de transporte perdido após commit, suíte completa ou CI. Nenhuma falha comportamental observada; nenhuma correção produtiva necessária para fechar esta lacuna.
+
+### Preservação, revisão e encerramento
+
+Entrada capturada em 4685 arquivos: 156 do inventário Git e 4529 evidências históricas. Arquivados os 66 reports Surefire de entrada; copiados/hashados os 83 fontes executados. Preservadas todas as evidências anteriores, incluindo os 311 testes GREEN. Somente três arquivos do inventário podem diferir: teste de segurança, quickstart por acréscimo e tasks somente [ ] → [X] T040. Prefixo histórico de quickstart de 459487 bytes intacto. [Auditoria final de preservação](../../target/harness-validation/feature-004-t040-gap-2026-10-09-181144/final-preservation.json).
+
+Diff incremental dos três arquivos revisado; `git -c core.safecrlf=false diff --check` e whitespace dos seis não rastreados anteriores conferidos, sem diagnósticos. Conteúdo desses seis arquivos preservado; links das novas evidências conferidos. [Conferências finais](../../target/harness-validation/feature-004-t040-gap-2026-10-09-181144/review-checks.json).
+
+**T001–T040 [X] (40); T041–T055 abertas (15). Somente T040 marcada nesta etapa.** Raiz/branch/HEAD mantidos; Git final com os mesmos 14 rastreados modificados e seis não rastreados, índice vazio. Alterados nesta etapa somente OrderSecurityIntegrationTest.java, quickstart.md e tasks.md, além da captura ignorada de evidências. Sem T041+, U1/U2, outras classes, suíte completa, CI, stage, commit, push, merge ou troca de branch.
+
+
+## T041 — revisão e checkpoint US2 com repetição de US1/regressões — 2026-10-09
+
+**T041 permanece [ ]: a regressão LoginControllerTest não inicializou o contexto.** A rastreabilidade de US2 foi conferida, os positivos US1 passaram e seis das sete execuções foram GREEN; isso não comprova o checkpoint completo. Nenhuma produção, teste, fixture ou assertion foi alterada. Parada antes de T042.
+
+### Base, escopo e gate histórico de T040
+
+Confirmados raiz `C:/Users/ronal/dscommerce-speckit`, branch real `004-registrar-pedido`, HEAD `0344dc0199fd8135f98e852e7d6fedc06b124d9a` e status: 14 rastreados modificados, seis não rastreados, índice vazio. Entrada T001–T040 [X], T041–T055 abertas. Skill speckit-implement aplicada exclusivamente a T041; check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks concluído com código 0/FEATURE_DIR correto; checklist requirements.md 16/16, zero abertos, somente leitura. Ignores existentes suficientes; extensão de hooks ausente antes/depois. Conferidos T041/dependência T040, spec, contrato README/OpenAPI, plano, pesquisa, modelo, constituição e complementos do quickstart.
+
+Usados os **411 testes consolidados de T040**, uma última execução relevante por classe: OrderControllerTest 141, OrderSecurityIntegrationTest 185, OrderServiceTest 42, OrderRollbackIntegrationTest 9, OrderRepositoryTest 23 e UserAccountRoleRepositoryTest 11. Resultados, exit codes, XMLs e contagens conferem. Incluído o complemento de segurança de 100 combinações: JSON bem formado com items vazio/quantity zero, 92 respostas 401, quatro 403 e quatro 500, dois paths, envelope/challenge exatos e zero serviço/escrita. Não somados novamente os 85 casos antigos de segurança. [Gate das seis classes e reports selecionados](../../target/harness-validation/feature-004-t041-2026-10-09-182300/t040-gate.json).
+
+Todos os 83 fontes continuam idênticos por SHA-256 à captura da execução final de T040. Nenhuma mudança ou preocupação observada nos alvos de T040 justificou repetir suas seis classes. As aprovações são **históricas consultadas nesta etapa**, não testes executados novamente. [Comparação de fontes](../../target/harness-validation/feature-004-t041-2026-10-09-182300/t040-source-comparison.json).
+
+### Classes e configurações reais conferidas
+
+- OrderRegistrationIntegrationTest e OrderSecurityChainTest: SpringBootTest, perfil test, MockMvc com filtros ativos, open-in-view=false, import explícito de OrderTestConfig, H2 order-test-UUID por contexto e Clock controlável já existente. Login/encoder/decoder/filtros/banco reais; sem autenticação simulada. Registration usa DriverManagerDataSource independente e exige transação inativa antes/depois da operação; limpeza explícita depois das assertions. Chain observa a autenticação real e seleção das chains, não injeta um usuário autenticado.
+- OrderJwtAuthenticationConverterTest: unidade, resolução mockada e objeto Jwt de fixture; prova conversão/claims/guardas, não verificação criptográfica ou HTTP. OrderJwtAuthenticationPipelineTest: decoder produtivo de JwtConfig, JwtAuthenticationProvider e converter reais, tokens realmente assinados/adulterados e chave descartável; somente resolução de conta mockada. Prova assinatura/claims antes do lookup, não banco/HTTP/atomicidade.
+- LoginControllerTest: WebMvcTest de LoginController, property test.order-security.public-mvc-slice=true, SecurityConfig e OrderSecuritySliceTestConfig importados, AuthenticationService mockado; decoder/resolução do suporte público também mocks. Não é prova de JWT real. O slice não importa OrderClockConfig, origem da falha registrada abaixo.
+- JwtConfigurationTest: WebApplicationContextRunner com DscommerceApplication, propriedades próprias de chave/TTL e encoder/decoder reais; cinco configurações recusadas e um controle HS256 válido. Não usa o perfil test ou as fixtures de OrderTestConfig. GlobalExceptionHandlerRegressionTest: slice MVC de login/produto/sonda de validação, serviços mockados, suporte público e OrderClockConfig explicitamente importados; prova contratos antigos/advice/path/confidencialidade, não banco/JWT.
+
+Nomes/packages e configurações conferidos antes de executar. [Configurações dos fontes preservados](../../target/harness-validation/feature-004-t041-2026-10-09-182300/class-configurations.json). Java 21.0.12.1 confirmado nos sete XMLs; Wrapper configurado para Maven 3.9.16. Contextos Registration/Chain usam URLs H2 isoladas distintas; unidade/slices não gravam pedidos. Os contextos de JwtConfigurationTest pertencem à configuração existente do runner, sem atribuir-lhes isolamento de OrderTestConfig. [Runtime e URLs observadas](../../target/harness-validation/feature-004-t041-2026-10-09-182300/runtime-isolation.json).
+
+Não adicionada outra classe de login: a seleção solicitada cobre o caminho integrado válido, a chain pública diante de Bearer irrelevante, a configuração JWT e contratos de erro do advice. AuthenticationInternalFailureTest/AuthenticationSensitiveLoggingTest são unidades com colaboradores mockados; não suprem a falta de Clock no slice e suas regressões amplas estão previstas em T047. Não usar outra classe GREEN para substituir a execução de LoginControllerTest que falhou.
+
+### Comandos, horários e resultados atuais
+
+Somente as sete classes solicitadas, cada uma executada uma vez, serialmente, sem sobreposição ou repetição de T040. Depois da falha de login foram concluídas as duas verificações restantes explicitamente solicitadas, mantendo a falha e sem correção ou avanço de tarefa.
+
+```powershell
+.\mvnw.cmd "-Dtest=OrderRegistrationIntegrationTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=OrderSecurityChainTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=OrderJwtAuthenticationConverterTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=OrderJwtAuthenticationPipelineTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=LoginControllerTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=JwtConfigurationTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=GlobalExceptionHandlerRegressionTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+```
+
+2026-10-09, horários UTC−03:00; exit Maven capturado imediatamente e report novo da classe selecionada em cada execução. Relatórios antigos não foram tratados como atuais.
+
+| Classe | Início → término | Casos reportados | Falhas | Erros | Ignorados | Exit Maven / término |
+|---|---|---:|---:|---:|---:|---|
+| OrderRegistrationIntegrationTest | 18:23:32.619 → 18:24:07.489 | 9 | 0 | 0 | 0 | 0 / BUILD SUCCESS |
+| OrderSecurityChainTest | 18:24:23.009 → 18:24:56.381 | 20 | 0 | 0 | 0 | 0 / BUILD SUCCESS |
+| OrderJwtAuthenticationConverterTest | 18:25:04.088 → 18:25:20.873 | 48 | 0 | 0 | 0 | 0 / BUILD SUCCESS |
+| OrderJwtAuthenticationPipelineTest | 18:25:47.651 → 18:26:04.082 | 25 | 0 | 0 | 0 | 0 / BUILD SUCCESS |
+| LoginControllerTest | 18:26:29.658 → 18:26:50.295 | 13 | 0 | 13 | 0 | 1 / BUILD FAILURE |
+| JwtConfigurationTest | 18:27:55.087 → 18:28:36.871 | 6 | 0 | 0 | 0 | 0 / BUILD SUCCESS |
+| GlobalExceptionHandlerRegressionTest | 18:28:51.387 → 18:29:14.895 | 12 | 0 | 0 | 0 | 0 / BUILD SUCCESS |
+| **Total desta etapa** | **sete comandos seriais** | **133** | **0** | **13** | **0** | **seis sucesso, um falha** |
+
+**120 casos aprovados; 13 erros de preparação do contexto, sem executar as assertions de login.** Não declarar 133 aprovados, falha comportamental de todos os logins ou checkpoint GREEN. Os 411 históricos de T040 continuam preservados e separados; os 120 aprovados atuais não eliminam os 13 erros. [Resumo real das sete execuções](../../target/harness-validation/feature-004-t041-2026-10-09-182300/results-summary.json), [contagens por método](../../target/harness-validation/feature-004-t041-2026-10-09-182300/case-counts.json). Na captura feature-004-t041-2026-10-09-182300, cada Classe-result.json conserva comando/início/término/exit/contagens/resultado, Classe-console.txt e Classe-reports/ conservam console e XML/TXT completos.
+
+### Rastreabilidade US2 / FR / SC e evidência real
+
+As siglas abaixo identificam a classe e sua última execução selecionada: C = OrderControllerTest (141), S = OrderServiceTest (42), I = OrderSecurityIntegrationTest (185), R = OrderRollbackIntegrationTest (9), P = OrderRepositoryTest (23), A = UserAccountRoleRepositoryTest (11). São as seis evidências históricas GREEN de T040, não novas execuções. A revisão [traceability-review.json](../../target/harness-validation/feature-004-t041-2026-10-09-182300/traceability-review.json) associa cada linha a métodos exatos, XMLs, comando/resultado/exit e horários: 13 cenários, 34 referências a métodos efetivamente presentes nos reports; as referências podem compartilhar um método parametrizado e não são contagem de testes novos.
+
+| Cenário / requisitos | Contrato / cenário exercitado | Camada e evidência |
+|---|---|---|
+| US2.1 — FR-002/004/012, SC-004 | 400 para corpo/itens ausentes, null, vazios ou estruturas inválidas | C.InputBoundary: shouldRejectInvalidBodiesAndContainersBeforeService, 24 casos; slice de JSON bruto, zero serviço, sem prova própria de JDBC/JWT. |
+| US2.2 — FR-004/012, SC-004 | 400 para quantidade/ID inválidos, fração/tipos/overflow; limites inteiros lidos sem coerção | C.InputBoundary: shouldRejectInvalidIntegerFieldsBeforeService, 28; shouldReadPositiveIntegerTokensIncludingBothMaximumsExactly, dois positivos com serviço mockado. Esses IDs máximos não são compras reais de produtos existentes. |
+| US2.3 — FR-004/012, SC-004/009 | 404 Product not found com produto ausente entre válidos | S rejeita antes de save; R.shouldRejectTheWholeInputBeforeAnyInsert, variante MISSING_PRODUCT: JWT/HTTP/JPA reais, zero INSERTs e snapshot independente preservado. |
+| US2.4 — FR-010/012, SC-004 | 401 Authentication required or invalid e WWW-Authenticate: Bearer | I.shouldRejectInvalidJwtBeforeReadingBody, 138 casos: 23 variantes × seis combinações de corpo/contexto, zero serviço/escrita, inclusive corpo ilegível e JSON bem formado inválido. |
+| US2.5 — FR-003/010/012, SC-004 | 401 para subject/conta inválidos; 500 distinguível de falha interna | I cobre rejeições JWT/conta e guardas tardias; shouldReturnInternalErrorForResolutionFailureBeforeReadingBody, seis respostas 500 exatas, sem serviço/escrita. Cinco identidades inválidas em chamada direta pelo proxy, distintas da prova criptográfica. |
+| US2.6 — FR-011/012, SC-004 | 403 Order registration not permitted, perfis do banco, sem confiar em ADMIN no JWT | I.shouldForbidAccountWithoutProfilesEvenWithAdminClaim, seis; reconsulta por proxy/guardas tardias; A comprova perfis carregados e conta sem linhas de roles recuperável. Login dessa conta continua 200 nos casos integrados. |
+| US2.7 — FR-003/005/012/013, SC-004 | 400 para titular/valores/ID/instante/estado fornecidos, extras null e chaves repetidas | C.InputBoundary: 40 campos extras/do sistema + 13 chaves repetidas; slice de leitura estrita e zero serviço. |
+| US2.8 — FR-012/014, SC-004/009 | 422 Duplicate product in order, sem consolidar | S rejeita sem save; R variante DUPLICATE_PRODUCT exige ausência integral; P prova unicidade por JDBC, distinta da regra de negócio. |
+| US2.9 — FR-012, SC-004 | 500 seguro, sem sucesso/gravação parcial; controle positivo 201 | R: SQL tardio após dois INSERTs anteriores, falha depois de saveAndFlush real e falha beforeCommit após DTO; leituras independentes após proxy e antes da limpeza. Controle positivo grava +1 pedido/+2 itens. |
+| US2.10 — FR-008/012, SC-004 | 422 Order value cannot be represented; cálculo 42.50, mínimos/tetos/overflow exatos | S prova sem save as seis perdas/overflow unitário/subtotal e overflow da soma; cinco limites positivos e soma no teto. C.SuccessfulRegistration prova capacidade decimal como string em HTTP real; P prova decimal19,2/quantity por JDBC. Não alegar que preço além do schema foi persistido. |
+| US2.11 — FR-005/012, SC-004/009 | 422 Product price is not valid for order com preço zero entre positivos | S + R variante ZERO_PRICE; HTTP real/zero INSERTs/snapshot independente integral. |
+| US2.12 — FR-005/012, SC-004/009 | Mesmo 422 para preço negativo entre positivos | S + R variante NEGATIVE_PRICE; fixture negativa por JDBC em H2 isolado, preservando as validações de Product. Preço null/indisponível tem prova unitária, não fixture persistida contra NOT NULL. |
+| US2.13 — FR-004/012, SC-004/009 | 400 Invalid order data, quantity zero entre itens válidos | C.InputBoundary: zero serviço; R variante ZERO_QUANTITY: HTTP/JWT reais, zero INSERTs/snapshot integral. |
+
+FR-002–005/008/010–014 e SC-004/009 estão vinculados aos cenários acima. A evidência é composta pelas camadas declaradas: não transformar unidade/slice em prova de HTTP/JWT/banco. Segurança → leitura/Bean Validation → negócio → persistência/conclusão continua coerente com contrato, código e evidências; guardas tardias são adicionais após a chain. Não se promete prioridade entre múltiplos erros de negócio. Constraints de NOT NULL/FK/CHECK/unicidades comprovadas por JDBC/metadados em P/A, não por Bean Validation; IDs únicos sem exigir sequência contínua. Nenhuma contradição adicional de US2 encontrada na revisão, além da regressão de preparação de login que impede fechar T041.
+
+### US1 e regressões repetidas na mesma revisão
+
+OrderRegistrationIntegrationTest passou nove casos cobrindo US1.1–10: três conjuntos de perfis autorizados, conta correta, shape exato/ordem/UTC-milissegundos/WAITING_PAYMENT/strings monetárias e total 42.50; preço vigente alterado antes da compra; snapshot conservado após alterações posteriores; confirmação sem Location ou promessa de esvaziar carrinho; compras distintas e dois reenvios iguais, com confirmação anterior recebida ou descartada. JDBC independente depois de 201 e antes da limpeza comprova pedidos/itens completos e históricos, com IDs diferentes. [Resultado US1 atual](../../target/harness-validation/feature-004-t041-2026-10-09-182300/OrderRegistrationIntegrationTest-result.json).
+
+Os 20 casos da chain comprovam seleção Bearer somente no POST lógico /orders, inclusive context path, CLIENT/ADMIN/ambos, principal mínimo e sessão/cookie ausentes; fallback de catálogo/detalhe/login mantém Bearer malformado irrelevante. Converter 48 e pipeline 25 preservam claims, perfis, validação antes do lookup e falha interna distinta de credencial inválida. JwtConfigurationTest mantém recusa de chave/TTL inválidos e controle encoder/decoder HS256 real. GlobalExceptionHandlerRegressionTest mantém 12 casos de contratos antigos: mensagens específicas de produtos/validação/login, path externo com /api, envelope/confidencialidade e falha pública inesperada sem tradução artificial para erro de pedidos. [Resultado do advice atual](../../target/harness-validation/feature-004-t041-2026-10-09-182300/GlobalExceptionHandlerRegressionTest-result.json).
+
+Assim, os positivos reais de US1 coexistem com as rejeições/atomicidade de US2 já comprovadas em T040, sobre os mesmos fontes; o checkpoint global permanece incompleto por LoginControllerTest. As execuções separadas não comprovam uma sequência completa de jornadas públicas depois de cada rejeição no mesmo cenário: isso é T046. Não declarar SC-006 ou regressões completas US3 satisfeitas.
+
+### Impedimento observado e próximo passo mínimo
+
+LoginControllerTest produziu **13 erros de contexto**. Causa inicial: UnsatisfiedDependencyException/NoSuchBeanDefinitionException — `orderJwtAuthenticationConverter` em SecurityConfig requer `java.time.Clock` no parâmetro 1, mas o slice importa somente SecurityConfig/OrderSecuritySliceTestConfig e não disponibiliza esse bean. Os erros seguintes incluem o limite de tentativas de inicialização do Spring, não 13 falhas de comportamento independentes. LoginControllerTest não chegou às assertions; nenhum dos seus 13 casos pode ser declarado aprovado nesta revisão. [Diagnóstico e correção sugerida não aplicada](../../target/harness-validation/feature-004-t041-2026-10-09-182300/login-preparation-failure.json), [resultado Maven](../../target/harness-validation/feature-004-t041-2026-10-09-182300/LoginControllerTest-result.json), [XML](../../target/harness-validation/feature-004-t041-2026-10-09-182300/LoginControllerTest-reports/TEST-com.devsuperior.dscommerce.controllers.LoginControllerTest.xml) e [console](../../target/harness-validation/feature-004-t041-2026-10-09-182300/LoginControllerTest-console.txt).
+
+Próximo passo mínimo, não executado: completar **somente a preparação do slice de LoginControllerTest**, importando o OrderClockConfig existente como já faz GlobalExceptionHandlerRegressionTest, ou provendo Clock equivalente de teste; preservar todas as assertions e produção. Depois repetir somente LoginControllerTest serialmente pelo Wrapper e reavaliar T041. Não se justifica repetir as seis classes completas de T040 ou os outros seis alvos atuais se seus fontes/configurações permanecerem inalterados. Nenhuma correção aplicada nesta etapa; T041 continua aberta.
+
+### Limites e preservação
+
+Atomicidade usa as três provas distintas reais de R, sem @Transactional externo/rollback automático de teste. beforeCommit ocorre depois do corpo produzir DTO e antes do commit físico; não simula falha física de commit/conexão. Descartar a resposta em US1.9 simula seu não consumo; não reproduz interrupção física de transporte após commit. Falha de transmissão após commit não promete rollback, seguindo Q1. Sem idempotência/consulta/histórico/pagamento/carrinho/deploy. H2/MockMvc locais não aprovam outros bancos, transporte real, ambiente remoto, suíte completa ou CI.
+
+**U1 (conteúdo residual no JSON) e U2 (ativação de fixtures na demonstração) permanecem explicitamente pendentes, não aplicadas.** Não reescrito o histórico ou seus procedimentos como execuções atuais. Regressões completas de catálogo/detalhes/H2/login/logging/BCrypt/repositórios e integração após rejeições permanecem em T042–T049; nenhuma dessas tarefas foi executada.
+
+Captura anterior à execução: 4857 arquivos, sendo 156 do inventário Git e 4701 evidências históricas; 66 reports Surefire anteriores arquivados em reports-before; 83 fontes executados copiados/hashados. Auditoria SHA-256 final exige alteração somente em quickstart.md por acréscimo, prefixo histórico de 469602 bytes preservado, tasks.md byte a byte idêntico, todos os fontes/demais arquivos/evidências anteriores e inventário Git intactos. [Auditoria de preservação](../../target/harness-validation/feature-004-t041-2026-10-09-182300/final-preservation.json).
+
+Diff incremental documental e whitespace conferidos, inclusive os seis não rastreados anteriores, sem diagnósticos; links de evidências conferidos. [Revisão final](../../target/harness-validation/feature-004-t041-2026-10-09-182300/review-checks.json). Alterado nesta etapa **somente quickstart.md**, além da captura ignorada de evidências. T001–T040 [X] (40), T041–T055 abertas (15), **nenhuma checkbox alterada**. Raiz/branch/HEAD mantidos; mesmos 14 rastreados modificados/seis não rastreados e índice vazio. Sem produção/testes, T042+, U1/U2, suíte completa, CI, stage, commit, push, merge ou troca de branch.
+
+## T041 — conclusão após correção exclusiva da preparação de login (2026-10-10)
+
+Solicitação autoriza concluir somente T041 da Feature 004 e parar antes de T042. Raiz reconfirmada pelos quatro comandos `git rev-parse --show-toplevel`, `git branch --show-current`, `git rev-parse HEAD` e `git status --short`: `C:/Users/ronal/dscommerce-speckit`, branch real `004-registrar-pedido`, HEAD `0344dc0199fd8135f98e852e7d6fedc06b124d9a`. Estado inicial: 14 rastreados modificados, seis não rastreados, índice vazio. Prerequisites executado com `& .specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks`, exit 0, FEATURE_DIR correto. Checklist requirements.md 16/16, zero abertos, somente leitura. Constituição, spec, T040/T041/checkpoint/dependências, plano, pesquisa, modelo e contratos consultados. Ignores existentes suficientes; `.specify/extensions.yml` ausente antes e depois, sem hooks executáveis.
+
+### Causa confirmada e correção mínima
+
+Antes de editar, conferidos diagnóstico, console/XML de 2026-10-09 e fontes: SecurityConfig exige `Clock` no parâmetro 1 de `orderJwtAuthenticationConverter`; LoginControllerTest e OrderSecuritySliceTestConfig não forneciam esse bean. OrderClockConfig existente declara somente `orderClock()` com `Clock.systemUTC()`. GlobalExceptionHandlerRegressionTest já importa essa configuração explicitamente no slice.
+
+Alterado somente LoginControllerTest: adicionado o import Java de OrderClockConfig e incluído `OrderClockConfig.class` no `@Import`, seguindo esse padrão. Nenhum novo bean, mock de Clock, override ou configuração duplicada; contexto inicializa com a configuração existente. Preservados byte a byte os demais trechos do teste, inclusive assertions, métodos, cenários e CRLF; mantidos WebMvcTest, filtros e verificações. Nenhum código de produção alterado nesta etapa.
+
+Os **13 erros iniciais continuam preservados como falha de preparação**, não RED comportamental nem aprovações: exit 1 / BUILD FAILURE em 2026-10-09, ausência de Clock e erros subsequentes pelo limite de inicialização do Spring, sem alcançar assertions. A nova aprovação não reescreve esse resultado. [Diagnóstico inicial](../../target/harness-validation/feature-004-t041-2026-10-09-182300/login-preparation-failure.json), [resultado inicial](../../target/harness-validation/feature-004-t041-2026-10-09-182300/LoginControllerTest-result.json) e respectivos console/XML permanecem intactos.
+
+### Única execução Maven desta etapa
+
+Na raiz, Windows/PowerShell, serialmente:
+
+```powershell
+.\mvnw.cmd "-Dtest=LoginControllerTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+```
+
+Início `2026-10-10T17:09:03.1217704-03:00`, término `2026-10-10T17:10:39.8616022-03:00`; **13 testes, 0 falhas, 0 erros, 0 ignorados; exit code 0, BUILD SUCCESS**. XML novo confirmado para a classe selecionada; console registra somente LoginControllerTest em `Running`. Java `21.0.12.1` observado no XML; Maven 3.9.16 selecionado pelas propriedades do Wrapper. A recompilação dos 35 fontes de teste é preparação do build, não execução das outras classes. [Resultado atual](../../target/harness-validation/feature-004-t041-completion-2026-10-10/LoginControllerTest-result.json), [console](../../target/harness-validation/feature-004-t041-completion-2026-10-10/LoginControllerTest-console.txt) e [XML atual](../../target/harness-validation/feature-004-t041-completion-2026-10-10/LoginControllerTest-reports/TEST-com.devsuperior.dscommerce.controllers.LoginControllerTest.xml).
+
+Não repetidas as outras seis classes de T041, nem a bateria de T040. Uma última execução relevante por classe, com XMLs, contagens e exit codes reconferidos:
+
+| Classe | Execução selecionada (UTC−03:00) | Aprovações | Falhas / erros / ignorados | Exit / resultado |
+| --- | --- | ---: | --- | --- |
+| OrderRegistrationIntegrationTest | 2026-10-09 18:23:32.619 → 18:24:07.489 | 9 | 0 / 0 / 0 | 0 / BUILD SUCCESS histórico |
+| OrderSecurityChainTest | 2026-10-09 18:24:23.009 → 18:24:56.381 | 20 | 0 / 0 / 0 | 0 / BUILD SUCCESS histórico |
+| OrderJwtAuthenticationConverterTest | 2026-10-09 18:25:04.088 → 18:25:20.873 | 48 | 0 / 0 / 0 | 0 / BUILD SUCCESS histórico |
+| OrderJwtAuthenticationPipelineTest | 2026-10-09 18:25:47.651 → 18:26:04.082 | 25 | 0 / 0 / 0 | 0 / BUILD SUCCESS histórico |
+| LoginControllerTest | 2026-10-10 17:09:03.121 → 17:10:39.861 | 13 | 0 / 0 / 0 | 0 / BUILD SUCCESS atual |
+| JwtConfigurationTest | 2026-10-09 18:27:55.087 → 18:28:36.871 | 6 | 0 / 0 / 0 | 0 / BUILD SUCCESS histórico |
+| GlobalExceptionHandlerRegressionTest | 2026-10-09 18:28:51.387 → 18:29:14.895 | 12 | 0 / 0 / 0 | 0 / BUILD SUCCESS histórico |
+| **T041 consolidada** | **última execução relevante de sete classes** | **133** | **0 / 0 / 0** | **sete resultados selecionados GREEN** |
+
+Total composto por **120 aprovações históricas + 13 atuais**, não 133 testes executados hoje, nem 146 pela soma das duas tentativas de login. [Consolidação com comandos completos, horários e caminhos por classe](../../target/harness-validation/feature-004-t041-completion-2026-10-10/t041-consolidated.json); comandos históricos permanecem na seção anterior e nos Classe-result.json originais.
+
+### Checkpoint e rastreabilidade reconferidos
+
+Conferidas novamente US2.1–13, FR-002–005/008/010–014 e SC-004/009 contra spec, contrato e tabela de rastreabilidade anterior. A revisão automatizada reconferiu **13 cenários e 34 referências a métodos**, contando suas invocações reais nos XMLs. As **411 aprovações consolidadas de T040** continuam separadas e históricas: Controller 141, SecurityIntegration 185 (inclui o complemento de 100 combinações), Service 42, RollbackIntegration 9, OrderRepository 23 e UserAccountRoleRepository 11; todos exit 0/zero falhas, erros e ignorados. Não somados novamente os 85 casos antigos de segurança. [Gate histórico de T040](../../target/harness-validation/feature-004-t041-2026-10-09-182300/t040-gate.json), [rastreabilidade histórica detalhada](../../target/harness-validation/feature-004-t041-2026-10-09-182300/traceability-review.json) e [reconferência atual](../../target/harness-validation/feature-004-t041-completion-2026-10-10/checkpoint-review.json).
+
+Os 83 fontes eram idênticos à captura anterior antes da edição; agora somente a preparação de LoginControllerTest difere. Fontes/configurações das seis classes T041 preservadas e alvos T040 continuam iguais. As evidências sustentam segurança → leitura/Bean Validation → negócio → persistência/conclusão, sem prioridade prometida entre múltiplos erros de negócio; constraints por JDBC, mínimos/tetos exatos, rejeição integral e IDs sem exigir sequência contínua.
+
+Atomicidade continua sustentada pelas três provas reais: SQL tardio após INSERTs, processamento após saveAndFlush real e beforeCommit após produção do DTO, além do controle positivo 201 visível em conexão independente. Leituras ocorrem depois da saída do proxy e antes da limpeza, sem transação externa/rollback automático do teste. Unidade e slice não são apresentados como prova de atomicidade/JWT/banco. Positivos reais de US1 (nove casos cobrindo US1.1–10) e regressões selecionadas de chain/converter/pipeline/JWT/advice coexistem com essa matriz; a regressão de preparação de login está resolvida. **Checkpoint T041 atendido, sem pendência no escopo: marcada somente T041 [X].**
+
+### Limites, preservação e estado final
+
+LoginControllerTest continua slice com AuthenticationService e suporte público mockados; não prova emissão/assinatura real de JWT, banco ou regressões completas de US3. H2/MockMvc locais não aprovam outro banco, transporte real, suíte completa ou CI. beforeCommit não simula falha física de conexão no commit; descarte de resposta não reproduz interrupção física de transporte. Não se declara SC-006 nem integração de jornadas após cada rejeição (T046) satisfeitos.
+
+U1/U2 continuam pendentes, sem aplicação. T042–T055 permanecem abertas; parada antes de T042. Sem suíte completa, CI, stage, commit, push, merge ou troca de branch. Sondagem auxiliar `python -` não encontrou Python utilizável (alias da Microsoft Store); auditoria/consolidação realizadas com PowerShell, sem bloqueio da validação Maven.
+
+Capturados hashes de **5054 arquivos preexistentes** e cópia dos reports Surefire antes da execução; evidências antigas preservadas e disponíveis mesmo onde Maven atualizou reports de trabalho. Auditoria final confere alteração incremental somente em LoginControllerTest, quickstart.md por acréscimo e a checkbox T041 em tasks.md; demais alterações/fontes/evidências e os seis não rastreados anteriores preservados. [Auditoria de preservação](../../target/harness-validation/feature-004-t041-completion-2026-10-10/final-preservation.json).
+
+Diff incremental, links do acréscimo, conteúdo dos arquivos de evidência novos e whitespace revisados; `git diff --check` executado com exit 0, sem erros de whitespace; avisos de conversão LF/CRLF estão preservados no log da revisão, sem alteração dos trechos anteriores. Conferidos também os seis não rastreados anteriores, sem mudanças de conteúdo ou whitespace. [Revisão final e estado Git](../../target/harness-validation/feature-004-t041-completion-2026-10-10/review-checks.json). Arquivos alterados nesta etapa: `src/test/java/com/devsuperior/dscommerce/controllers/LoginControllerTest.java`, `specs/004-registrar-pedido/quickstart.md` e `specs/004-registrar-pedido/tasks.md`, além de evidências ignoradas em target. Checkboxes finais: **T001–T041 [X] (41), T042–T055 [ ] (14)**. Raiz/branch/HEAD mantidos; Git final com **15 rastreados modificados, seis não rastreados e índice vazio**.

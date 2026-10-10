@@ -43,6 +43,7 @@ import org.springframework.web.filter.GenericFilterBean;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -68,6 +69,7 @@ class OrderSecurityChainTest {
     @Autowired private JwtDecoder decoder;
     @Autowired private FilterChainProxy filters;
     @Autowired private OrderTestFixture fixture;
+    @Autowired private OrderTestConfig.ControlledClock clock;
     @Autowired private Observation observation;
     @Autowired private JdbcTemplate jdbc;
     private Long accountId;
@@ -156,6 +158,8 @@ class OrderSecurityChainTest {
                 .andExpect(status().isOk()).andReturn();
         var token = mapper.readTree(result.getResponse().getContentAsString()).path("accessToken").textValue();
         var decoded = decoder.decode(token);
+        // Login uses real time; keep the operation clock consistent with this valid token.
+        clock.setInstant(Instant.now());
         assertThat(decoded.getSubject()).isEqualTo(accountId.toString());
         assertThat(decoded.getHeaders().get("alg")).hasToString("HS256");
         if (!forgedClaims) { return token; }

@@ -3895,3 +3895,58 @@ Demonstração de sucesso/repetição não substitui provas automatizadas de rol
 Alterações desta solicitação: somente launcher e este acréscimo documental. Correção produtiva U1 e teste não rastreado anteriores preservados. Sem stage, commit, push, CI, OpenAPI, mudanças de dependências/contratos/seed ou de configuração Git.
 
 Revisão final: [auditoria de preservação, referências, diff e whitespace](../../target/harness-validation/feature-004-fixture-isolation-2026-10-11-152304/final-review.json) confirmou 156 outros rastreados e 6.336 evidências anteriores idênticos, prefixo de 721.129 bytes do quickstart preservado, U1/leitor/teste intactos e fontes atuais iguais às executadas. Conferidos os relatórios preservados antes das quatro invocações, o conteúdo integral do arquivo não rastreado e o diff acumulado (U1 de três linhas, correção mínima do launcher e acréscimos documentais). Removida somente uma linha vazia nova no EOF desta seção, detectada no primeiro check; nenhum trecho histórico reformatado. `git diff --check` final exit 0; arquivo não rastreado sem erro de whitespace (diff contra NUL exit 1 por conteúdo novo). Somente avisos LF→CRLF, sem mudança de configuração Git. Índice vazio; status final: quickstart.md, OrderRequestJsonConfig.java e OrderDemoApplication.java modificados, OrderTrailingContentIntegrationTest.java não rastreado. HEAD/branch mantidos; nenhuma task ou assertion alterada.
+
+## T053 — conclusão da validação integral do OpenAPI (2026-10-11)
+
+**Exclusivamente a pendência de validação do documento.** Confirmados raiz `C:/Users/ronal/dscommerce-speckit`, branch `004-registrar-pedido`, HEAD `628cbf509f74a5454328ab1f34fb6003deb91b57`, working tree inicialmente limpo e índice vazio. Lidos [orders-openapi.yaml](contracts/orders-openapi.yaml), [README dos contratos](contracts/README.md) e o registro anterior de T053. Contrato intacto, SHA-256 **860e151d41fc7ac3ff09c02df5aacebf53b1ba4220af68eeb67a6ce2bc83b409**.
+
+### Histórico preservado e ferramenta preparada
+
+T053 registrou em 2026-10-11 parsing do YAML completo por SnakeYAML 2.2/Java 21, exit 0, e tentativa de `python -m openapi_spec_validator`, exit 1 por **No module named openapi_spec_validator**. Essa tentativa era impedimento de ferramenta, não rejeição do contrato; parsing/revisão manual/HTTP anteriores não constituíam validação OpenAPI integral. [Evidência histórica do bloqueio](../../target/harness-validation/feature-004-t053-2026-10-11/validation-result.json) preservada, sem alterar seus resultados ou conclusões datadas.
+
+Com autorização específica desta solicitação, preparado **venv temporário fora do projeto**, em `C:/Users/ronal/AppData/Local/Temp/dscommerce-openapi-56c22ffd71ed46e7b43c2623d82b3345`, com Python **3.12.14** do runtime local, sem site-packages globais (`include-system-site-packages = false`). Instalado **[openapi-spec-validator 0.7.2](https://pypi.org/project/openapi-spec-validator/0.7.2/)**, compatível com OpenAPI 3.0, pelo PyPI. Download somente de ferramenta/dependências; contrato não enviado a serviço externo. Sem instalação global, mudança de POM/configurações/dependências do projeto.
+
+Comandos efetivamente usados para preparação (exit **0** na criação e **0** na instalação):
+
+```powershell
+& 'C:/Users/ronal/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe' -m venv 'C:/Users/ronal/AppData/Local/Temp/dscommerce-openapi-56c22ffd71ed46e7b43c2623d82b3345'
+& 'C:/Users/ronal/AppData/Local/Temp/dscommerce-openapi-56c22ffd71ed46e7b43c2623d82b3345/Scripts/python.exe' -m pip --isolated --disable-pip-version-check --no-cache-dir install --index-url https://pypi.org/simple --only-binary=:all: 'openapi-spec-validator==0.7.2'
+```
+
+[Criação do ambiente](../../target/harness-validation/feature-004-openapi-validation-2026-10-11-154916/venv-create.txt), [instalação](../../target/harness-validation/feature-004-openapi-validation-2026-10-11-154916/pip-install.txt), [versões resolvidas para reprodução](../../target/harness-validation/feature-004-openapi-validation-2026-10-11-154916/requirements-resolved.txt), [configuração do venv](../../target/harness-validation/feature-004-openapi-validation-2026-10-11-154916/pyvenv.cfg.txt), [isolamento do interpretador](../../target/harness-validation/feature-004-openapi-validation-2026-10-11-154916/environment.json) e [comandos/HEAD/exit codes](../../target/harness-validation/feature-004-openapi-validation-2026-10-11-154916/execution.json). Dependências utilizadas: openapi-schema-validator **0.6.3**, jsonschema **4.26.0**, jsonschema-path **0.3.4**, referencing **0.36.2**, PyYAML **6.0.3**.
+
+### Validação integral e resolução de referências
+
+Executado na raiz, em **2026-10-11, 15:51:56.234–15:51:56.437 UTC−03:00**:
+
+```powershell
+& 'C:/Users/ronal/AppData/Local/Temp/dscommerce-openapi-56c22ffd71ed46e7b43c2623d82b3345/Scripts/python.exe' -I 'C:/Users/ronal/dscommerce-speckit/target/harness-validation/feature-004-openapi-validation-2026-10-11-154916/validate-openapi-offline.py' specs/004-registrar-pedido/contracts/orders-openapi.yaml
+```
+
+O [auxiliar arquivado](../../target/harness-validation/feature-004-openapi-validation-2026-10-11-154916/validate-openapi-offline.py) **delega a validação ao CLI real da ferramenta**, função `openapi_spec_validator.__main__.main`, com argumentos **`--schema 3.0 --errors all <arquivo completo>`**. Esse CLI seleciona **OpenAPIV30SpecValidator**, aplica o esquema OpenAPI 3.0 ao documento inteiro e os verificadores semânticos de paths/components/operações/respostas/schemas da biblioteca. O documento declara **3.0.3**; não foi tratado como JSON Schema genérico ou somente YAML. Não usado validador caseiro para substituir essa etapa.
+
+Além da validação do CLI, o auxiliar percorre **cada ocorrência de $ref** e resolve seu Reference Object com **SchemaPath/jsonschema-path**, a biblioteca de resolução usada pelo validador, exigindo destino resolvido. As **19 ocorrências** chegaram aos **oito schemas** locais: PositiveId, Quantity, Money, OrderRequest, OrderItemRequest, OrderResponse, OrderItemResponse e ErrorResponse. **Zero referências externas, zero destinos ausentes/erro de resolução**.
+
+Conexões TCP/criação de conexões/resolução DNS foram bloqueadas no processo de validação; **zero tentativas de rede**. A instalação anterior baixou dependências públicas, mas esta execução leu o contrato e seus destinos somente em disco/memória.
+
+Resultado real:
+
+```text
+orders-openapi.yaml: OK
+REFERENCES_OK occurrences=19 targets=8 external=0
+VALIDATION_RESULT tool=openapi-spec-validator version=0.7.2 result=VALID exit=0 network_attempts=0
+```
+
+**Validação OpenAPI integral do documento aprovado pelo validador compatível, referências integralmente resolvidas: exit code 0.** [Console com saída exata/caminho absoluto](../../target/harness-validation/feature-004-openapi-validation-2026-10-11-154916/validation-console.txt) e [resultado completo, versões/hash/horários/destinos/exit](../../target/harness-validation/feature-004-openapi-validation-2026-10-11-154916/validation-result.json). Não houve falha do contrato, alteração para ocultar divergência ou impedimento atual.
+
+### Situação atual e limites
+
+**Pendência de validação integral registrada em T053 concluída para este documento/versão/hash.** Seu bloqueio histórico permanece verdadeiro para a execução anterior; não foi reescrito como aprovação retroativa. Distinções mantidas: parsing YAML é preparação sintática; aprovação atual vem do CLI OpenAPI completo e da resolução dos refs; testes HTTP são evidência separada.
+
+A [suíte anterior de 922 testes aprovada](../../target/harness-validation/feature-004-fixture-isolation-2026-10-11-152304/full-01/summary.json), executada em 2026-10-11 sobre o working tree descrito naquele registro, e suas evidências de U1/isolamento/demonstração permanecem preservadas. **Nenhum teste ou demonstração foi repetido nesta etapa**; essa aprovação histórica não foi atribuída a uma nova execução neste HEAD. U1 continua resolvido no alcance comprovado, U2 somente ativação explícita de fixtures; limites históricos de rollback/commit preservados. Validação do documento não demonstra comportamento HTTP, regras descritas em prosa, persistência/rollback, conformidade integral da implementação ou integração em main.
+
+Alteração versionável exclusivamente neste quickstart, por acréscimo. Contrato/README, produção/testes/launcher, POM/configurações e as **55 checkboxes T001–T055** permanecem intactos. Evidências e auxiliares novos em diretório ignorado de target; nenhum arquivo de ferramenta/dependência incluído no projeto. Sem testes, demonstração, CI, stage, commit, fetch ou push.
+
+Ambiente temporário: após a validação, tentada remoção somente do venv próprio. **A revisão automática de aprovação rejeitou a ação antes da execução, motivo informado: blocked by policy.** Não tentada remoção por mecanismo alternativo. Conferência posterior somente de leitura confirmou o caminho absoluto dentro de %TEMP% e igual ao baseline; o venv permanece nesse diretório temporário isolado, sem instalação global ou dependência do projeto. Isso não alterou o resultado da validação. [Registro da limpeza bloqueada](../../target/harness-validation/feature-004-openapi-validation-2026-10-11-154916/cleanup.json) e [conferência do caminho](../../target/harness-validation/feature-004-openapi-validation-2026-10-11-154916/temporary-path-review.json).
+
+Revisão final: [auditoria de preservação e referências](../../target/harness-validation/feature-004-openapi-validation-2026-10-11-154916/final-review.json) confirmou por SHA-256 **158 outros rastreados, 6.766 evidências anteriores e os 76 relatórios Surefire inalterados**, prefixo histórico de **734.324 bytes** do quickstart preservado e contrato idêntico ao arquivo aprovado. Destinos das novas referências conferidos; diff restrito ao acréscimo documental, `git diff --check` **exit 0**, apenas aviso conhecido LF→CRLF. As 55 checkboxes permanecem [X], tasks.md intacto; índice vazio. Git final: branch `004-registrar-pedido`, HEAD `628cbf509f74a5454328ab1f34fb6003deb91b57`, somente ` M specs/004-registrar-pedido/quickstart.md`.

@@ -39,6 +39,9 @@ public class OrderRequestJsonConfig {
                 parser.nextToken();
                 items = readItems(parser, context);
             }
+            if (parser.nextToken() != null) {
+                throw invalidInput(parser);
+            }
             return new OrderRequestDTO(items);
         }
 

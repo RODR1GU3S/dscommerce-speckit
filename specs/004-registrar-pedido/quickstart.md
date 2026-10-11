@@ -3689,3 +3689,209 @@ Git final: raiz `C:/Users/ronal/dscommerce-speckit`, branch `004-registrar-pedid
  M specs/004-registrar-pedido/tasks.md
 ?? src/test/java/com/devsuperior/dscommerce/demo/OrderDemoApplication.java
 ```
+
+## Investigação U1 — prova integrada de conteúdo residual (2026-10-11)
+
+**Exclusivamente investigação/prova de U1; parada antes de qualquer correção produtiva.** Confirmados raiz `C:/Users/ronal/dscommerce-speckit`, branch `004-registrar-pedido`, HEAD `cab7716b1e6397c5d7715d696072b1d65a26b030` e status inicialmente limpo/índice vazio pelos comandos Git usuais. Esse HEAD contém o checkpoint T050–T055; não significa aprovação integral ou integração em main. Lidos AGENTS.md, registro anterior de U1, [contrato](contracts/README.md)/[OpenAPI](contracts/orders-openapi.yaml), leitor e apoios existentes de integração. Nenhuma marcação histórica alterada: **T001–T055 continuam [X]**, tasks.md permanece igual ao HEAD.
+
+### Causa observada e desenho da prova
+
+[OrderRequestJsonConfig.java](../../src/main/java/com/devsuperior/dscommerce/config/OrderRequestJsonConfig.java), linhas 29–42, avança dentro do objeto raiz até `END_OBJECT` e imediatamente devolve OrderRequestDTO. Não avança novamente para verificar EOF após esse objeto. O leitor do item também encerra em seu END_OBJECT, mas esse término interno não comprova término do corpo. Não encontrada guarda global FAIL_ON_TRAILING_TOKENS ou conferência equivalente nos fontes/configurações produtivos consultados. A execução abaixo confirma que o caminho real MVC/segurança aceita o primeiro objeto e ignora os cinco sufixos exercitados, inclusive texto que seria ilegível se consumido.
+
+Criado somente [OrderTrailingContentIntegrationTest.java](../../src/test/java/com/devsuperior/dscommerce/controllers/OrderTrailingContentIntegrationTest.java), `@SpringBootTest`, MockMvc com filtros ativos e impressão desativada, perfil test, import explícito de OrderTestConfig e URL H2 UUID própria. Reutiliza OrderHttpTestSupport: contas CLIENT confirmadas no banco, POST /login real, JWT real decodificado/HS256, Clock alinhado ao token e limpeza somente das linhas próprias. Produtos explícitos 10.00/7.50, criados em ordem de IDs inversa à ordem enviada, quantidades 2/3 e total 42.50. Nenhum mock de autenticação/serviço/persistência, configuração de produção ou seed pública alterado.
+
+Dezoito casos parametrizados: cinco sufixos inválidos × dois contextos, mais quatro controles de whitespace × dois contextos. Corpo entregue como bytes UTF-8 brutos, sem parse/re-serialização anterior. `/api/orders` usa contextPath `/api` e servletPath `/orders`, exercitando a URI externa e filtros reais no contexto MockMvc. Isso não equivale a deploy/TCP real.
+
+Antes/depois de cada requisição, JDBC por DriverManagerDataSource separado abre conexão independente, lê todas as linhas de pedidos/itens e registra autocommit/vínculo transacional. Não há @Transactional de teste ou transação externa envolvendo HTTP; flags após todas as requisições: **autoCommit=true, bound=false, externalTx=false**. A requisição usa andReturn, sem andExpect antecipado; snapshot posterior e marcador sanitizado U1_CASE são coletados **antes das assertions e do @AfterEach**. Mesmo exceção no processamento da requisição é capturada para permitir essa observação. assertAll verifica conjuntamente HTTP/envelope e ausência de alteração do banco, sem ocultar a gravação por falha antecipada de status. Cleanup posterior não integra a prova de rejeição.
+
+Nos casos negativos, assertions exigem 400, exatamente status/error/message/path, status inteiro 400, error Bad Request, message Invalid order data e path externo correto, Content-Type JSON e banco idêntico ao baseline. Controles positivos verificam 201, ausência de Location, seis campos de confirmação, comprador/WAITING_PAYMENT/UTC, ordem dos itens, strings monetárias e agregado completo persistido com cálculo exato por JDBC independente.
+
+### Execução focada e resultados por caso
+
+Wrapper `--version`: exit 0, **Java 21.0.12.1 Azul/Zulu e Maven 3.9.16**. Uma única invocação de testes, na raiz, serial e restrita à nova classe:
+
+```powershell
+.\mvnw.cmd "-Dtest=OrderTrailingContentIntegrationTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+```
+
+**2026-10-11, 14:48:18.973–14:49:15.712 UTC−03:00: BUILD FAILURE, exit 1; 18 testes, 8 aprovados, 10 falhas, 0 erros, 0 ignorados.** Compilação e startup concluíram, todos os 18 casos fizeram login real/preparação válida e produziram observação HTTP/JDBC. requestFailure=none em todos. Surefire registra falhas de assertions, não erros de preparação; nenhuma correção ou repetição foi necessária para fabricar RED.
+
+| Sufixo após o pedido válido | Esperado | `/orders`: observado / JUnit | `/api/orders`: observado / JUnit | Banco após cada requisição, antes da limpeza |
+| --- | --- | --- | --- | --- |
+| Outro objeto, ` {}` | 400, zero gravações | **201 / RED** | **201 / RED** | **+1 pedido, +2 itens** |
+| Array, ` []` | 400, zero gravações | **201 / RED** | **201 / RED** | **+1 pedido, +2 itens** |
+| ` null` | 400, zero gravações | **201 / RED** | **201 / RED** | **+1 pedido, +2 itens** |
+| Escalar numérico, ` 42` | 400, zero gravações | **201 / RED** | **201 / RED** | **+1 pedido, +2 itens** |
+| Texto inválido, ` not-json` | 400, zero gravações | **201 / RED** | **201 / RED** | **+1 pedido, +2 itens** |
+| Somente três espaços | 201 completo | **201 / GREEN** | **201 / GREEN** | **+1 pedido, +2 itens**, snapshot/valores completos aprovados |
+| Somente duas tabulações, `\t\t` | 201 completo | **201 / GREEN** | **201 / GREEN** | **+1 pedido, +2 itens**, snapshot/valores completos aprovados |
+| Somente quebras, `\r\n\n` | 201 completo | **201 / GREEN** | **201 / GREEN** | **+1 pedido, +2 itens**, snapshot/valores completos aprovados |
+| Whitespace misto, ` \t\r\n ` | 201 completo | **201 / GREEN** | **201 / GREEN** | **+1 pedido, +2 itens**, snapshot/valores completos aprovados |
+
+Cada baseline tinha zero pedidos/itens. Os dez negativos falharam tanto pela resposta 201/forma de confirmação em vez do envelope 400 quanto pelo estado persistido diferente do baseline. Por exemplo, primeiro caso: HTTP 201, pedido WAITING_PAYMENT e dois itens históricos 10.00/7.50 com posições 0/1, quantidade 2/3 visíveis pela conexão independente. A mensagem agregada registra sete assertions falhas desse caso, mas isso é **um teste falho**, não sete testes. O resultado é RED comportamental da ausência de rejeição do conteúdo residual, com gravação realmente concluída; não falha de token, login, contexto, fixtures, compilação ou cleanup. Os controles positivos aprovados corroboram a validade do primeiro objeto e do caminho de persistência.
+
+### Evidências, preservação e limites
+
+Antes do Maven, os **74 relatórios anteriores** foram copiados/conferidos por SHA-256 em [surefire-before](../../target/harness-validation/feature-004-u1-2026-10-11-144602/surefire-before); inventariados os 158 rastreados e 6.074 arquivos de evidências anteriores. [Baseline e hashes](../../target/harness-validation/feature-004-u1-2026-10-11-144602/baseline.json). Relatórios atuais da nova classe são um XML e um TXT; relatórios de outras classes remanescentes não entram nos totais desta execução focada.
+
+Evidências ignoradas pelo Git: [versões](../../target/harness-validation/feature-004-u1-2026-10-11-144602/wrapper-version.txt), [comando/HEAD/horários/exit](../../target/harness-validation/feature-004-u1-2026-10-11-144602/result.json), [console](../../target/harness-validation/feature-004-u1-2026-10-11-144602/console.txt), [resumo/casos](../../target/harness-validation/feature-004-u1-2026-10-11-144602/summary.json), [observações HTTP/JDBC antes da limpeza](../../target/harness-validation/feature-004-u1-2026-10-11-144602/case-observations.txt), [XML arquivado](../../target/harness-validation/feature-004-u1-2026-10-11-144602/red-01/reports/TEST-com.devsuperior.dscommerce.controllers.OrderTrailingContentIntegrationTest.xml), [fonte executada](../../target/harness-validation/feature-004-u1-2026-10-11-144602/executed-test.java). Marcadores e assertions não imprimem credencial, JWT, hash de senha ou chave; snapshots de pedidos/itens contêm apenas os dados não secretos da compra. SHA-256 da fonte executada: `76C4E18BE208918B2AFB36522AA4FAB266A508BD5A5914816DB51F4C05E410C5`.
+
+Rastreabilidade suplementar: rejeição de JSON inválido/entrada e ausência integral de escrita, US2.1/2/13, FR-002/004/012, SC-004/009; controles de confirmação/persistência apoiam US1.1/4/8, FR-001/003/006/007, SC-001/005/007. **U1 permanece pendente e agora reproduzido por testes**, sem correção produtiva. Não alteradas caixas T001–T055 nem contratos para acomodar a divergência. U2 permanece resolvido somente para ativação das fixtures de demonstração; OpenAPI integral continua não validado/impedido em T053.
+
+Limites: cinco categorias com exemplos concretos, escalar numérico apenas (sem matriz de strings/booleanos), quatro formas de whitespace e dois caminhos no MockMvc completo/H2. Não comprova todos os tamanhos/encodings/intercalações de rede, outro banco/deploy ou regressões globais. Não executada suíte completa, demonstração, OpenAPI ou CI. A aprovação histórica de 904 testes em T050 continua anterior ao launcher T051 e a esta nova classe; o RED atual evidencia uma lacuna dessa cobertura, não invalida/reclassifica as execuções anteriores como se tivessem esses novos casos. As três provas históricas de rollback/commit continuam com seu alcance documentado e não substituem a rejeição necessária antes da escrita aqui.
+
+Alterações versionáveis desta investigação: este acréscimo em quickstart.md e nova classe de teste; produção/contratos/tarefas/seed/dependências/launcher preservados. Sem stage, commit ou push; HEAD mantido em `cab7716b1e6397c5d7715d696072b1d65a26b030`.
+
+Conferência final: os **157 demais rastreados**, incluindo tasks.md/produção/contratos/launcher, e os **6.074 arquivos de evidências anteriores** permanecem idênticos por SHA-256; preservado o prefixo integral de 696.887 bytes deste quickstart. Fonte nova idêntica à executada, referências com destinos existentes. `git diff --check` exit 0; Java não rastreado conferido separadamente com `git diff --no-index --check -- NUL ...`, exit 1 pela diferença, zero defeitos de whitespace, somente avisos LF/CRLF. Conteúdo/diff revisados, sem reformatar trechos antigos. [Conferência de preservação, referências, whitespace e Git](../../target/harness-validation/feature-004-u1-2026-10-11-144602/final-review.json).
+
+Status final: quickstart.md modificado, OrderTrailingContentIntegrationTest.java não rastreado, índice vazio; raiz/branch/HEAD mantidos. Investigação encerrada no RED comprovado, **antes de corrigir produção**.
+
+## Correção U1 — EOF do pedido e validação com launcher presente (2026-10-11)
+
+**Exclusivamente U1, sem commit.** Confirmados raiz `C:/Users/ronal/dscommerce-speckit`, branch `004-registrar-pedido`, HEAD `cab7716b1e6397c5d7715d696072b1d65a26b030`; entrada com quickstart.md modificado e OrderTrailingContentIntegrationTest.java não rastreado, índice vazio. Essas alterações e as evidências anteriores foram preservadas. AGENTS.md e diagnóstico/contrato já consultados orientam o escopo; não alterados testes/assertions, marcações históricas T001–T055, contratos, ObjectMapper global, leitor de itens, login, segurança, serviço, persistência, dependências, seed ou launcher.
+
+### RED preservado e correção mínima
+
+[RED anterior, 2026-10-11](../../target/harness-validation/feature-004-u1-2026-10-11-144602/summary.json): 18 testes, 10 falhas comportamentais, 8 controles aprovados, zero erros/ignorados, BUILD FAILURE/exit 1. Todos os cinco sufixos inválidos em ambos os caminhos retornavam 201 e gravavam um pedido/dois itens, conferidos antes da limpeza. Não reexecutado ou reclassificado esse RED como falha de preparação.
+
+Alteradas somente **três linhas** no [OrderRequestJsonConfig.java](../../src/main/java/com/devsuperior/dscommerce/config/OrderRequestJsonConfig.java), no leitor específico de OrderRequestDTO, imediatamente após completar o objeto raiz:
+
+```java
+if (parser.nextToken() != null) {
+    throw invalidInput(parser);
+}
+```
+
+O parser consome whitespace final e deve chegar a EOF/null. Qualquer segundo token causa JsonMappingException por invalidInput; texto inválido causa exceção de parsing ao tentar avançar. Não há captura que ignore o restante. O mecanismo existente converte o erro de leitura em HttpMessageNotReadableException e o [handler existente](../../src/main/java/com/devsuperior/dscommerce/controllers/handlers/GlobalExceptionHandler.java), 52–65, entrega 400/Invalid order data. Nenhum setting compartilhado ou leitura isolada de OrderItemRequestDTO foi alterado.
+
+[OrderTrailingContentIntegrationTest.java](../../src/test/java/com/devsuperior/dscommerce/controllers/OrderTrailingContentIntegrationTest.java) permanece **idêntico ao executado no RED**, SHA-256 `76C4E18BE208918B2AFB36522AA4FAB266A508BD5A5914816DB51F4C05E410C5`. Mantidas todas as assertions de envelope/path/nenhuma escrita, controles completos e coleta HTTP/JDBC anterior à limpeza, sem transação externa. As demais fontes de teste também não foram modificadas.
+
+### Comandos, estado executado e totais reais
+
+Java **21.0.12.1 Azul/Zulu**, Maven **3.9.16 pelo Wrapper**, Windows/H2. `.\mvnw.cmd --version` exit 0; [versões](../../target/harness-validation/feature-004-u1-fix-2026-10-11-150109/wrapper-version.txt). MAVEN_ARGS/MAVEN_OPTS/JAVA_TOOL_OPTIONS/JDK_JAVA_OPTIONS/_JAVA_OPTIONS ausentes, sem variáveis alteradas. [Registro do runtime](../../target/harness-validation/feature-004-u1-fix-2026-10-11-150109/runtime.json).
+
+Primeiro, execução serial somente da nova classe:
+
+```powershell
+.\mvnw.cmd "-Dtest=OrderTrailingContentIntegrationTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+```
+
+Após conferir GREEN, executada a suíte completa exatamente na raiz, sem seleção, exclusões, skip ou parâmetro adicional:
+
+```powershell
+.\mvnw.cmd test
+```
+
+| Execução em 2026-10-11 / UTC−03:00 | Início → término | Testes / aprovados | Falhas / erros / ignorados | Build / exit |
+| --- | --- | --- | --- | --- |
+| Classe focada, com correção U1 | 15:02:14.629 → 15:03:09.764 | **18 / 18** | **0 / 0 / 0** | **BUILD SUCCESS / 0** |
+| Suíte completa, com correção U1 e launcher T051 presente | 15:04:47.198 → 15:07:42.402 | **922 / 918** | **0 / 4 / 0** | **BUILD FAILURE / 1** |
+
+Totais conferidos por testcase e atributos nos relatórios próprios de cada execução. Suíte completa: **38 XML + 38 TXT**, **33 classes-base**, nenhuma classe esperada ausente. Os **18 casos de U1 passaram também nessa suíte**. Não somados os 18 focados aos 922 completos, nem usado o total histórico 904 para presumir contagem/aprovação. O estado executado inclui o diff de três linhas, a nova classe preservada e o launcher já commitado; HEAD sozinho não representa esse working tree.
+
+| Casos, cada um em `/orders` e `/api/orders` | Resultado GREEN focado e na suíte completa | Banco independente após resposta e antes da limpeza |
+| --- | --- | --- |
+| Outro objeto, array, null, escalar 42 e texto inválido | **400**, exatamente status/error/message/path, error Bad Request, message **Invalid order data**, path externo correto, JSON | Baseline **0 pedidos/0 itens** preservado, nenhuma gravação |
+| Espaços, tabulações, quebras de linha e whitespace misto | **201**, confirmação completa, comprador/WAITING_PAYMENT/UTC, ordem enviada, dinheiro String 10.00/7.50 × 2/3, total 42.50; sem Location | **1 pedido/2 itens**, snapshot histórico completo, cálculo e posições conferidos |
+
+Nos 18 marcadores de cada execução: autoCommit=true, bound=false, externalTx=false, requestFailure=none. Aprovação do teste confirma também as assertions de envelope completo e banco, não só o status. [Observações focadas](../../target/harness-validation/feature-004-u1-fix-2026-10-11-150109/focused-01/u1-observations.txt) e [observações na suíte](../../target/harness-validation/feature-004-u1-fix-2026-10-11-150109/full-01/u1-observations.txt).
+
+### Suíte completa não aprovada: diagnóstico dos quatro erros
+
+**A validação do estado posterior ao launcher revelou um problema distinto de U1.** OrderTestSupportTest executou cinco casos: um aprovado, quatro erros JUnit, zero failures/skips. Nos quatro WebApplicationContextRunner, o lookup `getBean(OrderTestFixture.class)` lança **NoUniqueBeanDefinitionException**, encontrando `orderDemoFixture` e `orderTestFixture`.
+
+Casos afetados: shouldCommitAllRoleFixturesAndCleanOnlyOwnedRows, shouldReuseRealEncodersAndDecoderWithTheTestProfileKey, shouldIsolateRoleFixturesAndTheirCleanupAcrossContexts e shouldCommitFixturesAndCleanOnlyOwnedRowsInIsolatedContexts. Seus contextos chegaram a iniciar; a busca ambígua da fixture impede continuar os cenários. São **erros de integração/preparação**, distintos do RED comportamental anterior de U1 e de falha de compilação.
+
+Inspeção causal: [OrderTestSupportTest.java](../../src/test/java/com/devsuperior/dscommerce/config/OrderTestSupportTest.java), 39–43, usa ConfigDataApplicationContextInitializer e configura DscommerceApplication/OrderTestConfig com perfil test. A configuração aninhada DemoFixtures de [OrderDemoApplication.java](../../src/test/java/com/devsuperior/dscommerce/demo/OrderDemoApplication.java), já presente no HEAD de entrada, é descoberta nesses runners e registra também o bean de fixture. @TestConfiguration/profile test não bastaram para excluí-la nesse caminho. **Registrar o bean automaticamente não significa popular os dados automaticamente**: as chamadas createAccount/createProduct continuam somente no main explícito da demonstração.
+
+A stack e a ordem do código mostram erro na obtenção da fixture, **antes de qualquer leitura de OrderRequestDTO** nesses cenários. O diff U1 não muda definição/registro de beans, scans ou contexto; launcher e OrderTestSupportTest são idênticos à entrada. Assim, o diagnóstico aponta um problema preexistente no estado com launcher, descoberto pela primeira suíte completa posterior à sua inclusão, não uma regressão causada pela guarda EOF. Não realizada execução comparativa temporariamente sem a correção; a atribuição causal se apoia no ponto de falha executado e na inspeção dessas fontes.
+
+As conclusões de inspeção T052/T055 sobre exclusão automática nos demais contextos ficam **limitadas por esta evidência nova**: elas não comprovavam convivência executada e agora não se sustentam para os WebApplicationContextRunner acima. Seus registros históricos não foram apagados ou reescritos. **Não corrigido o launcher, runners ou assertions**, porque esta solicitação autoriza exclusivamente U1 no leitor. Sem esse ajuste fora do escopo, não há motivo para repetir alvos/suíte e alegar aprovação. [Causas por caso](../../target/harness-validation/feature-004-u1-fix-2026-10-11-150109/full-01/cause-review.json) e [XML dos quatro erros](../../target/harness-validation/feature-004-u1-fix-2026-10-11-150109/full-01/reports/TEST-com.devsuperior.dscommerce.config.OrderTestSupportTest.xml).
+
+### Preservação, evidências e situação de U1
+
+Antes de qualquer execução, inventariados 158 rastreados, fonte U1 não rastreada, prefixo integral do quickstart e **6.085 arquivos de evidências já arquivadas**; [baseline](../../target/harness-validation/feature-004-u1-fix-2026-10-11-150109/baseline.json). **Antes de cada invocação de testes, copiados/conferidos por SHA-256 os 76 relatórios Surefire existentes**, em diretórios separados: [antes do foco](../../target/harness-validation/feature-004-u1-fix-2026-10-11-150109/focused-01/surefire-before), [inventário](../../target/harness-validation/feature-004-u1-fix-2026-10-11-150109/focused-01/reports-before.json), [antes da suíte](../../target/harness-validation/feature-004-u1-fix-2026-10-11-150109/full-01/surefire-before) e [inventário](../../target/harness-validation/feature-004-u1-fix-2026-10-11-150109/full-01/reports-before.json). O RED original e T050–T055 continuam preservados; relatórios atuais correspondem à suíte completa falha, sem misturar arquivos antigos com seus totais.
+
+Evidências ignoradas pelo Git, sem credencial/JWT/chave nas observações: [foco: comando/estado/exit](../../target/harness-validation/feature-004-u1-fix-2026-10-11-150109/focused-01/result.json), [resumo](../../target/harness-validation/feature-004-u1-fix-2026-10-11-150109/focused-01/summary.json), [XML](../../target/harness-validation/feature-004-u1-fix-2026-10-11-150109/focused-01/reports/TEST-com.devsuperior.dscommerce.controllers.OrderTrailingContentIntegrationTest.xml); [suíte: comando/estado/exit](../../target/harness-validation/feature-004-u1-fix-2026-10-11-150109/full-01/result.json), [resumo por classe](../../target/harness-validation/feature-004-u1-fix-2026-10-11-150109/full-01/summary.json), [console completo](../../target/harness-validation/feature-004-u1-fix-2026-10-11-150109/full-01/console.txt). Cada diretório guarda cópias do leitor/teste executados e seus relatórios. Arquivos de evidência/coletores não entram no diff versionável.
+
+**U1 resolvido quanto à rejeição de conteúdo residual solicitada, comprovada pelos 18 casos GREEN tanto no foco quanto na suíte; a suíte completa NÃO está aprovada por causa dos quatro erros do launcher.** Não declarada aprovação integral da feature ou integração em main. Mantidas as 55 marcações históricas, sem transformar checkbox em aprovação do estado novo. U2 continua resolvido somente quanto à ativação explícita das fixtures de demonstração; seu isolamento em runners tem agora a divergência acima. **Validação OpenAPI integral permanece pendente/impedida**, sem ferramenta instalada ou nova validação.
+
+Limites da prova U1: exemplos definidos de cinco categorias/escalares numéricos, quatro formas de whitespace, contexto completo MockMvc/filtros/JWT/H2 e JDBC independente; não matriz de todos os escalares/encodings/tamanhos, TCP/deploy ou outro banco. A guarda exige EOF para o corpo do DTO de pedido; leitura de itens isolados e contratos anteriores permanecem preservados. As provas históricas de rollback/commit conservam seu alcance, sem simular falha física durante commit ou garantir rollback pós-commit. A suíte atual executou com launcher presente/compilado, mas **não executou seu main nem repetiu a demonstração**.
+
+Alterações desta correção: somente três linhas produtivas no leitor e este acréscimo documental. Nova classe da investigação mantida integralmente, ainda não rastreada; nenhuma assertion alterada. Sem demonstração, OpenAPI, CI, stage, commit, fetch ou push. HEAD mantido em `cab7716b1e6397c5d7715d696072b1d65a26b030`.
+
+Revisão final: [auditoria de preservação e whitespace](../../target/harness-validation/feature-004-u1-fix-2026-10-11-150109/final-review.json) confirmou **156 outros arquivos rastreados e 6.085 evidências anteriores idênticos por SHA-256**, prefixo inicial de **707.724 bytes** do quickstart preservado, fonte U1 inalterada e leitor/teste atuais iguais às cópias executadas nas duas invocações. Os **76 relatórios anteriores a cada execução** foram preservados; os 76 atuais correspondem às cópias da suíte completa. Conferidos destinos das novas referências, diff de produção de três linhas, conteúdo integral da classe não rastreada e as 55 marcações históricas. `git diff --check` exit 0; conferência separada do arquivo não rastreado sem erro de whitespace (exit 1 de diff contra NUL por existir conteúdo). Saídas contêm somente avisos Git LF→CRLF já existentes; configurações Git não alteradas. Índice vazio; status final restrito a quickstart.md e OrderRequestJsonConfig.java modificados e OrderTrailingContentIntegrationTest.java não rastreado. A suíte completa continua **BUILD FAILURE/exit 1 pelos quatro erros documentados**, sem aprovação integral.
+
+## Isolamento das fixtures — correção e validação após U1 (2026-10-11)
+
+**Escopo exclusivo: descoberta da configuração de demonstração.** Confirmados raiz `C:/Users/ronal/dscommerce-speckit`, branch `004-registrar-pedido`, HEAD `cab7716b1e6397c5d7715d696072b1d65a26b030` e índice vazio. Entrada: quickstart.md/OrderRequestJsonConfig.java modificados e OrderTrailingContentIntegrationTest.java não rastreado. Preservados integralmente a guarda EOF de U1, a classe/assertions da investigação e todas as evidências anteriores. Não alteradas marcações T001–T055.
+
+### Falha anterior e origem dos dois beans
+
+A [suíte anterior com U1](../../target/harness-validation/feature-004-u1-fix-2026-10-11-150109/full-01/summary.json), 2026-10-11, 15:04:47.198–15:07:42.402 UTC−03:00, executou **922 testes: 918 aprovados, zero falhas, quatro erros, zero ignorados; BUILD FAILURE/exit 1**. As 918 aprovações **não significavam aprovação da suíte**. Esse histórico não foi apagado ou reescrito.
+
+Lidos os quatro erros completos no [TXT anterior](../../target/harness-validation/feature-004-u1-fix-2026-10-11-150109/full-01/reports/com.devsuperior.dscommerce.config.OrderTestSupportTest.txt) e XML correspondente. Todos eram NoUniqueBeanDefinitionException na obtenção de OrderTestFixture, encontrando orderDemoFixture/orderTestFixture, antes da leitura de pedido:
+
+- shouldCommitAllRoleFixturesAndCleanOnlyOwnedRows;
+- shouldReuseRealEncodersAndDecoderWithTheTestProfileKey;
+- shouldIsolateRoleFixturesAndTheirCleanupAcrossContexts;
+- shouldCommitFixturesAndCleanOnlyOwnedRowsInIsolatedContexts.
+
+[OrderTestSupportTest.java](../../src/test/java/com/devsuperior/dscommerce/config/OrderTestSupportTest.java), 43–46, prepara WebApplicationContextRunner com perfil test e registra explicitamente DscommerceApplication/OrderTestConfig. **orderTestFixture** vem do método @Bean em [OrderTestConfig.java](../../src/test/java/com/devsuperior/dscommerce/config/OrderTestConfig.java), 48–51, configuração necessária às fixtures/Clock dos testes, mantida intacta. **orderDemoFixture** vem do método @Bean da classe estática aninhada DemoFixtures em [OrderDemoApplication.java](../../src/test/java/com/devsuperior/dscommerce/demo/OrderDemoApplication.java). Antes, essa classe tinha @TestConfiguration/@Profile(test); o scan da aplicação a descobriu nesses runners. A exclusão de configuração de teste não estava assegurada nessa preparação, como comprovaram os quatro lookups ambíguos. Construtor do bean não populava contas/produtos automaticamente, mas seu registro já quebrava a unicidade. [Diagnóstico com as quatro stacks completas](../../target/harness-validation/feature-004-fixture-isolation-2026-10-11-152304/diagnosis.json).
+
+### Correção mínima, somente em código de teste
+
+Removidos de DemoFixtures **@TestConfiguration e seu import**, com comentário explicando o registro explícito. Mantidos **@Profile("test"), método @Bean/orderDemoFixture e new SpringApplication(DscommerceApplication.class, DemoFixtures.class)** no main. A classe passa a configuração lite: sem estereótipo @Component/@Configuration/@TestConfiguration, não é candidata ao component scan padrão; como fonte explicitamente registrada pelo launcher, seus métodos @Bean continuam processados. Não depende de flag implícita ou de um perfil adicional.
+
+A correção fica inteiramente no launcher de src/test. Não alterados OrderTestConfig, contexto/assertions de OrderTestSupportTest, demais testes, produção, ObjectMapper, contratos, seed pública, POM ou U1. Sem @Primary para esconder ambiguidade, remoção da fixture necessária, skip/exclusão de testes ou substituição de encoders/decoder reais. O getBean por tipo nos cenários originais volta a funcionar; a demonstração também exige exatamente um bean de fixture. Nenhum ajuste extra de preparação foi necessário.
+
+### Execuções atuais, em sequência e com relatórios preservados
+
+Java **21.0.12.1 Azul/Zulu**, Maven **3.9.16 pelo Wrapper**, Windows: [versões](../../target/harness-validation/feature-004-fixture-isolation-2026-10-11-152304/wrapper-version.txt), comando `.\mvnw.cmd --version`, exit 0. MAVEN_ARGS/MAVEN_OPTS/JAVA_TOOL_OPTIONS/JDK_JAVA_OPTIONS/_JAVA_OPTIONS ausentes; não alteradas variáveis ou configurações Git.
+
+Comandos na raiz, executados serialmente, sem alteração das assertions:
+
+```powershell
+.\mvnw.cmd "-Dtest=OrderTestSupportTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=OrderTrailingContentIntegrationTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+# Somente depois de conferir ambos GREEN:
+.\mvnw.cmd test
+```
+
+| Execução em 2026-10-11 / UTC−03:00 | Início → término | Testes / aprovados | Falhas / erros / ignorados | Build / exit |
+| --- | --- | --- | --- | --- |
+| OrderTestSupportTest | 15:24:10.784 → 15:25:14.413 | **5 / 5** | **0 / 0 / 0** | **BUILD SUCCESS / 0** |
+| OrderTrailingContentIntegrationTest | 15:25:22.209 → 15:25:57.444 | **18 / 18** | **0 / 0 / 0** | **BUILD SUCCESS / 0** |
+| Suíte completa com launcher corrigido e U1 preservado | 15:26:25.858 → 15:29:23.039 | **922 / 922** | **0 / 0 / 0** | **BUILD SUCCESS / 0** |
+
+Totais conferidos nos relatórios próprios, por atributos e testcase: suíte com **38 XML/38 TXT, 33 classes-base e nenhuma classe esperada ausente**. OrderTestSupportTest 5/5 e U1 18/18 também nessa suíte. Sem presumir 904 ou somar execuções focadas/repetidas como testes distintos. O estado aprovado é o working tree com U1, seu teste preservado e a correção do launcher sobre o HEAD acima; não somente esse commit.
+
+Em U1, tanto no foco quanto na suíte: cinco categorias inválidas em /orders e /api/orders retornaram **400**, envelope exato status/error/message/path, mensagem **Invalid order data**, path externo correto e **zero pedidos/itens gravados**, por JDBC independente antes da limpeza. Oito controles de whitespace final retornaram **201** e persistiram um pedido/dois itens integralmente. Sem transação externa do teste. [Marcadores focados](../../target/harness-validation/feature-004-fixture-isolation-2026-10-11-152304/u1-01/u1-observations.txt) e [na suíte](../../target/harness-validation/feature-004-fixture-isolation-2026-10-11-152304/full-01/u1-observations.txt).
+
+Evidências atuais: [suporte: comando/exit](../../target/harness-validation/feature-004-fixture-isolation-2026-10-11-152304/support-01/result.json), [resumo](../../target/harness-validation/feature-004-fixture-isolation-2026-10-11-152304/support-01/summary.json), [XML](../../target/harness-validation/feature-004-fixture-isolation-2026-10-11-152304/support-01/reports/TEST-com.devsuperior.dscommerce.config.OrderTestSupportTest.xml); [U1: comando/exit](../../target/harness-validation/feature-004-fixture-isolation-2026-10-11-152304/u1-01/result.json), [resumo](../../target/harness-validation/feature-004-fixture-isolation-2026-10-11-152304/u1-01/summary.json); [suíte: comando/exit](../../target/harness-validation/feature-004-fixture-isolation-2026-10-11-152304/full-01/result.json), [resumo por classe](../../target/harness-validation/feature-004-fixture-isolation-2026-10-11-152304/full-01/summary.json), [console](../../target/harness-validation/feature-004-fixture-isolation-2026-10-11-152304/full-01/console.txt). Relatórios de cada execução arquivados separadamente, sem misturar antigos com os totais.
+
+### Demonstração repetida e encerramento próprio
+
+Após a suíte GREEN, executado o mesmo mecanismo explícito documentado em T051:
+
+```powershell
+.\mvnw.cmd spring-boot:test-run '-Dspring-boot.run.main-class=com.devsuperior.dscommerce.demo.OrderDemoApplication' '-Dspring-boot.run.profiles=test'
+```
+
+2026-10-11, **15:29:48.371–15:30:12.671 UTC−03:00**, **BUILD SUCCESS/exit Maven 0**. Servidor/filtros reais, test/H2 UUID isolado, loopback/porta aleatória **59504**, exatamente uma fixture explicitamente registrada pelo launcher. Credenciais aleatórias/JWT permaneceram em memória, sem segredo em argumentos/saídas/evidências. [Resultado sanitizado e comando](../../target/harness-validation/feature-004-fixture-isolation-2026-10-11-152304/demo-01/result.json), [console](../../target/harness-validation/feature-004-fixture-isolation-2026-10-11-152304/demo-01/console.txt), [processos próprios observados, somente IDs/nomes](../../target/harness-validation/feature-004-fixture-isolation-2026-10-11-152304/demo-01/owned-processes.json).
+
+Catálogo/detalhes antes e depois e login real antes/depois aprovados. Fixture CLIENT autorizada, preços conferidos por HTTP 10.00/7.50, quantidades 2/3, strings monetárias e total **42.50**. Dois POST /orders retornaram **201**, ids **1 e 2**, comprador accountId 2, WAITING_PAYMENT, instantes **2026-10-11T18:30:12.130Z / 18:30:12.255Z**, ordem e confirmação completas, sem Location. JDBC independente confirmou **dois pedidos/quatro itens**, primeiro pedido preservado após repetição; seed original de **52 produtos**, categorias/vínculos/contas públicos preservados. Não criado/usado GET /orders.
+
+O launcher fechou seu próprio contexto e terminou naturalmente: ORDER_DEMO_CLOSED ownedContext=true. **Limite do coletor:** após Maven exit 0, o auxiliar de captura saiu com **exit 1** ao exigir também término imediato de conhost.exe PID 6040, pertencente ao seu próprio PowerShell ainda em execução (PID 7244). Isso ocorreu depois da demonstração aprovada, não foi erro do aplicativo nem novo RED. A primeira observação foi mantida, sem sobrescrita. [Conferência posterior de encerramento](../../target/harness-validation/feature-004-fixture-isolation-2026-10-11-152304/demo-01/shutdown-review.json), às **15:31:08.558**, confirmou host, ambas as JVMs e os cinco descendentes observados encerrados, **zero processos próprios restantes e porta fechada**. Nenhum Stop-Process ou encerramento de processo alheio; nenhuma repetição desnecessária da demonstração.
+
+### Preservação, situação e limites
+
+[Baseline anterior à alteração](../../target/harness-validation/feature-004-fixture-isolation-2026-10-11-152304/baseline.json) inventariou 158 rastreados, U1 não rastreado, prefixo integral do quickstart e **6.336 arquivos de evidências anteriores**. Antes de **cada uma das quatro invocações Maven** (três testes e demonstração), **76 relatórios Surefire existentes** foram copiados e verificados por SHA-256 em `surefire-before` próprio, com manifest reports-before.json em cada diretório. A demonstração não executou JUnit nem substituiu os relatórios da suíte. Mantidos histórico RED/GREEN de U1, suíte anterior falha de 922, T050–T055 e registros Windows/Linux/2026-10-01/02.
+
+**Isolamento corrigido nos contextos exercitados**, e ativação explícita da demonstração novamente comprovada. **U1 permanece resolvido no alcance documentado; U2 permanece resolvido somente para ativação explícita das fixtures**, agora com evidência de convivência dos testes solicitados e da suíte atual. Não ampliada a conclusão para todo contexto hipotético, provisionamento em produção ou integração em main. **OpenAPI integral continua pendente/impedido em T053**, sem instalação ou nova validação. T001–T055 permanecem [X] históricos, sem novas marcações.
+
+Demonstração de sucesso/repetição não substitui provas automatizadas de rollback. Os testes existentes de rollback passaram na suíte, com o mesmo alcance anterior: falha SQL tardia, pós-flush e beforeCommit, controle positivo e JDBC independente; beforeCommit não simula falha física durante commit e não prova rollback pós-commit. Nenhuma aprovação integral sem essas ressalvas.
+
+Alterações desta solicitação: somente launcher e este acréscimo documental. Correção produtiva U1 e teste não rastreado anteriores preservados. Sem stage, commit, push, CI, OpenAPI, mudanças de dependências/contratos/seed ou de configuração Git.
+
+Revisão final: [auditoria de preservação, referências, diff e whitespace](../../target/harness-validation/feature-004-fixture-isolation-2026-10-11-152304/final-review.json) confirmou 156 outros rastreados e 6.336 evidências anteriores idênticos, prefixo de 721.129 bytes do quickstart preservado, U1/leitor/teste intactos e fontes atuais iguais às executadas. Conferidos os relatórios preservados antes das quatro invocações, o conteúdo integral do arquivo não rastreado e o diff acumulado (U1 de três linhas, correção mínima do launcher e acréscimos documentais). Removida somente uma linha vazia nova no EOF desta seção, detectada no primeiro check; nenhum trecho histórico reformatado. `git diff --check` final exit 0; arquivo não rastreado sem erro de whitespace (diff contra NUL exit 1 por conteúdo novo). Somente avisos LF→CRLF, sem mudança de configuração Git. Índice vazio; status final: quickstart.md, OrderRequestJsonConfig.java e OrderDemoApplication.java modificados, OrderTrailingContentIntegrationTest.java não rastreado. HEAD/branch mantidos; nenhuma task ou assertion alterada.

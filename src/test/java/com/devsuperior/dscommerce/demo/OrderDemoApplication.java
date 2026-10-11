@@ -7,7 +7,6 @@ import com.devsuperior.dscommerce.fixtures.OrderTestFixture;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.boot.SpringApplication;
-import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Profile;
@@ -196,7 +195,7 @@ public final class OrderDemoApplication {
         if (!condition) throw new IllegalStateException(check);
     }
 
-    @TestConfiguration(proxyBeanMethods = false)
+    // Lite configuration registered only as an explicit SpringApplication source, never by component scan.
     @Profile("test")
     public static class DemoFixtures {
         @Bean

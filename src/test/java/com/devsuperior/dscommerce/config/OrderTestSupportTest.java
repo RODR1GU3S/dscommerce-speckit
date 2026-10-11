@@ -4,6 +4,7 @@ import com.devsuperior.dscommerce.DscommerceApplication;
 import com.devsuperior.dscommerce.entities.UserRole;
 import com.devsuperior.dscommerce.fixtures.OrderTestFixture;
 import com.devsuperior.dscommerce.services.AuthenticationService;
+import com.devsuperior.dscommerce.services.OrderService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.ConfigDataApplicationContextInitializer;
@@ -15,6 +16,8 @@ import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.web.FilterChainProxy;
+import org.springframework.test.util.AopTestUtils;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -235,9 +238,17 @@ class OrderTestSupportTest {
                 .run(context -> {
                     assertThat(context).hasNotFailed();
                     assertThat(context).hasSingleBean(JwtEncoder.class).hasSingleBean(JwtDecoder.class)
-                            .hasSingleBean(PasswordEncoder.class).hasSingleBean(Clock.class);
+                            .hasSingleBean(PasswordEncoder.class);
+                    assertThat(context.getBeansOfType(Clock.class)).containsOnlyKeys("orderClock", "orderTestClock");
                     var clock = context.getBean(OrderTestConfig.ControlledClock.class);
+                    assertThat(context.getBean("orderTestClock")).isSameAs(clock);
+                    assertThat(clock.instant()).isEqualTo(OrderTestConfig.INITIAL_INSTANT);
+                    var productionClock = context.getBean("orderClock", Clock.class);
+                    assertThat(productionClock).isNotSameAs(clock);
+                    assertThat(productionClock.getZone()).isEqualTo(ZoneOffset.UTC);
                     assertThat(context.getBean(Clock.class)).isSameAs(clock);
+                    OrderService target = AopTestUtils.getUltimateTargetObject(context.getBean(OrderService.class));
+                    assertThat(ReflectionTestUtils.getField(target, "clock")).isSameAs(clock);
                     var fixture = context.getBean(OrderTestFixture.class);
                     var jdbc = context.getBean(JdbcTemplate.class);
                     try {

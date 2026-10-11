@@ -9,6 +9,7 @@ import com.devsuperior.dscommerce.entities.OrderStatus;
 import com.devsuperior.dscommerce.entities.UserRole;
 import com.devsuperior.dscommerce.fixtures.OrderTestFixture;
 import com.devsuperior.dscommerce.security.AuthenticatedAccountPrincipal;
+import com.devsuperior.dscommerce.services.exceptions.InvalidOrderException;
 import org.aopalliance.intercept.MethodInterceptor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,6 +42,7 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+import static com.devsuperior.dscommerce.services.exceptions.InvalidOrderException.Reason.UNREPRESENTABLE_VALUE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -181,9 +183,16 @@ class OrderServiceContextTest {
         var principal = new AuthenticatedAccountPrincipal(buyerId);
 
         assertThatThrownBy(() -> service.register(new OrderRequestDTO(List.of(new OrderItemRequestDTO(maximum, 2))), principal))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOfSatisfying(InvalidOrderException.class, exception -> {
+                    assertThat(exception.getReason()).isEqualTo(UNREPRESENTABLE_VALUE);
+                    assertThat(exception).hasMessage("Order value cannot be represented");
+                });
         assertThatThrownBy(() -> service.register(new OrderRequestDTO(List.of(new OrderItemRequestDTO(half1, 1),
-                new OrderItemRequestDTO(half2, 1))), principal)).isInstanceOf(IllegalArgumentException.class);
+                new OrderItemRequestDTO(half2, 1))), principal))
+                .isInstanceOfSatisfying(InvalidOrderException.class, exception -> {
+                    assertThat(exception.getReason()).isEqualTo(UNREPRESENTABLE_VALUE);
+                    assertThat(exception).hasMessage("Order value cannot be represented");
+                });
 
         assertThat(observation.sql).noneSatisfy(event -> assertThat(event.statement()).startsWith("insert"));
         assertThat(jdbc.queryForObject("select count(*) from tb_order where buyer_id = ?", Integer.class, buyerId)).isZero();

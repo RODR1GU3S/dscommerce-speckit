@@ -2730,3 +2730,569 @@ U1/U2 continuam pendentes, sem aplicação. T042–T055 permanecem abertas; para
 Capturados hashes de **5054 arquivos preexistentes** e cópia dos reports Surefire antes da execução; evidências antigas preservadas e disponíveis mesmo onde Maven atualizou reports de trabalho. Auditoria final confere alteração incremental somente em LoginControllerTest, quickstart.md por acréscimo e a checkbox T041 em tasks.md; demais alterações/fontes/evidências e os seis não rastreados anteriores preservados. [Auditoria de preservação](../../target/harness-validation/feature-004-t041-completion-2026-10-10/final-preservation.json).
 
 Diff incremental, links do acréscimo, conteúdo dos arquivos de evidência novos e whitespace revisados; `git diff --check` executado com exit 0, sem erros de whitespace; avisos de conversão LF/CRLF estão preservados no log da revisão, sem alteração dos trechos anteriores. Conferidos também os seis não rastreados anteriores, sem mudanças de conteúdo ou whitespace. [Revisão final e estado Git](../../target/harness-validation/feature-004-t041-completion-2026-10-10/review-checks.json). Arquivos alterados nesta etapa: `src/test/java/com/devsuperior/dscommerce/controllers/LoginControllerTest.java`, `specs/004-registrar-pedido/quickstart.md` e `specs/004-registrar-pedido/tasks.md`, além de evidências ignoradas em target. Checkboxes finais: **T001–T041 [X] (41), T042–T055 [ ] (14)**. Raiz/branch/HEAD mantidos; Git final com **15 rastreados modificados, seis não rastreados e índice vazio**.
+
+## T042 — regressão pública do catálogo com Bearer inválido irrelevante (2026-10-10)
+
+Executada exclusivamente T042; parada antes de T043. Raiz, branch real, HEAD e status confirmados com `git rev-parse --show-toplevel`, `git branch --show-current`, `git rev-parse HEAD` e `git status --short`: `C:/Users/ronal/dscommerce-speckit`, `004-registrar-pedido`, `73d3398965b25027d393202a2c5a984984abd0ca`, working tree inicialmente limpo e índice vazio. T041 concluída como dependência; suas 133 aprovações e as 411 de T040 permanecem históricas, sem repetição.
+
+Skill speckit-implement aplicada no escopo autorizado. `& .specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks` executado com exit 0, FEATURE_DIR correto; checklist requirements.md 16/16, zero abertos, somente leitura. Conferidos T042, US3.1, FR-015, SC-006, spec/contrato OpenAPI da Feature 001, plano/decisões/modelo/constituição e procedimentos do quickstart. Ignores existentes suficientes; `.specify/extensions.yml` ausente antes/depois, sem hooks executáveis.
+
+### Testes entregues e preparação
+
+PublicCatalogSecurityIntegrationTest mantém seus sete casos originais sem token e adiciona 26 invocações parametrizadas: 13 sem token e 13 com `Authorization: Bearer not-a-valid-jwt`. SpringBootTest/perfil test/MockMvc com `addFilters=true`, ObjectMapper, serviços, repositórios e H2 reais; sem MockBean, jwt(), WithMockUser ou autenticação simulada. A chain realmente selecionada para GET /products contém AuthorizationFilter e não BearerTokenAuthenticationFilter. SAMEORIGIN observado nas respostas confirma passagem pelos filtros; respostas públicas não recebem WWW-Authenticate. Isso não altera a chain de produção.
+
+Os 31 casos do catálogo principal usam a seed original de 52 produtos, com SELECT de contagem nas novas verificações e sem escrita/limpeza de produtos. Dois casos adicionais de catálogo realmente vazio usam contexto completo/H2 próprio `catalog-empty-UUID`, sem carregar import.sql (`spring.sql.init.mode=never`, `spring.jpa.properties.hibernate.hbm2ddl.import_files=`). As contagens JDBC zero antes/depois confirmam a fixture vazia. Pools observados no console: catálogo principal `jdbc:h2:mem:dscommerce-test`; vazio `jdbc:h2:mem:catalog-empty-2e0e7563-ab38-4c82-b980-20b4b2d18f3e`. Nenhuma seed, recurso compartilhado ou regra do catálogo foi modificada.
+
+ProductControllerTest foi inicialmente executado com sua preparação original: **11 erros de contexto, zero falhas comportamentais**, exit 1 / BUILD FAILURE, sem alcançar assertions. Console confirma UnsatisfiedDependencyException/NoSuchBeanDefinitionException: parâmetro 1 de `orderJwtAuthenticationConverter` requer `java.time.Clock`, ausente no slice. OrderSecuritySliceTestConfig não fornece Clock. Após confirmar a causa, adicionados somente o import Java de OrderClockConfig e `OrderClockConfig.class` ao @Import, seguindo LoginControllerTest/GlobalExceptionHandlerRegressionTest. Sem bean duplicado, contexto completo substituindo slice ou verificações desabilitadas. Preservados todos os 11 cenários, métodos e assertions existentes, inclusive os dois casos anteriores de detalhe que já pertencem a essa classe. Repetida somente ProductControllerTest; a integração aprovada não foi repetida.
+
+### Comandos, execuções e contagens
+
+Na raiz Windows/PowerShell, serialmente, sem sobreposição:
+
+```powershell
+.\mvnw.cmd "-Dtest=PublicCatalogSecurityIntegrationTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=ProductControllerTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+# Depois de confirmar e corrigir exclusivamente a preparação de ProductControllerTest:
+.\mvnw.cmd "-Dtest=ProductControllerTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+```
+
+| Execução | Início → término (UTC−03:00) | Casos | Falhas | Erros | Ignorados | Exit / resultado |
+| --- | --- | ---: | ---: | ---: | ---: | --- |
+| PublicCatalogSecurityIntegrationTest | 2026-10-10 17:30:15.645 → 17:31:13.366 | 33 | 0 | 0 | 0 | 0 / BUILD SUCCESS |
+| ProductControllerTest, preparação inicial | 2026-10-10 17:31:28.321 → 17:31:49.152 | 11 | 0 | 11 | 0 | 1 / BUILD FAILURE de preparação |
+| ProductControllerTest, preparação corrigida | 2026-10-10 17:32:09.640 → 17:32:48.295 | 11 | 0 | 0 | 0 | 0 / BUILD SUCCESS |
+| **Final selecionado de T042** | **última execução relevante de cada classe** | **44** | **0** | **0** | **0** | **33 + 11 aprovações** |
+
+Os 11 erros iniciais permanecem separados, não são RED comportamental nem somados às 44 aprovações finais. Foram três comandos para apenas duas classes solicitadas; nenhuma suíte completa/CI ou outra classe executada. A recompilação dos fontes de teste não significa execução deles. Java `21.0.12.1` observado nos XMLs; Maven 3.9.16 selecionado pelo Wrapper. XMLs novos arquivados por execução; relatórios anteriores foram copiados antes dos testes.
+
+Surefire atribui os 33 casos da integração ao XML de `$EmptyCatalog` e zero ao XML do contêiner externo; os testcase.classname distinguem **31 do catálogo principal e dois do vazio**. Contados os testcase/atributos efetivos dos dois XMLs, sem duplicação por contêiner. [Contagens, runtime e consolidação](../../target/harness-validation/feature-004-t042-2026-10-10/results-summary.json).
+
+[Resultado da integração](../../target/harness-validation/feature-004-t042-2026-10-10/PublicCatalogSecurityIntegrationTest-result.json), [console da integração](../../target/harness-validation/feature-004-t042-2026-10-10/PublicCatalogSecurityIntegrationTest-console.txt), [falha inicial do slice](../../target/harness-validation/feature-004-t042-2026-10-10/ProductControllerTest-result.json), [console da falha inicial](../../target/harness-validation/feature-004-t042-2026-10-10/ProductControllerTest-console.txt) e [resultado final do slice](../../target/harness-validation/feature-004-t042-2026-10-10/product-prepared/ProductControllerTest-result.json). Cada execução conserva console e diretório Classe-reports com XML/TXT.
+
+### Cobertura de US3.1 / FR-015 / parcela de SC-006
+
+| Cenário da Feature 001 | Evidência integrada nova, sem token e com Bearer inválido |
+| --- | --- |
+| Shape/dados essenciais em todos os itens | Envelope com exatamente content/page/size/totalElements/totalPages; metadados inteiros; cada produto com exatamente id/name/image/price, id inteiro positivo, textos não vazios e preço numérico não negativo. Sem description/categories. Verificado em cada página positiva. |
+| Paginação padrão | Dois casos: page=0, size=12, totalElements=52, totalPages=5, content=12. |
+| Paginação explícita e limites válidos | Dez casos: page/size 1/2, 4/12, 0/1, 0/50, 1/50; tamanhos retornados 2/4/1/50/2 e totais coerentes. |
+| Defaults independentes | Dois casos, cada um com duas chamadas: só page=1 mantém size=12; só size=2 mantém page=0. |
+| Ordenação name ASC/id ASC e catálogo completo | Dois casos percorrem cinco páginas de 12, reunindo 52 IDs únicos: 51,52,50…1. Primeiros nomes Duplicate/Duplicate/Product 01/Product 02; comparação integral por name/id, inclusive fronteiras de páginas. |
+| Resultado vazio por página além do total | Dois casos: page=999, size=12, content vazio, totalElements=52/totalPages=5 preservados. |
+| Ausência real de produtos | Dois casos em H2 separado: 200, content vazio, page=0/size=12/totalElements=0/totalPages=0. |
+| Parâmetros inválidos e mensagens contratuais | Seis casos: page=-1, size=0 e size=51 em ambos os modos; 400 com exatamente status/error/message/path. Mensagens `page must be greater than or equal to 0` e `size must be between 1 and 50`, path /products, sem desafio de autenticação. |
+
+As sete invocações originais sem token permanecem intactas. ProductControllerTest conserva suas 11 aprovações de shape/paginação/ordenação/erros/detalhe em slice com ProductCatalogService e suporte público mockados: não é prova de JWT, banco ou integração com filtros reais. A prova de que Bearer inválido não interfere no catálogo vem dos novos casos com contexto/filtros reais.
+
+**Comportamento do catálogo já preservado; nenhuma regressão comportamental observada e nenhuma correção de produção necessária. T042 marcada [X] após entrega e execução válida documentadas.** Erro de contexto do slice não comprova regressão do catálogo. Não criada falha artificial para demonstrar RED.
+
+### Limites, preservação e revisão final
+
+Esta etapa comprova o catálogo público no H2/MockMvc local com um Bearer malformado representativo. Não prova transporte real, todas as variantes JWT, outros bancos, CI ou suíte completa; não valida mensagens para tipos/formatos de query sem mensagem contratual definida. SC-006 global inclui detalhes/login e jornadas após rejeições, ainda em T043–T049; não é declarado integralmente atendido. Os casos de detalhe já existentes no slice executado não constituem execução de T043.
+
+U1/U2 continuam pendentes, sem aplicação. Nenhuma T043+, stage, commit, push, merge ou troca de branch. Histórico anterior do quickstart preservado por acréscimo; snapshot SHA-256 dos 156 arquivos rastreados confirma apenas os quatro arquivos autorizados alterados e todos os fontes produtivos/seed demais arquivos preservados. Casos originais da integração e corpo do slice conferidos contra as cópias anteriores. [Revisão final e preservação](../../target/harness-validation/feature-004-t042-2026-10-10/final-review.json).
+
+Diff dos quatro arquivos revisado; `git diff --check` executado com exit 0, sem erros de whitespace. Avisos Git de conversão LF/CRLF não são falhas de whitespace. Evidências novas em target são ignoradas pelo Git, com conteúdo/links conferidos. Estado final: mesmos raiz/branch/HEAD; **quatro rastreados modificados, nenhum não rastreado e índice vazio**. Arquivos: PublicCatalogSecurityIntegrationTest.java, ProductControllerTest.java (somente preparação), quickstart.md e tasks.md (somente checkbox T042). **T001–T042 [X] (42), T043–T055 abertas (13)**; parada antes de T043.
+
+## T043 — regressão pública dos detalhes com Bearer inválido irrelevante (2026-10-10)
+
+Executada exclusivamente T043; parada antes de T044. Conferidos `git rev-parse --show-toplevel`, `git branch --show-current`, `git rev-parse HEAD` e `git status --short`: raiz `C:/Users/ronal/dscommerce-speckit`, branch real `004-registrar-pedido`, HEAD `73d3398965b25027d393202a2c5a984984abd0ca`. Estado inicial: quatro rastreados modificados de T042 (PublicCatalogSecurityIntegrationTest.java, ProductControllerTest.java, quickstart.md e tasks.md), nenhum não rastreado e índice vazio. Essas alterações foram preservadas. T041 concluída satisfaz a dependência de T043; as 411 aprovações de T040, 133 de T041 e 44 selecionadas de T042 são evidências anteriores, sem nova execução nesta etapa.
+
+Skill speckit-implement aplicada somente a T043. `powershell.exe -NoProfile -File .specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks` executado com exit 0 e FEATURE_DIR correto; checklist requirements.md conferido somente para leitura: 16/16, zero abertos. `.specify/extensions.yml` ausente antes/depois, sem hooks executáveis; ignores Java existentes suficientes. Consultados T043/US3.2/FR-015/SC-006 e os artefatos da Feature 002 (spec, plan, research, data-model, tasks, quickstart e contracts/product-detail-openapi.yaml), além das decisões/modelo/contratos da Feature 004, constituição e implementação atual de detalhe/segurança/mapeamento.
+
+### Integração, cenários e fixture
+
+PublicProductDetailSecurityIntegrationTest mantém integralmente seus dois casos anônimos originais e adiciona **36 invocações parametrizadas: 18 sem token e 18 com `Authorization: Bearer not-a-valid-jwt`**. Mantidos SpringBootTest, perfil test e filtros reais de MockMvc, com `addFilters=true` explícito; ObjectMapper, serviços, repositórios e H2 reais. Nenhum MockBean, decoder mock, jwt(), WithMockUser ou filtro desabilitado. Nas novas requisições, conferida a chain efetivamente selecionada para GET /products e /products/{id}: AuthorizationFilter presente, BearerTokenAuthenticationFilter ausente. SAMEORIGIN observado e ausência de WWW-Authenticate reforçam a execução pública pelos filtros existentes.
+
+| Cobertura nova, nos dois modos | Invocações | Verificações |
+| --- | ---: | --- |
+| Produto selecionado existente | 12 | IDs 1,2,3,50,51,52; exatamente id/name/description/image/price/categories. Tipos contratuais, textos não vazios, preço numérico não negativo e valores exatos da seed. image preservado; não imgUrl ou strings monetárias de pedido. IDs 51/52 distinguem produtos de mesmo nome por imagem/preço/id. |
+| Navegação catálogo → detalhes | 2 | Duas páginas (50+2) fornecem 52 IDs únicos. Para cada ID, GET direto dos seus detalhes e comparação id/name/image/price com o item selecionado, mais todos os valores esperados. Lista conserva seus quatro campos, sem description/categories. Apenas chamadas auxiliares nesta classe; nenhuma classe de T042 repetida. |
+| Uma, várias e nenhuma categoria | incluídas acima | ID 1: Computers/Electronics; ID 2: Accessories; demais: lista vazia. Todos os nomes associados, somente strings não vazias, sem IDs/objetos de categoria e sem repetição; ordenação determinística atual preservada. |
+| Produto inexistente e envelope anterior | 10 | IDs 99999,0,-1,Long.MIN_VALUE,Long.MAX_VALUE; 404, exatamente status/error/message/path, error `Not Found`, message `Product not found`, path solicitado. Sem dados de outro produto. Não introduzida validação de id positivo: contrato int64 e lookup Long atuais preservados. |
+| Conversão atual de identificadores equivalentes | 4 | /products/01 e /products/+1 continuam resolvendo somente o produto 1 e seus valores completos. |
+| Identificadores não convertíveis para Long | 6 | abc, 1.5 e 9223372036854775808 retornam 400 via conversão MVC existente, com filtros reais e sem desafio de autenticação. Não inventada mensagem/envelope contratual para esses casos: OpenAPI define 200/404, não esse corpo 400. |
+| Nomes repetidos em categorias distintas | 2 | Fixture JDBC confirma três IDs de categoria associados ao produto 1 e nomes Computers/Electronics/Electronics; resposta inclui somente Computers/Electronics, uma vez cada. Produto 2 mantém somente Accessories. |
+
+Os 36 casos do contexto principal (dois originais + 34 novos) consultam a seed compartilhada sem escrita; novas verificações conferem contagens 52 produtos/3 categorias/3 vínculos. Para provar a deduplicação de nomes com dados reais, os dois casos de DuplicateCategoryNames usam contexto completo separado, com URL estável e exclusiva `jdbc:h2:mem:detail-duplicates-9f1d99fc-1cc7-48f4-97fa-e1b1095db672`. A seed é carregada sem alterar import.sql; somente nesse banco isolado é acrescentada a categoria id 4 com nome Electronics e o vínculo (produto 1, categoria 4), por JDBC com confirmação antes da chamada HTTP. Não há transação externa de teste ocultando a fixture. AfterEach remove somente esses dois registros locais e confirma novamente 3 categorias/3 vínculos; os 52 produtos permanecem intactos. O contexto principal usa `jdbc:h2:mem:dscommerce-test`; URLs/pools distintos observados no console.
+
+Essa fixture é parte da prova de US1.6/FR-005/SC-003 da Feature 002, não uma correção de produção ou uma alteração da seed pública. **Não houve impedimento de contexto nem ajuste de preparação para resolvê-lo.** Nenhum cenário/assertion anterior foi reduzido; ProductControllerTest e PublicCatalogSecurityIntegrationTest permanecem byte a byte como ao início de T043.
+
+### Execução válida e resultado
+
+Na raiz Windows/PowerShell, executado somente um comando de teste pelo Maven Wrapper:
+
+```powershell
+.\mvnw.cmd "-Dtest=PublicProductDetailSecurityIntegrationTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+```
+
+| Início → término (UTC−03:00) | Casos | Falhas | Erros | Ignorados | Exit / resultado |
+| --- | ---: | ---: | ---: | ---: | --- |
+| 2026-10-10 17:43:42.145 → 17:44:38.011 | **38** | **0** | **0** | **0** | **0 / BUILD SUCCESS** |
+
+Java `21.0.12.1` observado nos XMLs; Maven 3.9.16 selecionado pelo Wrapper. Surefire atribui 38 casos ao XML de `$DuplicateCategoryNames` e zero ao XML do contêiner externo; os testcase.classname distinguem **36 do contexto principal e dois da fixture isolada**. Conferidos atributos e 38 testcase reais, sem duplicação por contêiner. Recompilar 35 fontes de teste não significa executá-los. Linhas Running do console contêm somente a classe solicitada e sua nested class; nenhuma classe aprovada em T042 foi repetida.
+
+[Resultado/exit code](../../target/harness-validation/feature-004-t043-2026-10-10/PublicProductDetailSecurityIntegrationTest-result.json), [console](../../target/harness-validation/feature-004-t043-2026-10-10/PublicProductDetailSecurityIntegrationTest-console.txt) e [contagens/casos/runtime](../../target/harness-validation/feature-004-t043-2026-10-10/results-summary.json). XML/TXT novos arquivados no diretório PublicProductDetailSecurityIntegrationTest-reports; relatórios Surefire anteriores copiados para reports-before antes da execução. Os avisos de conversão MVC esperados nos seis casos 400 não são falhas dos testes.
+
+**GREEN: comportamento dos detalhes já preservado. Nenhuma regressão comportamental observada, RED artificial ou correção produtiva. T043 marcada [X] após entrega dos testes e documentação da execução válida.** Rastreia US3.2, FR-015 e a parcela de SC-006 relativa aos detalhes; cobre os seis cenários de US1 e os dois de US2 da Feature 002 por valores, seleção e resposta not-found.
+
+### Limitações e revisão final
+
+Evidência local H2/MockMvc com contexto/filtros reais e um Bearer malformado representativo; não demonstra transporte HTTP real, frontend/uma seleção visual, todas as variantes JWT, outros bancos, CI ou suíte completa. Navegação é comprovada por id de catálogo → GET detalhe, sem criação de interface. A seed possui preços positivos; a assertiva de contrato continua não negativa, sem criar fixture de preço zero/precisão extrema ou importar a regra >0 dos pedidos. Catálogo completo de T042 permanece evidência anterior; as chamadas auxiliares para seleção aqui não substituem seus testes de paginação/rejeições. SC-006 global e jornadas após rejeições ainda dependem de T044–T049, não declarados completos.
+
+Somente PublicProductDetailSecurityIntegrationTest.java alterado em código; quickstart.md acrescido e tasks.md com somente T043 marcada nesta etapa. Snapshot SHA-256 de 156 rastreados confirma essas três diferenças incrementais, preservando fontes produtivos/seed e os dois testes alterados em T042. Prefixo histórico inteiro do quickstart preservado em bytes; alteração anterior T042 em tasks mantida. Conferidos também os hashes dos 93 arquivos de evidência de T042, todos preservados. [Revisão final/preservação/Git](../../target/harness-validation/feature-004-t043-2026-10-10/final-review.json).
+
+Diff incremental e acumulado revisados; `git diff --check` com exit 0, sem erros de whitespace; avisos Git LF/CRLF não constituem falhas. Conteúdo/links das novas evidências conferidos; target permanece ignorado. Raiz/branch/HEAD inalterados. Estado final: **cinco rastreados modificados, nenhum não rastreado e índice vazio** (quatro de T042 preservados + integração de detalhes). **T001–T043 [X] (43), T044–T055 abertas (12)**. U1/U2 pendentes, sem aplicação. Não executada T044+, suíte completa/CI, stage, commit, push, merge ou troca de branch.
+
+## T044 — preservação do login e revisão de evidências por camada (2026-10-10)
+
+Executada exclusivamente T044; parada antes de T045. Confirmados raiz/branch real/HEAD/status por `git rev-parse --show-toplevel`, `git branch --show-current`, `git rev-parse HEAD` e `git status --short`: `C:/Users/ronal/dscommerce-speckit`, `004-registrar-pedido`, `73d3398965b25027d393202a2c5a984984abd0ca`. Inicialmente cinco rastreados modificados de T042–T043, nenhum não rastreado e índice vazio. Todas essas alterações preservadas; nenhuma classe aprovada em T042–T043 foi repetida.
+
+Skill speckit-implement aplicada no escopo delimitado. `powershell.exe -NoProfile -File .specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks` executado com exit 0 e FEATURE_DIR correto; checklist requirements.md 16/16, zero abertos, sem edição. `.specify/extensions.yml` ausente antes/depois; nenhum hook executável. Ignores Java existentes suficientes. Revisados T044/dependência T041, US3.3/FR-015/SC-006, contrato login-openapi.yaml e spec/modelo/plano/pesquisa/quickstart da Feature 003, além das decisões da Feature 004, código de login/Jackson/segurança/JWT e evidências arquivadas pertinentes. Procedimentos antigos `mvn test`/curl do quickstart 003 não foram executados nem reclassificados como Wrapper atual.
+
+### Entrega e execução atual: slice HTTP com serviço mockado
+
+LoginControllerTest permanece WebMvcTest com AuthenticationService mockado e suporte OrderSecuritySliceTestConfig (decoder/resolução mockados). Mantidos os imports existentes SecurityConfig/OrderClockConfig/OrderSecuritySliceTestConfig; **nenhum impedimento de contexto, ajuste corretivo de preparação ou alteração produtiva necessário**. Preservados em conteúdo todos os métodos, fontes parametrizadas, helpers e assertions dos 13 casos originais. Acrescidas 70 invocações: **35 sem token e 35 com `Authorization: Bearer not-a-valid-jwt`**. Cada requisição nova percorre os filtros do slice: seleção da chain pública com AuthorizationFilter presente e sem BearerTokenAuthenticationFilter, SAMEORIGIN e ausência de WWW-Authenticate. Isso prova o comportamento HTTP nesse slice, não substitui as provas de login real abaixo.
+
+| Cobertura nova no slice | Casos | Assertions principais |
+| --- | ---: | --- |
+| Credenciais exatas e sucesso | 2 | name/password com espaços e caixa preservados, uma chamada exata ao serviço, corpo exatamente accessToken/tokenType, Bearer e nenhum campo adicional ou credencial devolvida. ACCESS_TOKEN é stub, não JWT verificável. |
+| Credenciais inválidas uniformes | 2 | Cada caso envia nome desconhecido e senha incorreta; corpos 401 idênticos, exatamente status/error/message/path, `Unauthorized` / `Invalid credentials` / `/login`, sem token ou dados recebidos. Duas chamadas esperadas e nenhuma extra. |
+| Falha interna mockada | 2 | AuthenticationProcessingException com causa contendo canaries sensíveis; 500 exato `Internal Server Error` / `Authentication could not be completed`, sem credenciais, hash, token ou detalhes da causa. Não simula falha física real de banco/encoder. |
+| Entrada estrita, 28 corpos × dois modos | 56 | Ausência/null/vazio/espaços em ambos os campos; tipos number/bool/object/array; campos extras; ausência de ambos; roots não objeto/null; corpo ausente/malformado; email/identifier não substituem name; roles não é entrada de login. 400 exato `Bad Request` / `Invalid login data`, sem token/eco e verifyNoInteractions(authenticationService). Incluídos novamente os 11 corpos inválidos anteriores, sem alterar seus testes originais. |
+| Servlet context /api: quatro resultados × dois modos | 8 | 200/400/401/500 preservados e erros com path externo `/api/login`; mensagens específicas de login, sem adotar `Invalid order data`, `Authentication required or invalid` ou `Order registration could not be completed`. |
+| **Novos / originais / total atual** | **70 / 13 / 83** | **Zero falhas, erros ou ignorados.** |
+
+Na raiz Windows/PowerShell, somente um comando de teste pelo Maven Wrapper:
+
+```powershell
+.\mvnw.cmd "-Dtest=LoginControllerTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+```
+
+| Início → término (UTC−03:00) | Casos | Falhas | Erros | Ignorados | Exit / resultado |
+| --- | ---: | ---: | ---: | ---: | --- |
+| 2026-10-10 17:59:18.595 → 18:00:01.721 | **83** | **0** | **0** | **0** | **0 / BUILD SUCCESS** |
+
+Java `21.0.12.1` observado no XML; Maven 3.9.16 pelo Wrapper. Um XML novo, 83 testcase efetivos e somente LoginControllerTest na linha Running. Recompilar fontes de teste não implica executá-los. [Resultado/exit code](../../target/harness-validation/feature-004-t044-2026-10-10/LoginControllerTest-result.json), [console](../../target/harness-validation/feature-004-t044-2026-10-10/LoginControllerTest-console.txt) e [contagens/casos/runtime](../../target/harness-validation/feature-004-t044-2026-10-10/results-summary.json). Reports XML/TXT arquivados por execução; cópia dos reports anteriores feita antes do Maven, preservando inclusive as falhas de preparação históricas de T041. Não houve novo erro de preparação ou RED comportamental.
+
+### Evidências reais existentes: conferidas, sem nova execução
+
+O stub `signed.jwt.token` não comprova assinatura, claims, BCrypt, lookup ou perfis de uma conta persistida. Nenhum token real foi gerado/decodificado por esta execução de LoginControllerTest. Os critérios que exigem login/JWT reais têm cobertura existente, revisada em código e relatórios; não foi criada outra classe nem ampliada a seleção Maven.
+
+| Critério / camada | Evidência histórica válida consultada | Alcance e limite |
+| --- | --- | --- |
+| Conta persistida sem perfil pode realizar login | OrderTestSupportTest.shouldReuseRealEncodersAndDecoderWithTheTestProfileKey; grupo de regressões de T009 em 2026-10-07, exit 0; classe 5/0/0/0 | Contexto completo real/H2 isolado/fixture confirmada; JDBC verifica ausência de roles antes/depois, BCrypt real valida o hash, AuthenticationService real e POST /login com FilterChainProxy real retornam 200. Corpo com dois campos/tokenType Bearer; decoder real verifica sub da conta. Claims do token de serviço não contêm roles/passwordHash/secret. Não é execução atual dessa classe. |
+| Bearer inválido irrelevante não impede login real de conta sem perfis | OrderSecurityChainTest.shouldPreservePublicFallbackWithAnIrrelevantMalformedBearer e helper login(Set.of(), false); T041 de 2026-10-09 18:24:23.009–18:24:56.381, exit 0; classe 20/0/0/0 | SpringBootTest/H2 isolado/filtros/serviços/encoder/decoder reais. Fixture cria conta sem roles; POST /login com Bearer malformado retorna 200, token é decodificado pelo decoder real e assertions conferem HS256/sub. Outras chamadas desse helper já exercitam o mesmo acesso com perfis diversos; nenhuma autenticação simulada. Esse caso não verifica sozinho todos os campos/claims, complementados pelas demais provas. |
+| JWT verificável e claims previstos/confidenciais | JwtTokenServiceTest.shouldIssueNonEmptyVerifiableHs256TokenWithRequiredSafeClaims; T009 exit 0, classe 1/0/0/0; novamente classe 1/0/0/0 no grupo T035 de 2026-10-09 | Bean emissor/decoder reais: token não vazio, Bearer, HS256, sub=id, name exato, iat/exp presentes e duração igual ao TTL; nomes de claims sem password/hash/secret e valores/token sem material da chave. Emissão direta para id/name de teste, sem lookup persistido ou POST; combinada com as provas HTTP/conta acima. O grupo posterior T035 teve exit 1 por preparação temporal da chain: seu JWT GREEN não é apresentado como aprovação desse grupo. |
+| Rejeição/fluxo e falhas internas da lógica de serviço | AuthenticationServiceTest 4, AuthenticationInternalFailureTest 4; grupo T009 exit 0 | AuthenticationService real com repository/PasswordEncoder/JwtTokenService mockados; conferem fluxo exato/dummy BCrypt, não emissão nas falhas e classificação segura de lookup/encoder/emissor. Não comprovam login integrado contra conta persistida; contratos HTTP são conferidos pelo slice atual. |
+| Confidencialidade de logs | AuthenticationSensitiveLoggingTest 4; grupo T009 exit 0 | Captura de saída do serviço real com colaboradores mockados, incluindo sucesso/credenciais inválidas/falha. Não é captura de logs de uma nova jornada HTTP completa. Confidencialidade do corpo atual e dos claims reais são provas separadas. |
+
+[Inventário dos relatórios e camadas históricas](../../target/harness-validation/feature-004-t044-2026-10-10/historical-layer-evidence.json), [execução T009](../../target/harness-validation/feature-004-t009-2026-10-07/account-login-regressions-result.json), [execução real da chain em T041](../../target/harness-validation/feature-004-t041-2026-10-09-182300/OrderSecurityChainTest-result.json) e [grupo histórico T035 com sua falha preservada](../../target/harness-validation/feature-004-t035-2026-10-09/regression-result.json). O inventário aponta os XMLs e os métodos realmente aprovados; contagens históricas não são somadas às 83 aprovações atuais.
+
+Conferidos por SHA-256 **12 fontes/recursos reais relevantes** contra executed-source-hashes de T041, incluindo SecurityConfig/advice, AuthenticationService/JwtTokenService/JwtConfig/JwtProperties/JacksonConfig, OrderSecurityChainTest/OrderTestSupportTest/JwtTokenServiceTest e perfil/seed: todos idênticos. Comparação Git com o HEAD registrado em T009 (`27850dddc8a21dd1b6542b9cf5f7aa9d9ccf273c`) também não mostrou mudanças nos testes de suporte/emissor/serviço/falhas/logging, nos componentes básicos de autenticação/JWT/Jackson ou nos recursos de teste. SecurityConfig/advice evoluíram depois dessa base; sua cobertura mais recente está na chain real de T041 e no slice atual, sem atribuir a T009 validação de revisão posterior. [Correspondência dos fontes reais](../../target/harness-validation/feature-004-t044-2026-10-10/real-evidence-source-comparison.json).
+
+**GREEN: comportamento do login preservado, sem regressão observada ou correção de produção. Nenhuma lacuna impeditiva encontrada nos critérios reais previstos em T044; conta sem perfis e assinatura/claims reais são comprovados pelas evidências existentes, não pelo token mockado. T044 marcada [X] somente após execução válida do slice e revisão dessas provas.** Não se declara uma nova execução integrada de 400/401/500 reais; esses contratos foram comprovados na camada HTTP com serviço mockado, e sua lógica correspondente tem unidades históricas específicas.
+
+### Limites, preservação e revisão final
+
+Esta etapa não é suíte completa/CI nem nova integração de todos os fluxos de login. H2/MockMvc e as provas históricas não aprovam outros bancos, transporte físico, logs de toda a stack ou todas as variantes JWT. JSON com propriedades repetidas não recebeu regra nova: o leitor estrito de pedidos não foi aplicado ao login; preservado o deserializador atual da Feature 003. JWT continua sem exigência de perfis, e nenhuma modificação de produção, seed, encoder ou configuração JWT foi feita. SC-006 global e jornadas após rejeições permanecem dependentes das tarefas futuras; não confundidos com a conclusão específica de T044.
+
+Somente LoginControllerTest.java alterado em código nesta etapa; quickstart.md acrescido e tasks.md com somente T044 marcada. Conteúdo inteiro dos 13 cenários/assertions anteriores conferido contra cópia inicial; histórico do quickstart preservado em bytes. Snapshot de 156 rastreados confere apenas essas três diferenças incrementais; alterações e evidências de T042–T043, fontes produtivos/recursos e demais arquivos preservados. Diff incremental e acumulado revisados; `git diff --check` com exit 0, sem erros de whitespace (avisos LF/CRLF não são falhas). Links/conteúdo das novas evidências conferidos e target ignorado. [Revisão final/preservação/Git](../../target/harness-validation/feature-004-t044-2026-10-10/final-review.json).
+
+Raiz/branch/HEAD mantidos. Git final: **seis rastreados modificados, nenhum não rastreado e índice vazio**: cinco alterações anteriores preservadas + LoginControllerTest.java. **T001–T044 [X] (44), T045–T055 abertas (11)**. U1/U2 pendentes, sem aplicação. Não executada T045+, suíte completa/CI, stage, commit, push, merge ou troca de branch.
+
+
+## Execução delimitada de T045 — H2, advice, JWT e BCrypt (2026-10-10)
+
+Escopo autorizado: exclusivamente T045, sem iniciar T046. Raiz `C:/Users/ronal/dscommerce-speckit`, branch real `004-registrar-pedido`, HEAD `73d3398965b25027d393202a2c5a984984abd0ca`. Estado inicial: seis rastreados modificados de T042–T044, nenhum não rastreado e índice vazio. Preservadas essas alterações e suas evidências; snapshot SHA-256 dos 156 rastreados e cópia dos reports Surefire anteriores feitos antes da edição/execução. [Git inicial](../../target/harness-validation/feature-004-t045-2026-10-10/git-before.json).
+
+Skill speckit-implement aplicada somente a T045. Prerequisitos PowerShell `check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks`: exit 0, FEATURE_DIR correto. Checklist requirements.md 16/16, zero abertos, sem edição. Conferidos T045/dependência T041, US3.3/4, FR-015, SC-006, plano/pesquisa/modelo e contratos anteriores products-openapi.yaml, product-detail-openapi.yaml e login-openapi.yaml; preservado o contrato de pedidos. Ignores Java suficientes; `.specify/extensions.yml` ausente antes/depois, sem hooks executáveis.
+
+### Extensões e cobertura por camada
+
+**H2ConsoleSecurityIntegrationTest: 15 aprovações (um caso anterior + 14 novos).** O caso anterior foi preservado integralmente, inclusive a assertion SAMEORIGIN. A classe passou a SpringBootTest RANDOM_PORT para acrescentar prova HTTP do servlet H2 real; o MockMvc anterior sozinho não despacha esse servlet e não comprova seu acesso. Filtros habilitados e reais, sem mocks de autenticação, serviço ou decoder. Dois contextos completos, raiz e `/api`; o contexto adicional usa banco H2 próprio por DynamicPropertySource, mantendo perfil, seed e configuração compartilhados intactos. Nenhuma correção de impedimento de contexto necessária.
+
+- Duas verificações de configuração: console habilitado, path `/h2-console`, um JakartaWebServlet com mapping `/h2-console/*`, context path correto, chain pública contendo AuthorizationFilter e sem BearerTokenAuthenticationFilter/CsrfFilter. Trata-se de inspeção da configuração produtiva carregada, sem desabilitar filtros pelo teste.
+- Doze GETs HTTP efetivos: página inicial, login.jsp e stylesheet.css × sem Authorization/com `Bearer not-a-valid-jwt` × raiz/`/api`. Todos 200, SAMEORIGIN único, MIME HTML/CSS e conteúdo, URI externa correta, sem WWW-Authenticate ou redirect. Cliente não segue redirects. Oito testcase pertencem à classe externa e sete à nested ServletContextPath. Surefire agregou os 15 no XML da nested e deixou o XML externo com zero; os testcase foram contados uma única vez.
+
+**GlobalExceptionHandlerRegressionTest: 84 aprovações (12 invocações anteriores + 72 novas).** Mantidos todos os cenários, helpers e assertions anteriores, incluindo o controle de falha pública não traduzida como pedido. Continua WebMvcTest com os imports existentes SecurityConfig/OrderClockConfig/OrderSecuritySliceTestConfig e serviços mockados; não foi trocado por contexto completo. Cada caso novo seleciona a chain pública real do slice, percorre os filtros, verifica SAMEORIGIN e ausência de WWW-Authenticate. Decoder/resolução do suporte são mocks de preparação e não constituem prova JWT/login persistido.
+
+| Matriz nova do advice | Casos | Comportamento preservado |
+| --- | ---: | --- |
+| Detalhes 404 | 8 | `Not Found`, `Product not found` e mensagem customizada anterior; exatamente status/error/message/path, URI externa sem query. |
+| Catálogo 400 | 12 | page −1, size 0/51: mensagens exatas `page must be greater than or equal to 0` e `size must be between 1 and 50`; sem execução dos serviços. |
+| Validação genérica fora de login/pedidos | 4 | Probe de teste conserva `Bad Request` / `Validation failed`, envelope de quatro campos e path externo. |
+| Entrada de login 400 | 20 | Bean Validation, JSON malformado, name numérico, campo extra e corpo ausente: `Bad Request` / `Invalid login data`, envelope exato, sem eco sensível ou chamada ao serviço. |
+| Login 401 | 8 | Nome desconhecido/senha incorreta induzidos no serviço mockado: `Unauthorized` / `Invalid credentials`, envelope exato, confidencialidade e nenhum challenge específico de pedidos. |
+| Login 500 | 4 | AuthenticationProcessingException mockada com canary sensível: `Internal Server Error` / `Authentication could not be completed`, sem causa/hash/credencial/token no corpo. |
+| Falha pública não relacionada | 4 | Mesmo IllegalStateException permanece causa raiz; não transformado artificialmente em 500 de registro de pedido. |
+| Conversão MVC anterior | 12 | page/size/id não numéricos mantêm 400 com MethodArgumentTypeMismatchException, URI externa e ausência das mensagens de pedidos; não se inventa envelope de quatro campos para esses casos. |
+| **Total novo** | **72** | Cada cenário cruza raiz/`/api` e sem token/Bearer inválido: 36 por modo de header, 36 por montagem. |
+
+**JwtConfigurationTest: seis aprovações, fonte e assertions sem alteração.** Context runner carrega configuração real: Base64 inválido, chave decodificada curta, TTL zero/negativo/subsegundo causam falha de inicialização esperada pelo teste; configuração válida contém exatamente um encoder/decoder e emite/decodifica token HS256 não vazio com sub previsto. Esses cinco contextos deliberadamente rejeitados não são erros de preparação da execução JUnit.
+
+**PasswordEncoderConfigurationTest: uma aprovação, fonte e assertions sem alteração.** Context runner com PasswordEncoder real único e BCrypt: hash difere do texto, matches(raw, encoded) verdadeiro. Não simula encoder nem altera configuração/chave/TTL/seed de produção.
+
+### Execuções atuais, seriais e restritas
+
+Na raiz Windows/PowerShell, somente estes quatro comandos de teste, nesta ordem:
+
+```powershell
+.\mvnw.cmd "-Dtest=H2ConsoleSecurityIntegrationTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=GlobalExceptionHandlerRegressionTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=JwtConfigurationTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=PasswordEncoderConfigurationTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+```
+
+| Classe | Início → término (UTC−03:00, 2026-10-10) | Casos | Falhas | Erros | Ignorados | Exit / resultado |
+| --- | --- | ---: | ---: | ---: | ---: | --- |
+| H2ConsoleSecurityIntegrationTest (inclui nested) | 18:13:15.310 → 18:14:14.165 | 15 | 0 | 0 | 0 | 0 / BUILD SUCCESS |
+| GlobalExceptionHandlerRegressionTest | 18:14:22.048 → 18:14:49.743 | 84 | 0 | 0 | 0 | 0 / BUILD SUCCESS |
+| JwtConfigurationTest | 18:14:53.888 → 18:15:35.680 | 6 | 0 | 0 | 0 | 0 / BUILD SUCCESS |
+| PasswordEncoderConfigurationTest | 18:18:36.673 → 18:19:18.989 | 1 | 0 | 0 | 0 | 0 / BUILD SUCCESS |
+| **Total selecionado de T045** | **Quatro invocações seriais** | **106** | **0** | **0** | **0** | **Todos exit 0** |
+
+Java `21.0.12.1` observado nos XMLs; Maven 3.9.16 selecionado pelas propriedades do Wrapper. Cinco XMLs novos, 106 testcase efetivos, somente as quatro classes e a nested H2 nas linhas Running. Recompilação não significa execução das demais classes. [Resultado H2](../../target/harness-validation/feature-004-t045-2026-10-10/H2ConsoleSecurityIntegrationTest-result.json), [resultado advice](../../target/harness-validation/feature-004-t045-2026-10-10/GlobalExceptionHandlerRegressionTest-result.json), [resultado JWT](../../target/harness-validation/feature-004-t045-2026-10-10/JwtConfigurationTest-result.json) e [resultado BCrypt](../../target/harness-validation/feature-004-t045-2026-10-10/PasswordEncoderConfigurationTest-result.json). Cada resultado liga comando/horários/exit/contagens; consoles e XML/TXT arquivados no mesmo diretório, sem sobrescrever execuções anteriores.
+
+**GREEN: SAMEORIGIN/acesso público/configuração H2 e contratos anteriores do advice/JWT/BCrypt preservados após as mudanças existentes de chain/advice. Nenhuma regressão comportamental observada, erro de preparação novo ou correção produtiva. T045 marcada [X] somente após entrega e execução válida das quatro classes.**
+
+### Limitações, preservação e revisão final
+
+Estas 106 aprovações são de classes selecionadas, não suíte completa, CI ou conclusão global de SC-006/US3.4. Jornadas após rejeições de pedidos e fechamento integrado continuam em T046+. H2 prova transporte HTTP local, servlet e filtros reais; não executa login de banco pelo console, comandos SQL ou renderização de frames em navegador. O advice prova tradução HTTP de falhas com serviços mockados, não nova falha física de banco nem login/JWT real. Configuração JWT/BCrypt real é uma camada distinta; as evidências reais de login/conta/claims já revisadas em T044 permanecem históricas e não foram somadas ao total atual.
+
+Histórico integral do quickstart preservado em bytes, incluindo T040 (411), T041 (133 e os 13 erros iniciais de preparação), T042 (44), T043 (38) e T044 (83); As baterias de T040/T041 e as classes de T042–T044 não foram repetidas; somente os quatro alvos próprios de T045 foram executados. Snapshot inicial confirma somente quatro alterações incrementais: H2ConsoleSecurityIntegrationTest.java, GlobalExceptionHandlerRegressionTest.java, este quickstart e checkbox T045 em tasks.md. Arquivos/evidências anteriores, produção, recursos/seed, segurança, JWT e encoder preservados. Diff de código e acréscimo documental revisados; `git diff --check` exit 0, sem erros de whitespace, com os avisos existentes LF/CRLF. Links das novas evidências conferidos; target continua ignorado. [Revisão final, preservação e Git](../../target/harness-validation/feature-004-t045-2026-10-10/final-review.json).
+
+Raiz/branch/HEAD mantidos. Git final: **oito rastreados modificados, nenhum não rastreado e índice vazio** (seis anteriores + dois testes desta tarefa). **T001–T045 [X] (45), T046–T055 abertas (10)**. U1/U2 continuam pendentes. Não executada T046+, suíte completa ou CI; sem stage, commit, push, merge ou troca de branch.
+
+
+## Execução delimitada de T046 — jornadas públicas após pedidos rejeitados (2026-10-10)
+
+Exclusivamente T046, parada antes de T047. Raiz `C:/Users/ronal/dscommerce-speckit`, branch real `004-registrar-pedido`, HEAD `73d3398965b25027d393202a2c5a984984abd0ca`. Estado inicial: oito rastreados modificados de T042–T045, nenhum não rastreado, índice vazio. Todas as alterações e evidências anteriores preservadas. Snapshot SHA-256 dos 156 rastreados, cópia integral dos reports Surefire anteriores e cópias dos documentos feitas antes da edição/execução; fontes e teste novo também capturados imediatamente antes do Maven. [Git inicial](../../target/harness-validation/feature-004-t046-2026-10-10/git-before.json).
+
+Skill speckit-implement aplicada no escopo autorizado. Prerequisitos `powershell.exe -NoProfile -File .specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks`: exit 0, FEATURE_DIR correto. Checklist requirements.md 16/16, zero abertos, sem alteração. Revisados T046/dependências T042–T045, US3.4, FR-012/015, SC-004/006, desenho/modelo/pesquisa, contratos orders-openapi.yaml e anteriores de catálogo/detalhes/login, infraestrutura existente e evidências de rollback. Ignores Java suficientes. `.specify/extensions.yml` ausente antes/depois, sem hooks executáveis.
+
+### Teste entregue e isolamento
+
+Criado OrderPublicRegressionIntegrationTest: SpringBootTest completo, perfil test, MockMvc com filtros reais habilitados, open-in-view=false e H2 próprio `order-test-<UUID>` via OrderTestConfig. Sem @Transactional de teste, jwt(), WithMockUser, decoder/serviço mockado ou desligamento de filtros. Reutiliza OrderHttpTestSupport para login real/decoder/clock controlado e preparação/limpeza de contas confirmadas em transação própria. Nenhuma fonte anterior alterada, nenhuma correção de preparação necessária.
+
+Usa produtos da seed existente, sem criar/alterar/remover produtos ou categorias. Os 52 produtos, três categorias, três vínculos e conta demo são comparados com snapshots de leitura independente. Somente contas/perfis próprios são acrescentados no banco isolado. A conta usada nas consultas de login público não tem perfis, antes e depois do sucesso. Limpeza herdada remove apenas linhas próprias e roda após as assertions; não constitui a prova de ausência/rollback. Instrumentação é desarmada em finally após a requisição e novamente no teardown, antes da limpeza, inclusive se houver falha de assertion.
+
+Cada uma das sete causas é executada na raiz e com contextPath/servletPath `/api` no MockMvc: **14 casos JUnit**. Na mesma instância de contexto, cada caso segue a ordem: login real de preparação → POST /orders real → snapshot independente após conclusão → assertions do erro/persistência e desarme → catálogo/detalhes/login sem token → as mesmas verificações com Bearer inválido irrelevante. Contexto, EntityManagerFactory e FilterChainProxy são conferidos por identidade; um único startup Spring observado, sem reinicialização entre rejeição e jornadas.
+
+### Cobertura por rejeição e prova de persistência
+
+| Status / causas | Casos raiz + /api | Mensagem contratual | Prova após requisição, antes da limpeza |
+| --- | ---: | --- | --- |
+| 400, quantity zero entre linhas válidas | 2 | `Invalid order data` | Zero inserts de pedido/item, delta 0/0 e baseline completo restaurado. |
+| 401, sem token e Bearer malformado | 4 | `Authentication required or invalid` | Chain real de pedidos/BearerTokenAuthenticationFilter, challenge Bearer; zero inserts e baseline idêntico. |
+| 403, JWT real de conta sem CLIENT/ADMIN | 2 | `Order registration not permitted` | Conta existe e login real foi 200; perfis do banco vazios, filtro real rejeita; zero inserts e baseline idêntico. |
+| 404, id Long.MAX_VALUE ausente entre produtos existentes | 2 | `Product not found` | Ausência do id confirmada por JDBC; nenhuma linha válida salva separadamente; zero inserts e baseline idêntico. |
+| 422, produto repetido entre linhas | 2 | `Duplicate product in order` | Não consolida duplicidade, zero inserts e baseline idêntico. |
+| 500, processamento após saveAndFlush real | 2 | `Order registration could not be completed` | Três inserts reais completados dentro da transação, depois falha, depois baseline completo restaurado por conexão independente. |
+| **Total** | **14** | **Envelopes exatamente status/error/message/path, status/error/mensagem fixos e path externo `/orders` ou `/api/orders`** | **Zero pedidos/itens remanescentes em todos os casos, sem 201/Location.** |
+
+A leitura posterior usa DriverManagerDataSource distinto do datasource instrumentado, conexão nova com autoCommit=true e sem vínculo com a transação da aplicação; não lê entidades do persistence context. Compara todas as linhas/colunas de tb_order e tb_order_item, não somente contagens da conta. Baseline inicial 0 pedidos/0 itens e estado posterior idêntico; novos snapshots depois de cada modo público também são idênticos. Os 12 casos anteriores à persistência registram zero inserts; os dois 500 registram três inserts cada, sem confundir flush com commit ou limpeza com rollback.
+
+**500 reutiliza o padrão válido de T030 em OrderRollbackIntegrationTest, sem executar essa classe.** Importa SqlObservationConfig/RepositorySpyConfig e usa SqlInsertProbe/PostFlushProbe existentes. Spy de teste encaminha todos os métodos ao proxy Spring Data/JPA real; nenhum save é stubado. Confere que o serviço Spring real/proxy recebeu esse spy e que o repositório delegado é real/proxy, não mock. Driver JDBC retorna sucesso em um insert tb_order e dois tb_order_item (affected=1, transação ativa, autoCommit=false). Antes da falha, leitura na conexão vinculada vê pedido e ambos os itens, buyer correto, produtos 1/2, positions 0/1, quantities 2/3 e preços da seed. saveAndFlush retorna, o probe lança a mesma PostFlushTestFailure verificada no resultado MVC e o serviço não conclui o registro. Requisição retorna 500 seguro; leitura independente encontra 0/0. PostFlushProbe buyer/transactionJdbc são null antes das jornadas públicas. **Seis inserts reais completados no total, dois rollbacks integrais comprovados.**
+
+### Contratos públicos depois de cada rejeição
+
+Cada caso repete **21 requisições públicas sem token e 21 com `Authorization: Bearer not-a-valid-jwt`**. Todas selecionam a chain pública real com AuthorizationFilter e sem BearerTokenAuthenticationFilter, percorrem filtros, conservam SAMEORIGIN e não emitem WWW-Authenticate. O Bearer inválido é enviado ao endpoint, sem simular identidade autenticada.
+
+| Jornada por modo de header | Requisições | Assertions |
+| --- | ---: | --- |
+| Catálogo | 9 | Seis páginas 200: padrão 0/12, explícita 1/7, limite size=1, duas páginas size=50 cobrindo todos os 52 ids e página 99 vazia. Shape exato da página/item, metadados inteiros, name ASC/id ASC inclusive empate, valores/image e preço numérico do snapshot JDBC. Três rejeições 400 de page −1/size 0/51, envelopes e mensagens anteriores exatos, path externo sem query. |
+| Detalhes | 4 | Produtos 1/2/3 com múltiplas/uma/nenhuma categoria; seis campos exatos, valores reais, image, preço numérico, nomes de categorias sem repetição. Produto ausente mantém 404/Not Found/Product not found e path externo. |
+| Login | 8 | Sucesso real de conta persistida sem perfis: exatamente accessToken/tokenType Bearer, token não vazio, decoder real confirma HS256/sub/name/iat/exp e duração TTL. BCrypt real matches(raw, hash), sem roles obrigatórios/claims de senha/hash/segredo ou material da chave. Cinco entradas inválidas (blank, JSON malformado, name numérico, roles extra, campos ausentes) mantêm 400/Invalid login data; nome desconhecido/senha incorreta mantêm 401/Invalid credentials com corpos idênticos e envelope exato. |
+| **Por modo / por caso / total** | **21 / 42 / 588** | **28 blocos públicos aprovados, no mesmo contexto das respectivas rejeições.** |
+
+Contagens HTTP da execução: 14 rejeições de pedidos, 14 logins reais de preparação e 588 requisições públicas posteriores (**616 requisições ao MockMvc**). Dentro das 588: catálogo 252, detalhes 112, login 224, incluindo 28 sucessos de login real posteriores à rejeição. Não são 616 testes JUnit; o relatório contém 14 casos parametrizados, cada qual comprova a sequência inteira.
+
+### Execução atual
+
+Somente este comando de teste pelo Maven Wrapper, na raiz Windows/PowerShell:
+
+```powershell
+.\mvnw.cmd "-Dtest=OrderPublicRegressionIntegrationTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+```
+
+| Início → término (UTC−03:00) | Casos | Falhas | Erros | Ignorados | Exit / resultado |
+| --- | ---: | ---: | ---: | ---: | --- |
+| 2026-10-10 18:30:18.171 → 18:31:37.331 | **14** | **0** | **0** | **0** | **0 / BUILD SUCCESS** |
+
+Java `21.0.12.1` observado no XML; Maven 3.9.16 pelo Wrapper. Um XML novo/14 testcase e somente OrderPublicRegressionIntegrationTest na linha Running. Compilar fontes/importar suporte de rollback não executa as classes anteriores. [Comando/horários/exit/resultado](../../target/harness-validation/feature-004-t046-2026-10-10/result.json), [console com os 14 registros de persistência, dois de rollback e 28 blocos públicos](../../target/harness-validation/feature-004-t046-2026-10-10/OrderPublicRegressionIntegrationTest-console.txt), [XML](../../target/harness-validation/feature-004-t046-2026-10-10/reports/TEST-com.devsuperior.dscommerce.controllers.OrderPublicRegressionIntegrationTest.xml) e [inventário da cobertura](../../target/harness-validation/feature-004-t046-2026-10-10/coverage-evidence.json). XML/TXT anteriores copiados e preservados; o histórico não foi reescrito como nova execução.
+
+**GREEN: jornadas públicas preservadas após todas as rejeições 400/401/403/404/422/500 previstas em T046, com persistência e segurança reais. Nenhuma regressão observada, impedimento de compilação/contexto ou correção produtiva necessária. T046 marcada [X] somente após execução válida e conferência dos critérios/provas.** Os 500 esperados e induzidos pelo probe são cenários aprovados, não um RED de regressão.
+
+### Limitações e revisão final
+
+Resultado local de uma classe selecionada, não suíte completa/CI nem aprovação global de SC-004/006 ou checkpoint integrado de US3. T047+ continua pendente. São representantes das seis famílias de rejeição, não repetição de todas as variantes JWT, entradas/negócio/limites de US2 ou de todas as classes anteriores. Catálogo vazio é página fora do intervalo mantendo 52 produtos; não se esvazia a seed. Login 500 não é provocado novamente após cada rejeição; suas evidências anteriores de tradução segura permanecem em T044/T045. O 500 desta classe é falha de processamento após flush e antes da conclusão do corpo do serviço; não nova prova SQL tardia, beforeCommit ou falha física de commit. As três provas históricas de rollback permanecem distintas e preservadas. MockMvc usa contexto/filtros reais, mas contextPath `/api` é montagem da requisição de teste, sem servidor HTTP físico/navegador/outro banco.
+
+Fontes anteriores/assertions, produção, configuração de segurança/JWT/encoder e recursos/seed mantidos por SHA-256; teste novo coincide com a revisão executada. Histórico integral deste quickstart preservado em bytes, incluindo T040 411, T041 133 e seus 13 erros iniciais de preparação, T042 44, T043 38, T044 83 e T045 106. Nenhuma dessas baterias ou classes de T042–T045 foi repetida. Somente três arquivos desta etapa: teste novo, acréscimo a quickstart.md e checkbox T046 em tasks.md. Diff e arquivo novo revisados; `git diff --check` exit 0. Conferência do novo arquivo com `git -c core.autocrlf=false diff --no-index --check -- /dev/null <arquivo>`: exit 1 pela diferença, zero diagnósticos, newline presente e sem espaços finais. Links novos conferidos; target continua ignorado. [Auditoria final/preservação/Git](../../target/harness-validation/feature-004-t046-2026-10-10/final-review.json).
+
+Raiz/branch/HEAD mantidos. Estado final: **oito rastreados modificados anteriores, um novo teste não rastreado, índice vazio**. **T001–T046 [X] (46), T047–T055 abertas (9)**. U1/U2 continuam pendentes. Não executada T047+, suíte completa ou CI; sem stage, commit, push, merge ou troca de branch.
+
+
+## Execução T047 — bateria explícita e serial de regressões (2026-10-10)
+
+Exclusivamente T047, parada antes de T048. Raiz `C:/Users/ronal/dscommerce-speckit`, branch real `004-registrar-pedido`, HEAD `73d3398965b25027d393202a2c5a984984abd0ca`. Confirmados pelo Git antes da execução: oito arquivos rastreados modificados e OrderPublicRegressionIntegrationTest.java não rastreado, todos de T042–T046; índice vazio. Nenhuma alteração de produção, testes, seed, segurança, JWT, encoder ou configuração nesta etapa. Checklist de requisitos: 16/16 marcada, nenhuma pendência. [Git inicial e inventário](../../target/harness-validation/feature-004-t047-2026-10-10/git-before.json).
+
+### Seleção confirmada, sem duplicatas
+
+T047 exige T042–T046 e todas as classes existentes listadas neste quickstart. Foram cruzados os dois comandos seletivos da seção inicial (seis classes de pedidos e quinze regressões públicas), os registros posteriores de resolução/perfis/suporte, segurança/JWT, agregado/DTO/contexto e o teste novo de T046. Resultado: 32 nomes reais e distintos, cada um com arquivo Java, package e referências por número de linha do quickstart confirmados antes do Maven. São nove classes de T042–T046, onze outras regressões/suporte e doze classes restantes já citadas nos registros. A lista coincide com o inventário atual de classes de teste, mas foi selecionada explicitamente pelos artefatos, sem descoberta indiscriminada pelo Maven; auxiliares e configurações sem testes não são alvos. A seção inicial permanece como planejamento histórico, sem reescrever suas alegações de então. [Lista selecionada, fontes, linhas e SHA-256](../../target/harness-validation/feature-004-t047-2026-10-10/selection.json).
+
+Comandos efetivamente executados, exatamente na ordem abaixo, um processo Maven por classe, sem paralelismo JUnit. Java 21.0.12.1 e Maven 3.9.16 pelo Wrapper; a consulta de versão foi registrada separadamente, sem executar testes adicionais. Não usados comando de suíte completa, wildcard, seleção por pacote, CI ou T050:
+
+```powershell
+.\mvnw.cmd "-Dtest=PublicCatalogSecurityIntegrationTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=ProductControllerTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=PublicProductDetailSecurityIntegrationTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=LoginControllerTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=H2ConsoleSecurityIntegrationTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=GlobalExceptionHandlerRegressionTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=JwtConfigurationTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=PasswordEncoderConfigurationTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=OrderPublicRegressionIntegrationTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=ProductCatalogServiceTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=ProductRepositoryTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=JwtTokenServiceTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=AuthenticationServiceTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=AuthenticationInternalFailureTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=AuthenticationSensitiveLoggingTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=AuthenticatedAccountServiceTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=AuthenticatedAccountServiceIntegrationTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=UserAccountRepositoryTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=UserAccountRoleRepositoryTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=OrderTestSupportTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=OrderServiceTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=OrderControllerTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=OrderRepositoryTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=OrderSecurityIntegrationTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=OrderRegistrationIntegrationTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=OrderRollbackIntegrationTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=OrderServiceContextTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=OrderJwtAuthenticationPipelineTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=OrderJwtAuthenticationConverterTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=OrderDtoContractTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=OrderAggregateTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=OrderSecurityChainTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+```
+
+### Resultados atuais por classe
+
+| Ordem | Classe selecionada | Testes | Aprovados | Falhas | Erros | Ignorados | Exit code | Resultado | Início → fim (UTC−03:00) |
+|-------|--------------------|--------|-----------|--------|-------|-----------|-----------|-----------|-------------------------|
+| 1 | `PublicCatalogSecurityIntegrationTest` | 33 | 33 | 0 | 0 | 0 | 0 | GREEN | 18:48:53 → 18:49:29 |
+| 2 | `ProductControllerTest` | 11 | 11 | 0 | 0 | 0 | 0 | GREEN | 18:49:30 → 18:49:54 |
+| 3 | `PublicProductDetailSecurityIntegrationTest` | 38 | 38 | 0 | 0 | 0 | 0 | GREEN | 18:49:54 → 18:50:29 |
+| 4 | `LoginControllerTest` | 83 | 83 | 0 | 0 | 0 | 0 | GREEN | 18:50:30 → 18:50:57 |
+| 5 | `H2ConsoleSecurityIntegrationTest` | 15 | 15 | 0 | 0 | 0 | 0 | GREEN | 18:50:57 → 18:51:31 |
+| 6 | `GlobalExceptionHandlerRegressionTest` | 84 | 84 | 0 | 0 | 0 | 0 | GREEN | 18:51:31 → 18:51:57 |
+| 7 | `JwtConfigurationTest` | 6 | 6 | 0 | 0 | 0 | 0 | GREEN | 18:51:57 → 18:52:36 |
+| 8 | `PasswordEncoderConfigurationTest` | 1 | 1 | 0 | 0 | 0 | 0 | GREEN | 18:52:36 → 18:53:08 |
+| 9 | `OrderPublicRegressionIntegrationTest` | 14 | 14 | 0 | 0 | 0 | 0 | GREEN | 18:53:08 → 18:54:08 |
+| 10 | `ProductCatalogServiceTest` | 6 | 6 | 0 | 0 | 0 | 0 | GREEN | 18:54:08 → 18:54:24 |
+| 11 | `ProductRepositoryTest` | 6 | 6 | 0 | 0 | 0 | 0 | GREEN | 18:54:24 → 18:54:50 |
+| 12 | `JwtTokenServiceTest` | 1 | 1 | 0 | 0 | 0 | 0 | GREEN | 18:54:50 → 18:55:21 |
+| 13 | `AuthenticationServiceTest` | 4 | 4 | 0 | 0 | 0 | 0 | GREEN | 18:55:21 → 18:55:38 |
+| 14 | `AuthenticationInternalFailureTest` | 4 | 4 | 0 | 0 | 0 | 0 | GREEN | 18:55:38 → 18:55:55 |
+| 15 | `AuthenticationSensitiveLoggingTest` | 4 | 4 | 0 | 0 | 0 | 0 | GREEN | 18:55:55 → 18:56:12 |
+| 16 | `AuthenticatedAccountServiceTest` | 8 | 8 | 0 | 0 | 0 | 0 | GREEN | 18:56:12 → 18:56:31 |
+| 17 | `AuthenticatedAccountServiceIntegrationTest` | 6 | 6 | 0 | 0 | 0 | 0 | GREEN | 18:56:31 → 18:57:05 |
+| 18 | `UserAccountRepositoryTest` | 4 | 4 | 0 | 0 | 0 | 0 | GREEN | 18:57:05 → 18:57:34 |
+| 19 | `UserAccountRoleRepositoryTest` | 11 | 11 | 0 | 0 | 0 | 0 | GREEN | 18:57:34 → 18:58:10 |
+| 20 | `OrderTestSupportTest` | 5 | 4 | 1 | 0 | 0 | 1 | PREPARATION_FAILURE | 18:58:10 → 18:59:01 |
+| 21 | `OrderServiceTest` | 42 | 42 | 0 | 0 | 0 | 0 | GREEN | 18:59:01 → 18:59:20 |
+| 22 | `OrderControllerTest` | 141 | 141 | 0 | 0 | 0 | 0 | GREEN | 18:59:20 → 19:00:05 |
+| 23 | `OrderRepositoryTest` | 23 | 23 | 0 | 0 | 0 | 0 | GREEN | 19:00:05 → 19:00:43 |
+| 24 | `OrderSecurityIntegrationTest` | 185 | 185 | 0 | 0 | 0 | 0 | GREEN | 19:00:43 → 19:02:06 |
+| 25 | `OrderRegistrationIntegrationTest` | 9 | 9 | 0 | 0 | 0 | 0 | GREEN | 19:02:06 → 19:02:42 |
+| 26 | `OrderRollbackIntegrationTest` | 9 | 9 | 0 | 0 | 0 | 0 | GREEN | 19:02:42 → 19:03:25 |
+| 27 | `OrderServiceContextTest` | 4 | 3 | 1 | 0 | 0 | 1 | BEHAVIORAL_FAILURE | 19:03:25 → 19:04:01 |
+| 28 | `OrderJwtAuthenticationPipelineTest` | 25 | 25 | 0 | 0 | 0 | 0 | GREEN | 19:04:01 → 19:04:20 |
+| 29 | `OrderJwtAuthenticationConverterTest` | 48 | 48 | 0 | 0 | 0 | 0 | GREEN | 19:04:20 → 19:04:40 |
+| 30 | `OrderDtoContractTest` | 36 | 36 | 0 | 0 | 0 | 0 | GREEN | 19:04:40 → 19:05:03 |
+| 31 | `OrderAggregateTest` | 18 | 18 | 0 | 0 | 0 | 0 | GREEN | 19:05:03 → 19:05:17 |
+| 32 | `OrderSecurityChainTest` | 20 | 20 | 0 | 0 | 0 | 0 | GREEN | 19:05:18 → 19:05:57 |
+| **Total desta bateria** | **32 classes** | **904** | **902** | **2** | **0** | **0** | por classe acima | **30/32 GREEN** | |
+
+A consolidação usa apenas os XML/TXT novos copiados de cada uma destas 32 execuções. Casos efetivos `testcase` foram contados uma única vez e confrontados com o resumo final de cada console Maven; atributos agregados de suites aninhadas não são somados novamente. A coleta auxiliar inicial do catálogo incluiu um item nulo de XML externo vazio (34); a recontagem comprovou **33** casos, de acordo com XML e console, e foi guardada em result-reviewed.json, preservando a coleta original. Isso é correção de metadados da coleta, não falha do teste/contexto nem uma nova execução. [Consolidação conferida](../../target/harness-validation/feature-004-t047-2026-10-10/summary.json).
+
+Não somados os 411 de T040, 133 de T041, 44 de T042, 38 de T043, 83 de T044, 106 de T045 ou 14 de T046 históricos. As mesmas classes presentes nesta seleção contribuem apenas com sua execução atual. Nenhuma classe repetida nesta bateria.
+
+### Cobertura e distinção das camadas
+
+- Catálogo e detalhes: contexto completo/filtros reais, sem token e com Bearer inválido irrelevante; shape/valores/image, ordenação name ASC/id ASC, 52 produtos, paginação padrão/explícita, vazio, categorias únicas, identificadores e erros/mensagens anteriores. ProductControllerTest e GlobalExceptionHandlerRegressionTest conservam seus contratos e assertions de slice; ProductCatalogServiceTest é unidade, ProductRepositoryTest usa JPA real.
+- Login: LoginControllerTest continua slice com serviço mockado, 83 casos de entrada estrita, 200/400/401/500, mensagens, tokenType/accessToken, Bearer irrelevante e context paths. Token mockado não comprova assinatura/claims/conta persistida. JwtTokenServiceTest e integrações de resolução/suporte/chain/pedidos exercitam os respectivos componentes reais; a integração pública pós-rejeição faz login real de conta persistida sem perfis e confere assinatura HS256, sub/name/iat/exp/TTL e ausência de claims sensíveis/perfis obrigatórios.
+- Autenticação, falha interna e logging: unidades existentes de AuthenticationService, AuthenticationInternalFailure e AuthenticationSensitiveLogging preservadas; resolução interna unitária e integrada, repositórios de conta/perfis, configuração JWT e BCrypt real também executados. Falhas esperadas de configuração inválida em JwtConfigurationTest são cenários aprovados por assertions, não impedimentos de preparação desta bateria.
+- H2: teste com servidor real/porta aleatória e infraestrutura de segurança, acesso previsto e SAMEORIGIN na raiz e em /api. Advice/slices preservam envelopes de login/catálogo/detalhes e paths externos; montagem de contextPath em MockMvc não equivale a deploy físico para essas outras classes.
+- Pós-rejeição: OrderPublicRegressionIntegrationTest tem 14 casos (sete causas × raiz/api), 400/401 sem token/401 token malformado/403/404/422/500, status/envelope/mensagem exatos e baseline de pedidos/itens restaurado por conexão independente após requisição e antes da limpeza. São 28 blocos públicos, 588 requisições públicas após rejeição, além de 14 rejeições e 14 logins preparatórios, total 616 requisições HTTP via MockMvc; esses números não são testes JUnit adicionais. Mesmo contexto/filtros por sequência, um startup; instrumentação desarmada antes das jornadas públicas; seed pública preservada. As duas falhas 500 exigem três INSERTs reais concluídos cada, saveAndFlush retornado e rollback integral. [Provas atuais sanitizadas](../../target/harness-validation/feature-004-t047-2026-10-10/public-regression-proof.txt).
+- Pedidos e infraestrutura já previstos: serviço/controller/repositório, sucesso integrado, JWT/converter/pipeline/chain, agregado/DTO/contexto e suporte existentes executados integralmente por nome explícito. OrderRollbackIntegrationTest mantém três provas distintas: falha SQL tardia, falha de processamento após flush real e falha em beforeCommit antes do commit físico, mais controle positivo visível após commit. Rollback automático de teste de repositório e mocks não substituem essas provas independentes. [Observações atuais de rollback](../../target/harness-validation/feature-004-t047-2026-10-10/rollback-proof.txt).
+
+### Classificação, preservação e limites
+
+**Bateria concluída, resultado não integralmente GREEN: 904 testes executados, 902 aprovações, 2 falha(s), 0 erros JUnit, 0 ignorados; 30/32 classes GREEN.** Resultados não GREEN são preservados, sem transformá-los em aprovação. Causas e casos constam em summary.json e nos relatórios originais; deverão ser avaliados na etapa seguinte autorizada. T047 registra a execução concluída, não aprovação da classe falha; T048 não foi executada.
+
+**Falha de preparação/configuração confirmada em OrderTestSupportTest**: cinco testes, quatro aprovados e uma falha (AssertionError), exit code 1; zero erros/ignorados. O método shouldReuseRealEncodersAndDecoderWithTheTestProfileKey falha na linha 238, em hasSingleBean(Clock.class), porque o contexto iniciado contém os beans orderClock e orderTestClock. OrderClockConfig declara o Clock produtivo UTC; OrderTestConfig declara o ControlledClock @Primary. O WebApplicationContextRunner carrega DscommerceApplication e OrderTestConfig, portanto ambos existem legitimamente nesse preparo; @Primary seleciona a injeção, mas não remove o outro bean para a assertion de unicidade. hasNotFailed e unicidade de encoder/decoder/PasswordEncoder anteriores passam; a assertion de Clock impede chegar ao login/JWT/conta persistida desse método. Não é erro de startup ou impedimento de ambiente, nem RED comportamental de login, catálogo, detalhes ou pedidos. A classificação é preparação/configuração, embora Surefire a registre como failure e não error. Nenhuma assertion enfraquecida, bean removido ou alteração aplicada. As classes independentes seguintes continuaram sem repetir esta execução. [Causa confirmada e limites da evidência](../../target/harness-validation/feature-004-t047-2026-10-10/cause-review.json).
+
+As quatro aprovações desta classe contam individualmente no total; a classe como conjunto permanece não GREEN. O login real desse método não foi comprovado agora, e suas evidências históricas não viram aprovação atual. A execução atual de OrderPublicRegressionIntegrationTest mantém a prova própria de login real sem perfis e assinatura/claims. Zero classes não executadas; os demais resultados estão na tabela, sem atribuir sucesso à assertion interrompida.
+
+**RED comportamental executável em OrderServiceContextTest**, distinto de preparação: quatro testes, três aprovados e uma falha (AssertionError), exit code 1, zero erros/ignorados. shouldStopBeforeWritingWhenSubtotalOrSumExceedsDecimalCapacity (linha 184) chama o serviço/proxy real com subtotal além de DECIMAL(19,2), mas exige IllegalArgumentException; OrderService.exactMoney (linha 113) lança InvalidOrderException, motivo UNREPRESENTABLE_VALUE e mensagem fixa Order value cannot be represented. InvalidOrderException estende RuntimeException, sem herdar IllegalArgumentException. É divergência observável do tipo de exceção da chamada direta previsto na assertion legada, não falha de compilação/contexto. A implementação de US2/T034 explicita esse motivo de negócio e o contrato HTTP atual prevê 422 com essa mensagem; a falha, sozinha, não comprova regressão do envelope HTTP nem overflow aceito. Preservada como RED, sem mudar produção/expectativa ou fabricar falha. O segundo caso de overflow da soma e as assertions posteriores de zero INSERT/contagem/estado transacional nesse método não foram alcançados; não são apresentados como aprovados. Outros três métodos desta classe passaram. [Causas confirmadas das duas classes](../../target/harness-validation/feature-004-t047-2026-10-10/cause-review.json).
+
+Evidências ignoradas pelo Git em `target/harness-validation/feature-004-t047-2026-10-10/`: selection.json, inventários/hash de entrada, cópias dos documentos, 74 reports anteriores em surefire-before/, diretório próprio de cada classe com console.txt/result.json e XML/TXT em reports/, summary.json, scripts auxiliares de coleta/conferência e diff completo. Cada relatório foi copiado antes da próxima invocação; relatórios antigos/stale não entram na contagem. Prefixo histórico integral do quickstart preservado por bytes; as evidências de T042–T046 foram verificadas por SHA-256 e nenhuma foi alterada. Os 13 erros iniciais de LoginControllerTest em T041 continuam registrados como falha de preparação por Clock ausente, distintos do resultado final daquele checkpoint e dos 83 aprovados agora.
+
+Esta é uma bateria local explícita em processos separados, **não uma execução de suíte completa/CI**, nem prova de convivência de todos os testes num único processo/contexto. A coincidência com o inventário atual não substitui T050. Totais GREEN não provam cobertura de todo comportamento possível: mantidos os limites de T042–T046, sem falha física de commit, transporte perdido após commit, navegador/deploy/outro banco ou expansão silenciosa de casos. As três provas atuais de rollback continuam distintas; beforeCommit não é falha física do commit. A revisão global de US3/SC-006 permanece em T049. **U1 (conteúdo residual no JSON) e U2 (ativação de fixtures na demonstração) continuam pendentes e não aplicadas.**
+
+Alterados nesta etapa somente quickstart.md por acréscimo e a checkbox T047 em tasks.md. Fontes, teste novo de T046, configurações e alterações preexistentes preservados por SHA-256. Diff incremental/acumulado e conteúdo do arquivo não rastreado conferidos; `git diff --check` exit 0 e `git diff --no-index --check -- NUL src/test/java/com/devsuperior/dscommerce/controllers/OrderPublicRegressionIntegrationTest.java` sem diagnósticos (exit 1 pelo arquivo diferente de NUL). [Conferência final](../../target/harness-validation/feature-004-t047-2026-10-10/final-review.json).
+
+Raiz/branch/HEAD mantidos. Git final: oito rastreados modificados e um não rastreado de T046, índice vazio. **T001–T047 [X] (47); T048–T055 abertas (8); somente T047 marcada nesta etapa.** Sem T048+, T050, U1/U2, suíte completa, CI, stage, commit, push, merge ou troca de branch.
+
+
+## Execução T048 — expectativas de Clock e overflow alinhadas (2026-10-10)
+
+Exclusivamente T048, parada antes de T049. O usuário autorizou explicitamente acrescentar os dois alvos que falharam em T047: OrderTestSupportTest e OrderServiceContextTest. Raiz `C:/Users/ronal/dscommerce-speckit`, branch real `004-registrar-pedido`, HEAD `73d3398965b25027d393202a2c5a984984abd0ca`. Git inicial: oito rastreados modificados de T042–T047, teste novo de T046 não rastreado e índice vazio. Checklist 16/16, nenhuma pendência; script de pré-requisitos exit 0 e feature correta. Snapshot dos 157 arquivos do inventário, cópias dos dois testes/documentos, 700 arquivos de evidências T042–T047 hashados e 74 reports Surefire anteriores arquivados antes de editar. [Estado inicial](../../target/harness-validation/feature-004-t048-2026-10-10/git-before.json).
+
+### Causas confirmadas antes das alterações
+
+As duas fontes de entrada coincidem por SHA-256 com a revisão que falhou em T047; não se repetiu aquele RED. [Conferência das fontes RED](../../target/harness-validation/feature-004-t048-2026-10-10/red-source-confirmation.json).
+
+- Clock: OrderTestSupportTest usa WebApplicationContextRunner com DscommerceApplication e OrderTestConfig. OrderClockConfig define orderClock UTC produtivo; OrderTestConfig define orderTestClock determinístico com @Primary. Os dois beans coexistem; @Primary escolhe a dependência por tipo, sem excluir o bean produtivo. A exigência antiga de hasSingleBean(Clock.class) era incompatível com essa preparação. A falha histórica ocorreu antes do login/JWT, não demonstrou regressão desses comportamentos.
+- Overflow: spec US2.10/FR-008 exige rejeição integral sem perda/gravação; research D4 prevê overflow de subtotal/soma como 422 antes de gravar e D7 prevê InvalidOrderException para negócio. README/OpenAPI fixam Order value cannot be represented; a exceção vigente define UNREPRESENTABLE_VALUE. OrderService.exactMoney lança esse tipo/motivo quando precision > 19. A expectativa antiga de IllegalArgumentException no teste de chamada direta ficou incompatível com US2/T034. Não encontrada evidência de defeito produtivo que exigisse ampliar a correção.
+
+### Correções limitadas aos dois testes
+
+OrderTestSupportTest substitui somente a unicidade indevida de Clock por verificações explícitas de coexistência de orderClock/orderTestClock. Conserva unicidade de JwtEncoder/JwtDecoder/PasswordEncoder e a assertion de seleção por tipo. Confere o Clock produtivo distinto/UTC, o de teste no INITIAL_INSTANT determinístico e, por leitura do alvo do proxy OrderService real, que o campo clock efetivamente injetado é a mesma instância de teste. Ambos os beans/configurações foram preservados; nenhum mock ou remoção de Clock.
+
+Todas as verificações reais posteriores foram mantidas: fixture persistida sem perfis; BCrypt real; AuthenticationService/login real; decoder/sub e ausência de claims sensíveis; POST /login com FilterChainProxy real, 200, tokenType/corpo e JWT decodificado; perfis ainda vazios e assinatura HS256 do token criado pela infraestrutura existente. Limpeza no finally preservada.
+
+OrderServiceContextTest mantém os dois cenários sequenciais de overflow (subtotal e soma), agora com isInstanceOfSatisfying(InvalidOrderException.class), motivo UNREPRESENTABLE_VALUE e mensagem exata em cada caso. Não usa assertThrows genérico. Conserva integralmente as assertions posteriores de nenhuma instrução INSERT observada, zero pedidos da conta e nenhuma transação externa ativa; preservados também os outros três testes, fixtures, proxy, Clock produtivo e limpeza. Isso é rejeição anterior à persistência, não nova prova de rollback pós-SQL.
+
+Nenhuma alteração de produção, seed, segurança, Jackson, JWT, encoder ou configuração compartilhada. Correções produtivas condicionais de chain/leitor/advice dispensadas para estas causas; não houve ajuste dos slices nem ampliação do escopo. Os imports e assertions são locais aos dois testes; nenhuma outra regressão diretamente afetada foi identificada, portanto não repetidas as outras 30 classes de T047.
+
+### Execução atual e alcance das assertions
+
+Somente os dois comandos abaixo, serialmente na raiz pelo Maven Wrapper:
+
+```powershell
+.\mvnw.cmd "-Dtest=OrderTestSupportTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+.\mvnw.cmd "-Dtest=OrderServiceContextTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+```
+
+| Classe | Início → fim (UTC−03:00, 2026-10-10) | Testes/aprovações | Falhas | Erros | Ignorados | Exit / resultado |
+| --- | --- | ---: | ---: | ---: | ---: | --- |
+| OrderTestSupportTest | 19:17:22.066 → 19:18:25.828 | **5/5** | 0 | 0 | 0 | **0 / BUILD SUCCESS** |
+| OrderServiceContextTest | 19:18:33.207 → 19:19:03.872 | **4/4** | 0 | 0 | 0 | **0 / BUILD SUCCESS** |
+| **Total atual selecionado** | dois comandos/classes | **9/9** | **0** | **0** | **0** | **ambos 0 / GREEN** |
+
+Java 21.0.12.1 registrado nos XMLs; Maven 3.9.16 selecionado pelo Wrapper/propriedades preservadas, sem nova consulta de versão. Cada execução produziu um XML e um TXT novos, copiados para diretório próprio antes da próxima. Contagens conferidas entre testcase e resumo final do console; nenhum relatório stale ou classe fora dos dois alvos foi usado. [Suporte: comando/horários/contagens](../../target/harness-validation/feature-004-t048-2026-10-10/OrderTestSupportTest/result.json), [contexto: comando/horários/contagens](../../target/harness-validation/feature-004-t048-2026-10-10/OrderServiceContextTest/result.json).
+
+Os XMLs confirmam sucesso, sem skip, dos métodos shouldReuseRealEncodersAndDecoderWithTheTestProfileKey e shouldStopBeforeWritingWhenSubtotalOrSumExceedsDecimalCapacity. Revisada sua sequência: sem retorno antecipado ou captura que suprima assertions; aprovação completa comprova que passaram os trechos antes interrompidos. No primeiro, coexistência/seleção/injeção de Clock e todos os checks reais de login/JWT; no segundo, ambas as rejeições com tipo/motivo/mensagem e as verificações finais de ausência de gravação. A evidência é o caso JUnit aprovado junto do fonte executado, sem adicionar marcadores artificiais ou simular autenticação. [Conferência das execuções/métodos alcançados](../../target/harness-validation/feature-004-t048-2026-10-10/verified-execution.json).
+
+**GREEN dos dois alvos de T048: falhas resolvidas por atualização de expectativas antigas, mantendo contratos, assertions pertinentes e produção. Somente T048 marcada [X] após execução válida e documentação.** Nenhum impedimento de compilação, preparação/contexto ou ambiente nesta etapa.
+
+### Histórico, limitações e revisão final
+
+O resultado de T047 permanece intacto: 904 testes, 902 aprovações, duas falhas, 30/32 classes GREEN; seus XML/TXT/consoles, causas e classificações não foram reescritos como aprovação. T048 é nova execução de nove testes, não soma de checkpoints históricos nem repetição da bateria completa. Os 13 erros iniciais de preparação de LoginControllerTest em T041 e os resultados/evidências de T042–T046 também permanecem preservados.
+
+Esta seleção local de duas classes **não é execução de suíte completa/CI**, não substitui T050 e não conclui a revisão global US3/SC-006 de T049. Login/JWT real é comprovado no método de suporte aprovado; isso não converte evidências mockadas dos slices anteriores em integração real. Não ampliados cenários, transporte/deploy/banco ou as três provas de rollback históricas. **U1/U2 continuam pendentes e não aplicadas.**
+
+Evidências locais ignoradas pelo Git em `target/harness-validation/feature-004-t048-2026-10-10/`: inventários de entrada/execução, fontes anteriores, cópias integrais dos documentos/reports, resultados/consoles/XML/TXT por classe, fontes RED conferidas, revisão final e diff completo. Os 700 arquivos de evidências anteriores e os 70 reports de classes não selecionadas conservaram SHA-256; os 74 reports anteriores estão arquivados. Prefixo histórico integral do quickstart preservado por bytes. Dos 157 arquivos do inventário, somente quatro mudaram nesta etapa: os dois testes autorizados, quickstart.md por acréscimo e checkbox T048 em tasks.md; os demais 153, incluindo produção/configurações/seed e o teste novo de T046, mantêm SHA-256. Fontes executados iguais aos finais.
+
+Diff incremental/acumulado e arquivo novo preexistente conferidos. `git diff --check`: exit 0, sem diagnósticos; `git diff --no-index --check -- NUL src/test/java/com/devsuperior/dscommerce/controllers/OrderPublicRegressionIntegrationTest.java`: exit 1 por diferença contra NUL, zero diagnósticos de whitespace. Links novos conferidos e target ignorado. [Revisão/preservação/Git final](../../target/harness-validation/feature-004-t048-2026-10-10/final-review.json).
+
+Raiz/branch/HEAD mantidos. Estado final: **dez rastreados modificados, um não rastreado de T046, índice vazio**. **T001–T048 [X] (48); T049–T055 abertas (7); somente T048 marcada agora.** Sem T049+, T050, U1/U2, suíte completa, CI, stage, commit, push, merge ou troca de branch.
+
+## Checkpoint T049 — revisão de preservação US3/FR-015/SC-006 (2026-10-10)
+
+**Escopo exclusivamente T049, antes de T050.** Raiz `C:/Users/ronal/dscommerce-speckit`, branch real `004-registrar-pedido`, HEAD `73d3398965b25027d393202a2c5a984984abd0ca`. Entrada: dez rastreados modificados, um teste não rastreado de T046 e índice vazio. Todas as alterações preexistentes preservadas. Checklist de requisitos: 16/16, sem modificação. Skill speckit-implement aplicada com o limite explícito da solicitação; pré-requisitos válidos e nenhuma extensão registrada.
+
+### Fontes, revisão atual e escolha das evidências
+
+Revisados [US3.1–4, FR-015 e SC-006](spec.md), [T049 e dependência T048](tasks.md), a constituição/plano e as especificações [001](../001-consulta-catalogo-produtos/spec.md), [002](../002-visualizar-detalhes-produto/spec.md) e [003](../003-login-autenticacao/spec.md). Contratos confrontados: [products-openapi.yaml](../001-consulta-catalogo-produtos/contracts/products-openapi.yaml), [product-detail-openapi.yaml](../002-visualizar-detalhes-produto/contracts/product-detail-openapi.yaml) e [login-openapi.yaml](../003-login-autenticacao/contracts/login-openapi.yaml). Os contratos anteriores, mensagens e dados públicos permanecem intactos; não modificados produção, seed, testes ou configurações nesta revisão.
+
+**Execução atual T049: revisão documental/de fontes e relatórios; zero comandos Maven, zero novos testes.** O auxiliar `& target/harness-validation/feature-004-t049-2026-10-10/review.ps1` terminou com exit 0: seleção explícita de 32 classes sem duplicatas, recontagem dos elementos XML `testcase`, confronto com metadados/exit codes e SHA-256 das fontes. Uma primeira chamada do auxiliar terminou com exit 1 por conversão de array no próprio script PowerShell; corrigido somente o coletor ignorado em target e concluída a revisão. Isso não foi falha de preparação da aplicação ou execução de testes.
+
+Os 30 fontes aprovados em T047 correspondem à seleção/hash arquivada; os dois corrigidos correspondem ao inventário executado em T048. Todos os 86 arquivos de código/build conferidos contra T048 são idênticos. As alterações de T048 foram imports/assertions locais nesses dois testes, sem componente compartilhado alterado ou regressão adicional identificada. **Não há justificativa concreta para repetir cobertura nesta revisão.** Os comandos Maven, horários, contagens e exit codes utilizados estão preservados nas seções T047/T048 e no [inventário consolidado por classe](../../target/harness-validation/feature-004-t049-2026-10-10/effective-results.json); os nomes efetivamente aprovados e caminhos dos XMLs estão no [inventário de casos](../../target/harness-validation/feature-004-t049-2026-10-10/testcase-inventory.json).
+
+**Linha de base de ampliação T042–T046:** catálogo/slice 44, detalhes 38, login/slice 83, H2/handlers/JWT/BCrypt 106, jornadas pós-rejeição 14 aprovações nos respectivos checkpoints. T047 reexecutou essas classes na seleção registrada; para conclusão final usa-se T047, substituindo exclusivamente as duas classes corrigidas em T048. T002 e os checkpoints anteriores, incluindo T040 (411), T041 (133) e os 13 erros iniciais de preparação de LoginControllerTest, continuam evidências históricas separadas. Nenhum desses totais é somado ao checkpoint atual.
+
+### Matriz dos 22 cenários de aceitação anteriores
+
+Identificação `Feature/US.cenário` corresponde à numeração das três specs. Todas as linhas abaixo foram confrontadas com fonte e casos aprovados; GREEN significa preservação no alcance de backend comprovado. Siglas de cobertura:
+
+- **CAT:** PublicCatalogSecurityIntegrationTest, contexto completo/filtros reais, 33 aprovações em T047. Métodos de paginação/shape, ordenação global e vazio, incluindo banco vazio isolado; cada extensão é exercitada sem token e com Bearer inválido irrelevante.
+- **DET:** PublicProductDetailSecurityIntegrationTest, contexto completo/filtros reais, 38 aprovações em T047. Métodos de valores selecionados, navegação pelos 52 IDs, categorias repetidas em banco isolado, 404 e conversão Long; extensões pareadas por Bearer.
+- **LOG:** LoginControllerTest, slice/AuthenticationService mockado, 83 aprovações em T047. Treze cenários originais preservados e extensões de credenciais exatas, entrada estrita, 200/400/401/500, Bearer irrelevante e `/api`.
+- **PUB:** OrderPublicRegressionIntegrationTest, contexto completo/filtros/banco/login/JWT reais, 14 aprovações em T047. Helpers verifyCatalog/verifyDetails/verifyLogin após cada rejeição, na raiz e `/api`, nos dois modos públicos.
+- **REAL:** PUB mais JwtTokenServiceTest (1 em T047), OrderTestSupportTest (5 em T048), PasswordEncoderConfigurationTest (1 em T047) e UserAccountRepositoryTest (4 em T047). Provas complementares de conta real sem perfis, BCrypt, lookup exato/case sensitive, issuer/decoder e claims; cada classe mantém seu próprio alcance.
+
+| Cenário | Comportamento preservado | Cobertura correspondente e conclusão |
+| --- | --- | --- |
+| 001/US1.1 | Primeira página limitada ao tamanho | CAT: shouldPreserveDefaultPaginationAndExactCatalogShape; page=0/size=12, defaults independentes. PUB: verifyCatalog. **GREEN** |
+| 001/US1.2 | Páginas subsequentes/dados/metadados para navegar | CAT: shouldPreserveExplicitPaginationIncludingBothSizeLimits e percurso completo; size 1/50, 52 produtos. PUB: seis páginas/combinações. **GREEN** |
+| 001/US2.1 | Nome, imagem e preço do produto listado | CAT: shape/tipos por item. DET: shouldNavigateFromEveryCatalogIdToItsOwnDetailsWithoutChangingCatalogItems compara listagem/detalhe/valores seed. PUB: assertProduct contra leitura independente. **GREEN** |
+| 001/US2.2 | Conjunto mínimo consistente em todos os itens | CAT: assertCatalogPage para cada item/página; ProductControllerTest mantém suas assertions de slice. **GREEN** |
+| 001/US3.1 | Nome crescente | CAT: shouldPreserveNameAscThenIdAscAcrossAllPagesWithoutMissingOrRepeatingProducts; ProductRepositoryTest/serviço complementares (6/6 cada em T047). **GREEN** |
+| 001/US3.2 | Ordenação consistente entre páginas | CAT: todos os 52 IDs, sem repetição/omissão, name ASC/id ASC; PUB compara páginas com snapshot ordenado. **GREEN** |
+| 002/US1.1 | Seleção apresenta nome/preço/descrição/image/categorias | DET: shouldPreserveExactDetailShapeAndValuesForTheSelectedProduct, seis IDs representativos e shape exato; PUB: verifyDetails. **GREEN** |
+| 002/US1.2 | Todos os dados completos | DET: assertSeedProduct confere os seis campos contratuais, tipos e valores; percurso dos 52 produtos. **GREEN** |
+| 002/US1.3 | Somente o produto selecionado | DET: shouldNavigateFromEveryCatalogIdToItsOwnDetailsWithoutChangingCatalogItems, igualdade do ID/valores com catálogo e seed. **GREEN** |
+| 002/US1.4 | Uma categoria | DET/PUB: produto 2, lista exata Accessories. **GREEN** |
+| 002/US1.5 | Todas as múltiplas categorias | DET/PUB: produto 1, Computers/Electronics, valores exatos. **GREEN** |
+| 002/US1.6 | Nome de categoria repetido apresentado uma vez | DET: shouldReturnAllCategoryNamesOnlyOnceDespiteDistinctCategoryIds, categoria de outro ID com mesmo nome, fixture isolada/limpa. **GREEN** |
+| 002/US2.1 | Produto inexistente claramente indicado | DET: shouldPreserveNotFoundEnvelopeWithoutReturningAnotherProductsData, 404/envelope exato. PUB: ID ausente real. **GREEN** |
+| 002/US2.2 | Ausente não retorna dados de outro produto | DET/PUB: corpo apenas status/error/message/path, sem payload de produto; 404 Product not found. **GREEN** |
+| 003/US1.1 | Credenciais válidas, token válido/não vazio | LOG preserva contrato HTTP; REAL comprova login real de conta persistida, resposta 200/Bearer e decoder HS256. PUB testa também Bearer inválido irrelevante. **GREEN** |
+| 003/US1.2 | Token presente, senha/segredos ausentes | LOG: corpo exato accessToken/tokenType e erros confidenciais; REAL/PUB: JWT decodificado, sem senha/hash/chave/perfis, checks de conteúdo sensível. **GREEN** |
+| 003/US2.1 | Nome existente/senha incorreta, rejeição genérica sem token | LOG: shouldPreserveIdenticalUnauthorizedResponsesDespiteIrrelevantBearer; PUB: credencial incorreta real, 401 Invalid credentials/envelope sem token. **GREEN** |
+| 003/US2.2 | Nome desconhecido, mesma rejeição/sem token | LOG/PUB comparam integralmente respostas de nome desconhecido e senha incorreta. AuthenticationServiceTest complementa fluxo/dummy BCrypt (4 em T047). **GREEN** |
+| 003/US2.3 | Credencial obrigatória ausente/vazia, dados inválidos/sem token | LOG: shouldPreserveStrictLoginInputBeforeAuthenticationDespiteIrrelevantBearer, missing/null/empty/blank e outros tipos, sem chamada ao serviço. PUB: rejeições reais representativas 400. **GREEN** |
+| 003/US3.1 | Catálogo público sem token | CAT e PUB, filtros reais, contrato completo de listagem; Bearer inválido adicional não impede a operação. **GREEN** |
+| 003/US3.2 | Detalhes públicos sem token | DET e PUB, filtros reais, produto existente e ausente; Bearer inválido adicional irrelevante. **GREEN** |
+| 003/US3.3 | Todos os cenários 001/002 sem exigir autenticação | Quatorze cenários das duas primeiras features mapeados acima, nas integrações CAT/DET sem token e com Bearer inválido; journeys PUB complementares. **GREEN** |
+
+### Contratos, bordas e complementos de US3
+
+| Critério/cenário adicional | Evidência final e alcance | Conclusão |
+| --- | --- | --- |
+| 001: vazio real e página fora do intervalo | CAT nested EmptyCatalog usa banco vazio isolado; out-of-range na seed mantém metadados/content vazio. PUB repete página vazia após cada rejeição. | Preservado |
+| 001: parâmetros/defaults/desempate | CAT cobre ausência independente de page/size, limites 1/50, page negativo, size 0/51, mensagens exatas; empates Duplicate em IDs 51/52 na ordem por ID. FR-007 permite rejeitar ou normalizar conforme regras documentadas: o contrato vigente rejeita inválidos com 400 e usa defaults 0/12 somente para parâmetros ausentes. A menção genérica a defaults no edge case não é usada para mudar o contrato. | Preservado |
+| 002: categorias vazias/image/identificadores | DET/PUB preservam lista vazia do produto 3 e campo image; DET mantém Long equivalente 01/+1, 404 para 0/negativos/extremos sem impor regra nova de positividade, 400 por conversão impossível. | Preservado |
+| 003: entrada estrita/name/password | LOG mantém valores exatos/case/espaços, tipos string, somente duas propriedades, sem email/identifier/roles, roots/malformed/body ausente. UserAccountRepositoryTest confirma lookup real exato/case sensitive; AuthenticationServiceTest verifica uma consulta exata e fluxo de BCrypt, com colaboradores mockados. | Preservado |
+| 003: 200/400/401/500 e confidencialidade | LOG e GlobalExceptionHandlerRegressionTest conservam mensagens Invalid login data / Invalid credentials / Authentication could not be completed, envelopes e paths. AuthenticationInternalFailureTest (4) verifica causas internas em unidade; AuthenticationSensitiveLoggingTest (4) verifica canários/logging nessa camada. A emissão real é comprovada por REAL, não pelo token signed.jwt.token do slice. | Preservado nos alcances indicados |
+| 003: claims/HS256/expiração/conta sem perfil | PUB verifica sub/name/iat/exp/TTL e assinatura por decoder real, ausência de claims sensíveis/roles e BCrypt/conta persistida sem perfis; JwtTokenServiceTest complementa issuer/decoder real. OrderTestSupportTest alcança todos os checks reais antes interrompidos. JwtConfigurationTest (6) conserva configurações inválidas rejeitadas como cenários esperados; não são erros pendentes. | Preservado |
+| H2 console/SAMEORIGIN/acesso/configuração | H2ConsoleSecurityIntegrationTest, 15 em T047: servidor real/porta aleatória, recursos console/login.jsp/css, raiz e contexto físico /api, com/sem Bearer inválido; propriedade/path/registro servlet e chain real, sem desabilitar filtros. | Preservado |
+| Handlers/envelopes/mensagens/paths | GlobalExceptionHandlerRegressionTest, 84 em T047: login/catálogo/detalhes/validação/conversão e falhas públicas alheias a pedidos, raiz e /api, com/sem Bearer; serviços mockados no slice e chain/advice reais. ProductControllerTest mantém seus 11 casos e assertions originais, aprovados em T047. Mensagens de pedidos não substituem as anteriores. | Preservado |
+| US3.4: depois de 400 | PUB: INVALID_QUANTITY × raiz/api; endpoint real/envelope/mensagem, leitura independente sem novas linhas antes da limpeza, depois catálogo/detalhes/login nos dois modos. | GREEN, 2 casos |
+| US3.4: depois de 401 | PUB: NO_TOKEN e MALFORMED_TOKEN × raiz/api; status/challenge/envelope, 0/0 linhas novas e jornadas posteriores públicas. | GREEN, 4 casos |
+| US3.4: depois de 403 | PUB: NO_ROLE, login/JWT reais × raiz/api, rejeição sem escrita e jornadas posteriores públicas. | GREEN, 2 casos |
+| US3.4: depois de 404 | PUB: MISSING × raiz/api, ausência real do produto, rejeição sem escrita e jornadas posteriores públicas. | GREEN, 2 casos |
+| US3.4: depois de 422 | PUB: DUPLICATE × raiz/api, rejeição de negócio sem escrita e jornadas posteriores públicas. | GREEN, 2 casos |
+| US3.4: depois de 500 | PUB: POST_FLUSH_FAILURE × raiz/api; spy delega ao saveAndFlush JPA real, três INSERTs concluídos, 1 pedido/2 itens visíveis na transação, falha pós-flush, baseline 0/0 restaurada em conexão independente após requisição/antes de limpeza. Instrumentação desarmada antes das consultas/login. | GREEN, 2 casos e rollback real pós-SQL |
+
+Em PUB, cada rejeição é seguida de duas jornadas (28 blocos, 588 requisições públicas auxiliares; **14 casos JUnit**, sem inflar o total), mantendo as mesmas instâncias de contexto, EntityManagerFactory e FilterChainProxy. Snapshots independentes verificam pedidos/itens e preservação de produtos/categorias/contas seed, sem reinicializar contexto entre rejeição e jornadas. [Provas coletadas na execução T047](../../target/harness-validation/feature-004-t047-2026-10-10/public-regression-proof.txt). As três provas distintas de rollback de OrderRollbackIntegrationTest em T047 (9 aprovações) continuam documentadas separadamente: falha SQL tardia, falha pós-flush e falha em beforeCommit; [provas correspondentes](../../target/harness-validation/feature-004-t047-2026-10-10/rollback-proof.txt). Não confundir nenhuma escrita em overflow com rollback pós-SQL, nem beforeCommit com falha física do commit.
+
+### Falhas históricas, substituições e resultado final
+
+| Alvo de T047 | Resultado histórico preservado | Causa confirmada/resultado substituto de T048 |
+| --- | --- | --- |
+| OrderTestSupportTest | 5 casos, 4 aprovados/1 falha, exit 1; preparação/configuração | Unicidade indevida de Clock: orderClock produtivo e orderTestClock determinístico devem coexistir. T048 confere os dois, seleção por tipo e injeção efetiva do Clock de teste em OrderService, mantém encoder/decoder únicos e alcança login/JWT/BCrypt reais. **5/5, exit 0** |
+| OrderServiceContextTest | 4 casos, 3 aprovados/1 falha, exit 1; incompatibilidade comportamental de expectativa | Expectativa antiga IllegalArgumentException para overflow, diante do contrato vigente InvalidOrderException/UNREPRESENTABLE_VALUE/Order value cannot be represented. T048 verifica tipo/motivo/mensagem em subtotal e soma, mantém nenhuma instrução INSERT/zero pedidos e alcança essas assertions finais. **4/4, exit 0** |
+
+[T048: comandos, horários, resultados e métodos antes interrompidos](../../target/harness-validation/feature-004-t048-2026-10-10/verified-execution.json). Os XMLs dos dois métodos estão aprovados, sem skip; revisão dos fontes confirma execução sequencial das assertions, sem retorno antecipado ou captura que esconda erro. Não encontrada evidência de defeito produtivo que requeira alteração de produção. As outras 30 classes de T047 estavam GREEN e permanecem com fontes idênticos; **não existe outra falha pendente na seleção de T047/T048**.
+
+**Resultado consolidado por última execução relevante: 32 classes, 904 aprovações, zero falhas/erros/ignorados.** Cálculo: **895 aprovações de 30 classes de T047 + 9 aprovações de duas classes de T048**. Os resultados antigos completos dessas duas classes são substituídos, incluindo suas sete aprovações antigas; não somados novamente. O histórico de T047 continua 904 executados/902 aprovados/duas falhas, 30/32 GREEN. Não alterados registros, causas ou reports históricos para convertê-los em GREEN. [Resumo da revisão atual](../../target/harness-validation/feature-004-t049-2026-10-10/review-summary.json).
+
+**Checkpoint US3.1–4 / FR-015 / SC-006 comprovado para os cenários de aceitação de backend das Features 001–003 e integrações acima; somente T049 marcada [X].** Não identificada lacuna impeditiva em seu escopo.
+
+### Limitações e preservação final
+
+Esta consolidação usa execuções locais selecionadas, serializadas em processos distintos em T047/T048; **não é execução atual de suíte completa, não é CI e não substitui T050**. T049 não introduz teste/execução ou prova nova de comportamento. Os totais não demonstram convivência de todas as classes num único processo nem aprovam diff futuro.
+
+Slices de login/handlers e unidades com mocks comprovam contratos/fluxos simulados, sem provar assinatura, conta persistida ou falha física de banco. Essas provas reais são indicadas especificamente em REAL/PUB e nos repositórios/configurações. O 500 de login é exercitado com falhas instrumentadas/mocks na camada correspondente, não como indisponibilidade física de banco depois de cada pedido rejeitado. PUB repete famílias representativas e não todas as combinações de US2; suas jornadas não incluem nova injeção de 500 de login. Context paths de MockMvc não são deploy físico (H2 possui prova por servidor real). A seleção de produto em um GET comprova o contrato backend da Feature 002, sem medir interface gráfica; os casos válidos de catálogo são evidência funcional, sem estimar SLA populacional de 95% da Feature 001. Mantidos limites de transporte, falha física de commit e outro banco. **U1 (conteúdo residual no JSON de pedidos) e U2 (ativação de fixtures na demonstração) continuam pendentes/não aplicadas.**
+
+Evidências auxiliares ignoradas pelo Git em `target/harness-validation/feature-004-t049-2026-10-10/`: inventários/hash de entrada, documentos antes da revisão, matriz efetiva/casos/resumo, diff e conferência final. Preservados por SHA-256 os 801 arquivos de evidências T042–T048 e os 74 reports atuais; prefixo integral do quickstart preservado. Dos 157 arquivos inventariados, somente quickstart.md (acréscimo deste checkpoint) e tasks.md (checkbox T049) alterados, demais 155 idênticos, incluindo o novo teste preexistente de T046.
+
+Diff incremental/acumulado e arquivo não rastreado de T046 conferidos; links novos existentes. `git diff --check`: exit 0/zero diagnósticos. `git diff --no-index --check -- NUL src/test/java/com/devsuperior/dscommerce/controllers/OrderPublicRegressionIntegrationTest.java`: exit 1 por diferença contra NUL, zero diagnósticos de whitespace. [Conferência final de preservação/whitespace/Git](../../target/harness-validation/feature-004-t049-2026-10-10/final-review.json).
+
+Git final: raiz/branch/HEAD mantidos, **dez rastreados modificados, um não rastreado de T046, índice vazio**. **T001–T049 [X] (49); T050–T055 abertas (6); somente T049 marcada nesta revisão.** Sem T050+, CI, U1/U2, stage, commit, push, merge ou troca de branch.

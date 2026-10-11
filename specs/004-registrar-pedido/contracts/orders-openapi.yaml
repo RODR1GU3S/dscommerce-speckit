@@ -1,0 +1,284 @@
+openapi: 3.0.3
+info:
+  title: DSCommerce Order Registration API
+  version: 0.1.0
+  description: >-
+    Planned contract. Register an order for the authenticated UserAccount.
+    CLIENT or ADMIN is required; ADMIN alone is sufficient. Every valid request
+    creates a new order, including repeated items across different requests or
+    a retry after a lost response. No idempotency or order query is provided.
+paths:
+  /orders:
+    post:
+      summary: Register an order for the authenticated account
+      operationId: registerOrder
+      security:
+        - bearerAuth: []
+      description: >-
+        The consumer manages the cart and submits its items only. The system
+        reads strictly positive current product prices during registration,
+        stores historical prices and creates an order in WAITING_PAYMENT.
+        Duplicate productId lines are rejected without consolidation.
+        Failures before completion leave no order or items partially saved.
+        Monetary output is an exact two-decimal string. No cart clearing,
+        payment, order lookup or administrative operation is included.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderRequest'
+            example:
+              items:
+                - productId: 1
+                  quantity: 2
+                - productId: 2
+                  quantity: 3
+      responses:
+        '201':
+          description: >-
+            A new complete order was committed. No Location header promises
+            an order query. A lost response does not undo the committed order.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+              example:
+                id: 101
+                accountId: 1
+                createdAt: '2026-10-01T15:00:00.123Z'
+                status: WAITING_PAYMENT
+                items:
+                  - productId: 1
+                    quantity: 2
+                    unitPrice: '10.00'
+                    subtotal: '20.00'
+                  - productId: 2
+                    quantity: 3
+                    unitPrice: '7.50'
+                    subtotal: '22.50'
+                total: '42.50'
+        '400':
+          description: >-
+            Invalid JSON or request data, missing/null fields, empty items,
+            non-integer tokens, values outside integer limits, unknown fields
+            or repeated JSON property names. No data is saved.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: 400
+                error: Bad Request
+                message: Invalid order data
+                path: /orders
+        '401':
+          description: >-
+            Missing or invalid authentication, expired JWT, invalid required
+            claims/subject, or account not found. No data is saved.
+          headers:
+            WWW-Authenticate:
+              description: Bearer authentication challenge without sensitive diagnostics.
+              schema:
+                type: string
+              example: Bearer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: 401
+                error: Unauthorized
+                message: Authentication required or invalid
+                path: /orders
+        '403':
+          description: Existing account has neither CLIENT nor ADMIN. No data is saved.
+          headers:
+            WWW-Authenticate:
+              description: Optional Bearer insufficient_scope challenge, without account details.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: 403
+                error: Forbidden
+                message: Order registration not permitted
+                path: /orders
+        '404':
+          description: At least one product does not exist. No order or item is saved.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: 404
+                error: Not Found
+                message: Product not found
+                path: /orders
+        '422':
+          description: >-
+            Duplicate product lines, non-positive/unavailable product price,
+            or price/subtotal/total that cannot be represented exactly within
+            decimal19,2. The entire request is rejected without saving data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                repeatedProduct:
+                  value:
+                    status: 422
+                    error: Unprocessable Entity
+                    message: Duplicate product in order
+                    path: /orders
+                invalidPrice:
+                  value:
+                    status: 422
+                    error: Unprocessable Entity
+                    message: Product price is not valid for order
+                    path: /orders
+                unrepresentableValue:
+                  value:
+                    status: 422
+                    error: Unprocessable Entity
+                    message: Order value cannot be represented
+                    path: /orders
+        '500':
+          description: >-
+            Internal failure during security account resolution or order
+            processing/persistence/commit. No partial order or items remain.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: 500
+                error: Internal Server Error
+                message: Order registration could not be completed
+                path: /orders
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: >-
+        Existing HS256 login token. Signature is verified with the existing
+        configured key; sub identifies UserAccount by positive canonical Long
+        id. Operation requires iat and exp, exp greater than now and iat, iat
+        not in the future, and nbf not in the future when present. No additional
+        time tolerance. Roles are read from the account, not JWT claims.
+  schemas:
+    PositiveId:
+      type: integer
+      format: int64
+      minimum: 1
+      maximum: 9223372036854775807
+      description: Positive Long; clients must preserve the complete integer value.
+    Quantity:
+      type: integer
+      format: int32
+      minimum: 1
+      maximum: 2147483647
+      description: >-
+        Positive quantity representable by Integer. Input must be a JSON
+        integer token; decimal 1.0, fractional values, strings and booleans
+        are rejected without coercion. No stock or commercial limit implied.
+    Money:
+      type: string
+      minLength: 4
+      maxLength: 20
+      pattern: '^(0\.(0[1-9]|[1-9][0-9])|[1-9][0-9]{0,16}\.[0-9]{2})$'
+      description: >-
+        Exact positive decimal string with two fraction digits, no exponent
+        or thousands separator; from 0.01 to 99999999999999999.99.
+        Subtotal equals stored unitPrice times quantity; total is their sum.
+        No freight, discount or surcharge. No silent rounding or overflow.
+      example: '42.50'
+    OrderRequest:
+      type: object
+      additionalProperties: false
+      required: [items]
+      description: >-
+        Only items is accepted. Any extra field, even null, and repeated JSON
+        property names cause 400. Security validation takes precedence.
+      properties:
+        items:
+          type: array
+          minItems: 1
+          description: >-
+            Non-null lines, in consumer order. Same productId in more than one
+            line causes 422 even with different quantities. Whole-request rejection.
+          items:
+            $ref: '#/components/schemas/OrderItemRequest'
+    OrderItemRequest:
+      type: object
+      additionalProperties: false
+      required: [productId, quantity]
+      description: >-
+        Input productId must be a positive JSON integer token within Long
+        limits, without coercion. Decimal 1.0, fractional or exponent tokens,
+        strings, booleans, arrays and objects are rejected with 400; missing
+        or null productId is also invalid. The integer schema alone does not
+        express this token-level restriction.
+      properties:
+        productId:
+          $ref: '#/components/schemas/PositiveId'
+        quantity:
+          $ref: '#/components/schemas/Quantity'
+    OrderResponse:
+      type: object
+      additionalProperties: false
+      required: [id, accountId, createdAt, status, items, total]
+      properties:
+        id:
+          $ref: '#/components/schemas/PositiveId'
+        accountId:
+          $ref: '#/components/schemas/PositiveId'
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation Instant in UTC, millisecond precision; not a commit timestamp.
+        status:
+          type: string
+          enum: [WAITING_PAYMENT]
+        items:
+          type: array
+          minItems: 1
+          description: Registered lines, preserving request order.
+          items:
+            $ref: '#/components/schemas/OrderItemResponse'
+        total:
+          $ref: '#/components/schemas/Money'
+    OrderItemResponse:
+      type: object
+      additionalProperties: false
+      required: [productId, quantity, unitPrice, subtotal]
+      properties:
+        productId:
+          $ref: '#/components/schemas/PositiveId'
+        quantity:
+          $ref: '#/components/schemas/Quantity'
+        unitPrice:
+          $ref: '#/components/schemas/Money'
+        subtotal:
+          $ref: '#/components/schemas/Money'
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [status, error, message, path]
+      properties:
+        status:
+          type: integer
+          enum: [400, 401, 403, 404, 422, 500]
+        error:
+          type: string
+        message:
+          type: string
+          description: Safe fixed message defined in the contract README; no input or internal cause.
+        path:
+          type: string
+          description: External request URI, including servlet context path when present.

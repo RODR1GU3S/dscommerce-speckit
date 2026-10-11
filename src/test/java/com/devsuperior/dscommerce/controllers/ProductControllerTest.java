@@ -1,6 +1,8 @@
 package com.devsuperior.dscommerce.controllers;
 
 import com.devsuperior.dscommerce.config.SecurityConfig;
+import com.devsuperior.dscommerce.config.OrderClockConfig;
+import com.devsuperior.dscommerce.config.OrderSecuritySliceTestConfig;
 import com.devsuperior.dscommerce.dto.PageResponseDTO;
 import com.devsuperior.dscommerce.dto.ProductCatalogItemDTO;
 import com.devsuperior.dscommerce.dto.ProductDetailDTO;
@@ -25,8 +27,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(ProductController.class)
-@Import(SecurityConfig.class)
+@WebMvcTest(controllers = ProductController.class, properties = "test.order-security.public-mvc-slice=true")
+@Import({SecurityConfig.class, OrderClockConfig.class, OrderSecuritySliceTestConfig.class})
 class ProductControllerTest {
 
     @Autowired

@@ -138,6 +138,26 @@ class OrderControllerTest {
             assertConfirmation(account.token(), body, account.id(),
                     List.of(new ExpectedLine(product, 3, "0.10", "0.30")), "0.30");
         }
+
+        @Test
+        void shouldPreserveFrameworkUnsupportedMediaTypeStatusAndAcceptHeader() throws Exception {
+            var account = login(Set.of(UserRole.CLIENT));
+            var product = fixture.createProduct("http-media-type", new BigDecimal("10.00"));
+            var result = mvc.perform(post("/orders")
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + account.token())
+                            .contentType(MediaType.TEXT_PLAIN).accept(MediaType.APPLICATION_JSON)
+                            .content("{\"items\":[{\"productId\":" + product + ",\"quantity\":2}]}"))
+                    .andExpect(status().isUnsupportedMediaType()).andReturn();
+
+            assertThat(result.getResolvedException())
+                    .isInstanceOf(org.springframework.web.HttpMediaTypeNotSupportedException.class);
+            var failure = (org.springframework.web.HttpMediaTypeNotSupportedException) result.getResolvedException();
+            assertThat(result.getResponse().getHeader(HttpHeaders.ACCEPT)).isNotBlank()
+                    .isEqualTo(failure.getHeaders().getFirst(HttpHeaders.ACCEPT));
+            assertThat(failure.getHeaders().getAccept()).contains(MediaType.APPLICATION_JSON);
+            System.out.printf("ORDER_FRAMEWORK_HEADERS status=%d accept=%s%n",
+                    result.getResponse().getStatus(), result.getResponse().getHeader(HttpHeaders.ACCEPT));
+        }
     }
 
     /** No filters, repositories or real service: proves only MVC reading/validation/delegation. */
@@ -307,6 +327,8 @@ class OrderControllerTest {
                     new TransactionSystemException(MVC_DIAGNOSTIC),
                     new OrderAccountResolutionException(MVC_DIAGNOSTIC, new IllegalStateException(MVC_DIAGNOSTIC)),
                     new ConstraintViolationException(MVC_DIAGNOSTIC, Set.of()),
+                    new org.springframework.web.server.ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                            MVC_DIAGNOSTIC),
                     new IllegalArgumentException(MVC_DIAGNOSTIC))) {
                 cases.add(Arguments.of(failure.getClass().getSimpleName(), failure, 500,
                         "Order registration could not be completed", context));

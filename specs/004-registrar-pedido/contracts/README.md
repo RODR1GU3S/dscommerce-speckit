@@ -1,6 +1,6 @@
 # Contrato: registro de pedido
 
-[OpenAPI 3.0.3](orders-openapi.yaml) define somente `POST /orders`; contratos de [catálogo](../../001-consulta-catalogo-produtos/contracts/products-openapi.yaml), [detalhes](../../002-visualizar-detalhes-produto/contracts/product-detail-openapi.yaml) e [login](../../003-login-autenticacao/contracts/login-openapi.yaml) permanecem intactos. Este contrato é planejado; ainda não há endpoint implementado.
+[OpenAPI 3.0.3](orders-openapi.yaml) define somente `POST /orders`; contratos de [catálogo](../../001-consulta-catalogo-produtos/contracts/products-openapi.yaml), [detalhes](../../002-visualizar-detalhes-produto/contracts/product-detail-openapi.yaml) e [login](../../003-login-autenticacao/contracts/login-openapi.yaml) permanecem intactos. O endpoint está implementado na branch `004-registrar-pedido`, com autenticação Bearer, autorização CLIENT/ADMIN, JSON estrito, cálculos monetários exatos, snapshots de preços e persistência atômica. As evidências da implementação e validação local estão no [quickstart](../quickstart.md), mantendo o escopo e os limites descritos abaixo.
 
 ## Sucesso e fronteiras
 

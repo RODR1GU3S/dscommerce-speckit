@@ -3950,3 +3950,145 @@ Alteração versionável exclusivamente neste quickstart, por acréscimo. Contra
 Ambiente temporário: após a validação, tentada remoção somente do venv próprio. **A revisão automática de aprovação rejeitou a ação antes da execução, motivo informado: blocked by policy.** Não tentada remoção por mecanismo alternativo. Conferência posterior somente de leitura confirmou o caminho absoluto dentro de %TEMP% e igual ao baseline; o venv permanece nesse diretório temporário isolado, sem instalação global ou dependência do projeto. Isso não alterou o resultado da validação. [Registro da limpeza bloqueada](../../target/harness-validation/feature-004-openapi-validation-2026-10-11-154916/cleanup.json) e [conferência do caminho](../../target/harness-validation/feature-004-openapi-validation-2026-10-11-154916/temporary-path-review.json).
 
 Revisão final: [auditoria de preservação e referências](../../target/harness-validation/feature-004-openapi-validation-2026-10-11-154916/final-review.json) confirmou por SHA-256 **158 outros rastreados, 6.766 evidências anteriores e os 76 relatórios Surefire inalterados**, prefixo histórico de **734.324 bytes** do quickstart preservado e contrato idêntico ao arquivo aprovado. Destinos das novas referências conferidos; diff restrito ao acréscimo documental, `git diff --check` **exit 0**, apenas aviso conhecido LF→CRLF. As 55 checkboxes permanecem [X], tasks.md intacto; índice vazio. Git final: branch `004-registrar-pedido`, HEAD `628cbf509f74a5454328ab1f34fb6003deb91b57`, somente ` M specs/004-registrar-pedido/quickstart.md`.
+
+## PR #4 — reprodução focalizada do erro HTTP do framework (2026-10-11)
+
+**Escopo exclusivo de diagnóstico e teste de regressão; nenhuma correção produtiva.** Confirmados raiz `C:/Users/ronal/dscommerce-speckit`, branch `004-registrar-pedido`, HEAD `f6ca8ed7bbbb9e552380ce99cafab06ea7195ecf`, working tree inicialmente limpo e índice vazio. Lidos AGENTS.md, constituição, guia do harness, handler e infraestrutura existentes. Este registro é um acréscimo: checkpoints, resultados locais/remotos históricos, 55 checkboxes e evidências anteriores permanecem preservados. Não houve revisão de outros achados ou alteração do README.
+
+### Achado completo recuperado da revisão anterior
+
+O texto abaixo foi apresentado na conversa de revisão do PR #4, sem publicação no GitHub. Naquela revisão era **análise estática**, não falha executada:
+
+> **P2 — erro de mídia do cliente convertido em HTTP 500**, em [GlobalExceptionHandler.java:135](../../src/main/java/com/devsuperior/dscommerce/controllers/handlers/GlobalExceptionHandler.java). Um `POST /orders` autorizado, com corpo JSON, `Content-Type: text/plain` e `Accept: application/json`, provoca `HttpMediaTypeNotSupportedException`. O handler genérico captura essa exceção e responde 500, substituindo o tratamento 415 do [Spring 6.1.13](https://github.com/spring-projects/spring-framework/blob/v6.1.13/spring-webmvc/src/main/java/org/springframework/web/servlet/mvc/support/DefaultHandlerExceptionResolver.java#L76).
+>
+> Isso classifica entrada incompatível como falha interna, contrariando a semântica HTTP exigida pela constituição. A falha ocorre antes do serviço, sem gravação. **Conclusão por análise estática**, sem reprodução HTTP nesta revisão; não encontrei cobertura desse caso nos testes revisados. Recomendo preservar o tratamento de erros HTTP do framework e reservar 500 às falhas internas.
+
+Requisição investigada: `POST /orders`, JWT Bearer válido obtido pelo `/login` real, conta existente com CLIENT no banco, corpo válido `{"items":[{"productId":<id da fixture>,"quantity":2}]}`, `Content-Type: text/plain`, `Accept: application/json`. A fixture fornece produto existente a `10.00`; apenas o tipo de mídia distingue a requisição investigada de seu controle positivo.
+
+Fundamento: Spring Web/MVC **6.1.13**, presente no classpath, associa `HttpMediaTypeNotSupportedException` a **415 Unsupported Media Type**. Sem converter capaz de ler o DTO nesse tipo de mídia, o [resolvedor de argumentos do Spring](https://github.com/spring-projects/spring-framework/blob/v6.1.13/spring-webmvc/src/main/java/org/springframework/web/servlet/mvc/method/annotation/AbstractMessageConverterMethodArgumentResolver.java#L192) lança essa exceção antes de invocar o controller. O `getStatusCode()` da própria exceção observada também retornou 415. Em [GlobalExceptionHandler](../../src/main/java/com/devsuperior/dscommerce/controllers/handlers/GlobalExceptionHandler.java), linhas 135–142, `@ExceptionHandler(Exception.class)`/`handleOrderProcessing` responde 500 para qualquer exceção ainda não tratada em POST /orders. Não há handler específico para a exceção de mídia. Isso intercepta o erro do framework e o classifica como falha interna. A constituição, princípio V, exige status HTTP com semântica adequada; não é necessária uma nova mensagem contratual para conservar o status original.
+
+### Teste e observação pelo HTTP real
+
+Criado somente [OrderFrameworkHttpErrorIntegrationTest.java](../../src/test/java/com/devsuperior/dscommerce/controllers/OrderFrameworkHttpErrorIntegrationTest.java), teste focalizado com `@SpringBootTest(RANDOM_PORT)`, servidor real em loopback/porta aleatória, Java HttpClient, perfil test e banco H2 UUID isolado via OrderTestConfig/OrderTestFixture existentes. Não usa MockMvc, mock de serviço/decoder, token fictício, segurança desativada ou transação externa de teste. Credenciais aleatórias e JWT ficam somente em memória; não são impressos ou incluídos nos argumentos do processo.
+
+Uma única execução de um único método de teste:
+
+1. Fixture CLIENT explicitamente confirmada no banco; login real HTTP **200**. Um POST com o mesmo JWT/conta/corpo e `Content-Type: application/json` retornou **201**, comprador correto e total `20.00`; JDBC independente confirmou **um pedido/um item**. Esse controle comprova que autenticação, perfis e dados não escondem a falha.
+2. POST investigado com `text/plain` retornou **500**. Observador exclusivo do contexto de teste, implementado como HandlerExceptionResolver de alta prioridade, registrou **HttpMediaTypeNotSupportedException**, status nativo **415**, autenticação válida/CLIENT e handler selecionado **OrderController.register**. O observador **retorna null**, sem tratar a exceção, escrever resposta ou mudar seu status; os resolvers produtivos continuam decidindo a resposta.
+3. Antes da limpeza e antes da assertion de status, leitura com JdbcTemplate/DataSource independentes, conexão autoCommit e não vinculada à transação da aplicação, encontrou **um pedido/um item**, exatamente o baseline do controle. **Delta da tentativa investigada: zero pedidos e zero itens.** `assertAll` executou também as assertions de exceção/status nativo, autorização/controller e ausência de transação externa; somente a assertion HTTP 415 falhou.
+
+Não há expectativa sobre texto/envelope da resposta 415: **nenhuma mensagem inventada nem ampliação do OpenAPI**. Mantida a expectativa correta de 415; não ajustada para aceitar o 500 atual. O caso não prova outros erros HTTP, ADMIN/context path ou rollback após início de gravação; nenhum desses cenários foi adicionado para ampliar esta investigação. A evidência passa agora de hipótese estática a **falha comportamental reproduzida por HTTP real**, com preparação e controle positivo aprovados.
+
+### Comando e resultado efetivamente executados
+
+Na raiz, em Windows/PowerShell:
+
+```powershell
+.\mvnw.cmd "-Dtest=OrderFrameworkHttpErrorIntegrationTest" "-Djunit.jupiter.execution.parallel.enabled=false" "-DforkCount=1" "-DreuseForks=true" test
+```
+
+**2026-10-11, 18:52:53.991–18:54:11.786 UTC−03:00**; Java **21.0.12.1 Azul/Zulu**, Maven **3.9.16 pelo Wrapper**. `.\mvnw.cmd --version` executado antes, exit 0. A única invocação de testes selecionou somente a classe nova; compilação e contexto inicializaram corretamente. **1 teste, 1 falha, 0 erros, 0 ignorados; BUILD FAILURE/exit Maven 1**, causa esperada `expected: 415 but was: 500`. Não é falha de compilação, preparação, autenticação ou persistência.
+
+Marcador sanitizado observado no console:
+
+```text
+ORDER_FRAMEWORK_HTTP control=201 actual=500 expected=415 exception=HttpMediaTypeNotSupportedException frameworkStatus=415 authorized=true controller=OrderController.register beforeOrders=1 beforeItems=1 afterOrders=1 afterItems=1 independent=true
+```
+
+[Comando/HEAD/status/horários/exit](../../target/harness-validation/feature-004-http-framework-2026-10-11-185051/focused-01/result.json), [versões](../../target/harness-validation/feature-004-http-framework-2026-10-11-185051/focused-01/wrapper-version.txt), [console integral](../../target/harness-validation/feature-004-http-framework-2026-10-11-185051/focused-01/console.txt), [resumo do diagnóstico](../../target/harness-validation/feature-004-http-framework-2026-10-11-185051/focused-01/summary.json), [observação sanitizada](../../target/harness-validation/feature-004-http-framework-2026-10-11-185051/focused-01/observations.txt), [XML Surefire](../../target/harness-validation/feature-004-http-framework-2026-10-11-185051/focused-01/reports/TEST-com.devsuperior.dscommerce.controllers.OrderFrameworkHttpErrorIntegrationTest.xml), [TXT Surefire](../../target/harness-validation/feature-004-http-framework-2026-10-11-185051/focused-01/reports/com.devsuperior.dscommerce.controllers.OrderFrameworkHttpErrorIntegrationTest.txt) e cópia da fonte efetivamente executada no mesmo diretório. Evidências novas em target, ignorado pelo Git; os caminhos não são artefatos publicados no PR.
+
+### Preservação e estado final
+
+Antes da edição, [baseline](../../target/harness-validation/feature-004-http-framework-2026-10-11-185051/baseline.json) registrou hashes dos **159 arquivos rastreados e 6.781 evidências anteriores**, além de cópias integrais de quickstart/tasks. Antes da invocação Maven, os **76 relatórios Surefire existentes** foram copiados e verificados por SHA-256, com manifest `focused-01/reports-before.json`. Os dois relatórios novos pertencem exclusivamente ao teste novo; os anteriores continuam como evidências históricas, sem serem somados ao teste focalizado.
+
+Revisão final de preservação, links, fonte nova e whitespace registrada em `target/harness-validation/feature-004-http-framework-2026-10-11-185051/final-review.json`. Prefixo histórico do quickstart e tasks/55 checkboxes permanecem intactos; produção, README, contratos, dependências, configurações e testes anteriores não foram alterados. Nenhuma assertion enfraquecida para obter GREEN. O teste permanece **RED**, sem correção implementada nem declaração de aprovação integral; a CI histórica dos 922 testes refere-se ao HEAD publicado, não a este working tree com nova regressão.
+
+Git final: branch `004-registrar-pedido`, HEAD `f6ca8ed7bbbb9e552380ce99cafab06ea7195ecf`; somente quickstart.md modificado e OrderFrameworkHttpErrorIntegrationTest.java novo/não rastreado, índice vazio. Sem suíte completa, demonstração adicional, OpenAPI executado novamente, alterações remotas, stage, commit, push, CI, mudança do Draft ou merge.
+
+## PR #4 — correção focalizada do tratamento HTTP do framework (2026-10-11)
+
+### Checkout, RED preservado e causa
+
+Confirmados raiz `C:/Users/ronal/dscommerce-speckit`, branch real `004-registrar-pedido` e HEAD `f6ca8ed7bbbb9e552380ce99cafab06ea7195ecf`. Na entrada, working tree com quickstart.md já modificado e OrderFrameworkHttpErrorIntegrationTest.java já criado/não rastreado; índice vazio. Essas alterações foram preservadas. O HEAD identifica a base publicada, **não um commit que contenha esta correção local**. AGENTS.md, constituição, docs/harness.md, spec e contrato existentes consultados.
+
+O RED da seção anterior permanece evidência histórica: **1 teste, 1 falha, 0 erros/ignorados; expected 415 but was 500**, por HTTP real autorizado, controle 201 e delta zero em pedido/item. [Resultado RED original](../../target/harness-validation/feature-004-http-framework-2026-10-11-185051/focused-01/result.json) e [XML RED original](../../target/harness-validation/feature-004-http-framework-2026-10-11-185051/focused-01/reports/TEST-com.devsuperior.dscommerce.controllers.OrderFrameworkHttpErrorIntegrationTest.xml) intactos. Não foi repetido o RED nem substituída sua expectativa por 500. A fonte original e todas as assertions de OrderFrameworkHttpErrorIntegrationTest foram conservadas byte a byte.
+
+Causa reproduzida: POST /orders com JWT real válido/CLIENT, corpo válido e Content-Type text/plain lança HttpMediaTypeNotSupportedException antes do controller/service. O `@ExceptionHandler(Exception.class)` em `handleOrderProcessing`, no [GlobalExceptionHandler](../../src/main/java/com/devsuperior/dscommerce/controllers/handlers/GlobalExceptionHandler.java), capturava essa exceção e retornava o envelope seguro de falha interna 500, embora o status nativo fosse 415.
+
+### Correção mínima e limites
+
+Alterada somente a guarda do handler genérico, com import de `org.springframework.web.ErrorResponse`: em POST /orders, exceções do framework que implementam ErrorResponse e declaram **4xx** são relançadas, permitindo que os resolvers MVC existentes tratem o status e os cabeçalhos. Para HttpMediaTypeNotSupportedException, o [Spring 6.1.13](https://github.com/spring-projects/spring-framework/blob/v6.1.13/spring-web/src/main/java/org/springframework/web/HttpMediaTypeNotSupportedException.java) declara 415 e a lista de mídias aceitas; o [DefaultHandlerExceptionResolver](https://github.com/spring-projects/spring-framework/blob/v6.1.13/spring-webmvc/src/main/java/org/springframework/web/servlet/mvc/support/DefaultHandlerExceptionResolver.java) aplica os cabeçalhos e o erro HTTP. Não foi criado handler de mídia, novo envelope ou mensagem contratual de 415.
+
+Os handlers específicos continuam responsáveis pelos contratos existentes de pedidos (400/401/403/404/422 e falhas internas). Exceções internas, inclusive ErrorResponse com status 500, continuam recebendo **500 / Order registration could not be completed**, sem exposição de causa/dados sensíveis. Fora de POST /orders, a delegação anterior permanece. Segurança, endpoints, serviço, persistência, dependências e OpenAPI não foram alterados.
+
+Complementado somente [OrderControllerTest](../../src/test/java/com/devsuperior/dscommerce/controllers/OrderControllerTest.java): um caso integrado com contexto/filtros/decoder/banco reais, login e CLIENT válidos, verifica 415 e cabeçalho Accept idêntico ao fornecido pela exceção, contendo application/json; dois casos na matriz MVC existente verificam ResponseStatusException 500 com diagnóstico sensível nos paths /orders e /api/orders. A matriz mantém as assertions de envelope exato e ausência de vazamento na resposta/logs. Esses dois casos de falha são slices MVC explicitamente sem filtros, já existentes para tradução de exceções; não são apresentados como prova de autenticação real. Nenhuma assertion anterior foi removida ou enfraquecida.
+
+### Execuções atuais pelo Maven Wrapper
+
+Java **21.0.12.1 Azul/Zulu**, Maven **3.9.16 pelo Wrapper**, Windows/PowerShell; [versões verificadas](../../target/harness-validation/feature-004-http-framework-fix-2026-10-11-190445/regression-01/wrapper-version.txt). Execuções sequenciais: primeiro a classe de reprodução intacta, depois a bateria focalizada, e somente após seu sucesso **uma única invocação da suíte completa**. Sem clean e sem reutilizar agregados de relatórios históricos: os totais abaixo foram conferidos nos XML atualizados em cada invocação e nos respectivos consoles.
+
+```powershell
+.\mvnw.cmd -Dtest=OrderFrameworkHttpErrorIntegrationTest -Djunit.jupiter.execution.parallel.enabled=false -DforkCount=1 -DreuseForks=true test
+.\mvnw.cmd -Dtest=GlobalExceptionHandlerRegressionTest,OrderControllerTest,OrderSecurityIntegrationTest,OrderRollbackIntegrationTest,OrderPublicRegressionIntegrationTest,LoginControllerTest,ProductControllerTest,AuthenticationInternalFailureTest,AuthenticationSensitiveLoggingTest -Djunit.jupiter.execution.parallel.enabled=false -DforkCount=1 -DreuseForks=true test
+.\mvnw.cmd test
+```
+
+| Execução | Testes | Falhas | Erros | Ignorados | Resultado / exit | Horários UTC−03:00 |
+| --- | --- | --- | --- | --- | --- | --- |
+| Regressão original, primeira execução após correção | 1 | 0 | 0 | 0 | BUILD SUCCESS / 0 | 2026-10-11T19:05:21.403751-03:00 → 2026-10-11T19:06:17.751313-03:00 |
+| Bateria focalizada | 538 | 0 | 0 | 0 | BUILD SUCCESS / 0 | 2026-10-11T19:06:22.332764-03:00 → 2026-10-11T19:08:25.877825-03:00 |
+| Suíte completa, única execução | 926 | 0 | 0 | 0 | BUILD SUCCESS / 0 | 2026-10-11T19:08:34.044141-03:00 → 2026-10-11T19:11:32.882519-03:00 |
+
+A primeira execução GREEN, somente [OrderFrameworkHttpErrorIntegrationTest](../../src/test/java/com/devsuperior/dscommerce/controllers/OrderFrameworkHttpErrorIntegrationTest.java), observou:
+
+```text
+ORDER_FRAMEWORK_HTTP control=201 actual=415 expected=415 exception=HttpMediaTypeNotSupportedException frameworkStatus=415 authorized=true controller=OrderController.register beforeOrders=1 beforeItems=1 afterOrders=1 afterItems=1 independent=true
+```
+
+Conservadas as assertions de login/controle, exceção real/status nativo, principal/perfil/handler e conexão independente sem transação externa. **Delta da rejeição: zero pedidos e zero itens**. No complemento integrado, observado `ORDER_FRAMEWORK_HEADERS status=415 accept=application/json, application/*+json`; os dois casos ResponseStatusException retornaram 500 com envelope exato e assertions de confidencialidade aprovadas.
+
+| Classe focalizada (incluindo nested) | Testes observados |
+| --- | --- |
+| `GlobalExceptionHandlerRegressionTest` | 84 |
+| `LoginControllerTest` | 83 |
+| `OrderControllerTest$InputBoundary` | 140 |
+| `OrderControllerTest$SuccessfulRegistration` | 4 |
+| `OrderPublicRegressionIntegrationTest` | 14 |
+| `OrderRollbackIntegrationTest` | 9 |
+| `OrderSecurityIntegrationTest` | 185 |
+| `ProductControllerTest` | 11 |
+| `AuthenticationInternalFailureTest` | 4 |
+| `AuthenticationSensitiveLoggingTest` | 4 |
+
+A bateria inclui advice, tradução MVC, contratos de login/catálogo/detalhes, segurança de pedidos e falhas internas, além dos 9 casos de rollback/persistência existentes (falha SQL após inserts reais, após flush real, beforeCommit e visibilidade após 201). Esses casos foram efetivamente executados; não foi alterada produção para facilitar preparação ou contornar segurança.
+
+Evidências atuais locais e ignoradas pelo Git:
+
+- Regressão: [comando/HEAD/fontes/horários/exit](../../target/harness-validation/feature-004-http-framework-fix-2026-10-11-190445/regression-01/result.json), [console](../../target/harness-validation/feature-004-http-framework-fix-2026-10-11-190445/regression-01/console.txt), [resumo XML](../../target/harness-validation/feature-004-http-framework-fix-2026-10-11-190445/regression-01/summary.json), [relatórios](../../target/harness-validation/feature-004-http-framework-fix-2026-10-11-190445/regression-01/reports).
+- Bateria focalizada: [comando/HEAD/fontes/horários/exit](../../target/harness-validation/feature-004-http-framework-fix-2026-10-11-190445/focused-01/result.json), [console](../../target/harness-validation/feature-004-http-framework-fix-2026-10-11-190445/focused-01/console.txt), [resumo por classe](../../target/harness-validation/feature-004-http-framework-fix-2026-10-11-190445/focused-01/summary.json), [relatórios](../../target/harness-validation/feature-004-http-framework-fix-2026-10-11-190445/focused-01/reports).
+- Suíte completa: [comando/HEAD/fontes/horários/exit](../../target/harness-validation/feature-004-http-framework-fix-2026-10-11-190445/full-01/result.json), [console](../../target/harness-validation/feature-004-http-framework-fix-2026-10-11-190445/full-01/console.txt), [resumo por classe](../../target/harness-validation/feature-004-http-framework-fix-2026-10-11-190445/full-01/summary.json), [relatórios](../../target/harness-validation/feature-004-http-framework-fix-2026-10-11-190445/full-01/reports).
+
+Limites: validação atual é local em Windows/H2 no working tree, sem commit; não representa uma nova execução remota. A CI histórica de 922 testes do PR #4 refere-se ao HEAD publicado e não aprova este diff. A regressão real investiga o 415 em CLIENT; não comprova todos os erros HTTP ou todos os cabeçalhos possíveis. A guarda delega apenas ErrorResponse 4xx ainda não tratadas por handlers específicos; falhas internas permanecem com o tratamento seguro existente. Limites funcionais/operacionais documentados anteriormente não foram ampliados.
+
+### Preservação, revisão e Git final
+
+[Baseline](../../target/harness-validation/feature-004-http-framework-fix-2026-10-11-190445/baseline.json) e cópias integrais anteriores de quickstart/tasks/fontes preservam a entrada. Antes de **cada** invocação, relatórios Surefire anteriores foram copiados para surefire-before e conferidos por SHA-256, com manifest reports-before.json no diretório da execução; as evidências RED e históricas anteriores continuam separadas. [Auditoria final](../../target/harness-validation/feature-004-http-framework-fix-2026-10-11-190445/final-review.json) confere os outros arquivos rastreados, todas as 6.873 evidências anteriores, fonte RED intacta, fontes efetivamente executadas, prefixo histórico integral do quickstart, tasks.md idêntico/**55 checkboxes**, referências novas e whitespace. `git diff --check` exit 0; índice vazio. Avisos LF→CRLF de core.autocrlf são avisos de finais de linha, não falhas de whitespace.
+
+Git final: raiz/branch/HEAD acima; ` M specs/004-registrar-pedido/quickstart.md`, ` M src/main/java/com/devsuperior/dscommerce/controllers/handlers/GlobalExceptionHandler.java`, ` M src/test/java/com/devsuperior/dscommerce/controllers/OrderControllerTest.java` e `?? src/test/java/com/devsuperior/dscommerce/controllers/OrderFrameworkHttpErrorIntegrationTest.java` (arquivo preexistente nesta etapa, intacto). Sem stage, commit, push, demonstração/OpenAPI repetidos, CI disparada, alteração do PR/Draft ou merge. contracts/README.md permanece intacto.
+
+## Checkpoint local — correção dos erros HTTP do framework (2026-10-11)
+
+Preparação do commit `fix: preserve framework HTTP errors during order registration`, na raiz `C:/Users/ronal/dscommerce-speckit`, branch real `004-registrar-pedido`, HEAD anterior `f6ca8ed7bbbb9e552380ce99cafab06ea7195ecf`. Entrada com quickstart/handler/OrderControllerTest modificados e OrderFrameworkHttpErrorIntegrationTest novo/não rastreado; índice vazio. Preservadas as alterações existentes.
+
+Revisão somente de fontes, diff e evidências anteriores, **sem nova execução de testes, demonstração ou OpenAPI**:
+
+- RED histórico: **1 teste / 1 falha / 0 erros / 0 ignorados**, expectativa HTTP 415 e resposta observada 500; controle autorizado 201, exceção HttpMediaTypeNotSupportedException com status nativo 415 e delta zero de pedido/item.
+- Regressão original GREEN: **1 teste / 0 falhas / 0 erros / 0 ignorados**; fonte/assertions originais intactas, HTTP real retornou 415 sem gravação indevida.
+- Bateria focalizada GREEN: **538 testes / 0 falhas / 0 erros / 0 ignorados**, incluindo Accept do framework no 415, envelopes seguros de 500, advice/controllers, segurança, rollback e APIs públicas.
+- Suíte completa GREEN: **926 testes / 0 falhas / 0 erros / 0 ignorados**, uma invocação do Maven Wrapper na etapa anterior.
+
+Esses números identificam execuções distintas com casos sobrepostos; **não são somados como testes distintos**. XMLs, comandos/HEAD, consoles e hashes das fontes executadas foram conferidos novamente por leitura; evidências referenciadas nas duas seções anteriores preservadas. A correção delega ErrorResponse 4xx aos resolvers MVC existentes, preservando status/cabeçalhos; handlers contratuais e 500 seguro permanecem. Nenhuma assertion anterior removida ou enfraquecida; tasks.md e suas 55 checkboxes intactos.
+
+Em [contracts/README.md](contracts/README.md), substituída exclusivamente a afirmação inicial de endpoint ainda não implementado por seu estado entregue na branch da feature: autenticação Bearer, CLIENT/ADMIN, JSON estrito, snapshots monetários e persistência atômica, com referência às evidências/limites locais. O escopo funcional descrito no restante do contrato foi preservado. Este checkpoint é local na feature; não constitui evidência de integração em main nem de nova CI remota. A CI histórica do PR #4 não aprova automaticamente uma revisão nova.
+
+Stage e commit restritos aos cinco arquivos autorizados: contracts/README.md, quickstart.md, GlobalExceptionHandler.java, OrderControllerTest.java e OrderFrameworkHttpErrorIntegrationTest.java, nos caminhos completos indicados no pedido. A revisão do índice confere nomes, diff staged, correspondência com as fontes validadas e whitespace; a identificação do commit e o estado final do Git serão registrados no relato e nas evidências locais do checkpoint. Sem fetch, push, CI disparada, alteração do PR/Draft ou merge.

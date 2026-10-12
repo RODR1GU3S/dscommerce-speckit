@@ -280,3 +280,45 @@ O parâmetro suportado reportNameSuffix identifica cada tentativa no diretório 
 Os 171 arquivos existentes monitorados preservaram seus hashes durante as implementações/builds, antes deste registro documental, exceto a guarda JDBC de T003 autorizada e diagnosticada. Registros anteriores de quickstart e marcadores de T001–T003 preservados. AdminProductTestConfig permaneceu intacto; nenhuma mudança em spec/checklist/contratos/produção/seeds/testes anteriores.
 
 **Conclusão**: critérios de suporte de T004 atendidos por execução funcional focada e leitura independente; T004 recebe `[X]`, T001–T003 continuam `[X]`, T005–T086 continuam `[ ]`. Sem pendência interna de T004. Endpoints administrativos, regressões T005, busca/paginação reais V03, alteração de preço/preservação histórica V10, diagnóstico/revalidação e provas da exceção do gate IV continuam nas tarefas futuras; o gate não recebe PASS estrito. Nenhuma suíte completa, validador, T005+, stage, commit, fetch, push ou ação remota foi executada neste checkpoint.
+
+## Execução de T005 — baseline atual das regressões focalizadas — 2026-10-12
+
+**Contexto e escopo**: raiz `C:/Users/ronal/dscommerce-speckit`, branch real `005-manter-produtos`, HEAD `427b5e0cd23d2b888172979762f9f64d4986e96a`, Git limpo e índice vazio inicialmente. Dependência T004 concluída e suporte T002–T004 registrado nesse HEAD. AGENTS, constituição, tarefa integral e planejamento pertinente conferidos. Pré-requisito `.specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks`, exit 0, resolveu esta feature; requirements 16/16, sem caixas abertas, continua revisão documental. T005 prevê execução das seis classes existentes e registro da baseline, sem alteração de comportamento, fixtures ou assertions.
+
+**Preparação de evidências**: antes do Maven, copiados e conferidos por SHA-256 todos os **86 relatórios anteriores (43 XML/43 TXT)**, incluindo os 78 históricos e os oito das quatro tentativas de T004. Cópias em `target/feature-005-t005/20261012T221026436Z/prior-surefire-reports/`; [manifesto anterior](../../target/feature-005-t005/20261012T221026436Z/prior-surefire-manifest.json), SHA-256 `3512B9C54A619BDF09642AB44A28A90B208AF28C5343A011B9004C693A3CBB3F`. Essa cópia é preparação, não nova prova funcional. [Manifesto de fontes anterior](../../target/feature-005-t005/20261012T221026436Z/sources-before.json) registra os 173 arquivos rastreados.
+
+**Única invocação Maven de T005**, na raiz, PowerShell, offline e sem outra execução simultânea, entre **2026-10-12T22:10:46.7498083Z** e **2026-10-12T22:12:42.9677272Z**:
+
+```powershell
+.\mvnw.cmd --offline --batch-mode --no-transfer-progress '-Dtest=ProductControllerTest,PublicCatalogSecurityIntegrationTest,PublicProductDetailSecurityIntegrationTest,LoginControllerTest,OrderSecurityIntegrationTest,OrderPublicRegressionIntegrationTest' '-Dsurefire.reportNameSuffix=feature005-t005' test
+```
+
+**BUILD SUCCESS, exit code 0**, duração Maven **01:50 min**. O sufixo identifica os novos resultados sem sobrescrever XML/TXT anteriores. Não foi executada a suíte completa nem AdminProductTestSupportTest. Maven 3.9.16 selecionado pelas propriedades existentes do Wrapper, sem nova consulta `--version`; os XMLs atuais registram Java **21.0.12.1**, runtime **21.0.12.1+1-LTS**, fornecedor **Azul Systems, Inc.**, sistema **Windows 10**. Produção e testes já estavam compilados (`Nothing to compile` nos dois goals); o sucesso abaixo decorre de execução Surefire, não de compilação apenas.
+
+### Resultado funcional observado
+
+| Classe selecionada, incluindo classes internas | Testes | Falhas | Erros | Ignorados |
+| --- | --- | --- | --- | --- |
+| ProductControllerTest | 11 | 0 | 0 | 0 |
+| PublicCatalogSecurityIntegrationTest | 33 | 0 | 0 | 0 |
+| PublicProductDetailSecurityIntegrationTest | 38 | 0 | 0 | 0 |
+| LoginControllerTest | 83 | 0 | 0 | 0 |
+| OrderSecurityIntegrationTest | 185 | 0 | 0 | 0 |
+| OrderPublicRegressionIntegrationTest | 14 | 0 | 0 | 0 |
+| **Total desta invocação** | **364** | **0** | **0** | **0** |
+
+Os oito XMLs novos somam 364 pelos atributos `tests/failures/errors/skipped`, em acordo com o console. Conferidos também **364 elementos testcase com classname/name únicos**. Surefire consolida 31 casos externos + dois de EmptyCatalog no XML interno de catálogo, e 36 externos + dois de DuplicateCategoryNames no XML interno de detalhe; os dois XMLs externos desses grupos registram zero, sem significar classe não exercitada. Não duplicar seus casos ao consolidar. Todas as seis classes previstas estão representadas, sem classe adicional de suporte.
+
+Esta execução estabelece baseline focalizada atual das assertions existentes de catálogo/detalhe públicos, login, segurança dos pedidos e jornadas públicas após rejeições de pedidos. ProductControllerTest mantém seu MVC slice com mocks; integrações mantêm contextos, filtros, fixtures e configurações próprios, sem ativar o suporte administrativo por descoberta. Os oito XMLs anteriores correspondentes ao mesmo grupo também somavam 364 sem falhas/erros/ignorados: comparação histórica, não segunda execução nesta T005. Assertions já GREEN preservadas, sem fabricar RED. Não houve falha de ambiente ou funcional nesta invocação nem correção de fontes.
+
+### Evidências e limites
+
+- [Console integral](../../target/feature-005-t005/20261012T221026436Z/maven.log), SHA-256 `DF3A2E8BB0FC706E5D80AC15841C2AA3B14A6F61152FD80B9CC86E0401F226FB`.
+- [Comando, horários e exit code](../../target/feature-005-t005/20261012T221026436Z/result.json).
+- [Resumo com contagens por XML e ambiente observado](../../target/feature-005-t005/20261012T221026436Z/verification-summary.json) e [manifesto dos novos relatórios](../../target/feature-005-t005/20261012T221026436Z/current-reports-manifest.json). Os oito XML/oito TXT foram copiados para `target/feature-005-t005/20261012T221026436Z/surefire-reports/` e conferidos por hash.
+
+Conferência após Maven em **2026-10-12T22:13:23.7764337Z**, exit 0: conteúdo, tamanho e timestamps UTC dos 86 relatórios anteriores inalterados; cópias idênticas. Os 173 arquivos rastreados conservaram seus hashes durante o build/verificação, antes deste registro documental. Diretório compartilhado agora contém os 86 anteriores mais **16 novos arquivos**, identificados pelo sufixo; consolidar somente os oito XMLs desta invocação. Os 926 testes da suíte completa anterior e os nove de suporte T004 permanecem evidências separadas, não reexecutadas nem somadas aos 364 atuais. Logs/relatórios/manifestos continuam locais e ignorados em target.
+
+**Alterações deste checkpoint**: somente este registro acrescentado ao quickstart e checkbox de T005 em tasks. Suporte T002–T004, testes anteriores, produção, seeds, configuração do build, spec/checklist e contratos preservados. A exceção do gate IV continua **EXCEÇÃO DOCUMENTADA**, sem PASS estrito; diagnóstico sem mutação/DML, decisões nos serviços e revalidação transacional exigem as provas futuras já planejadas. Também permanecem futuras a fundação administrativa T006–T013, operações administrativas, V03 real, V10 após alteração de preço e suíte completa T083.
+
+**Conclusão limitada**: critérios de T005 atendidos pela execução das regressões existentes e registro da baseline atual; T005 recebe `[X]`, T001–T004 permanecem `[X]`, T006–T086 permanecem `[ ]`. Nenhuma preparação de fixture administrativa, implementação nova, validador, T006+, stage, commit, fetch, push ou ação remota neste checkpoint. Sem pendência interna de T005; resultados deste grupo não declaram a Feature 005 implementada.

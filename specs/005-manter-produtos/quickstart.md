@@ -124,3 +124,37 @@ main(['--schema', '3.0', '--errors', 'all', str(contract)])
 ```
 
 Resultado recuperado: `openapi-spec-validator=0.7.2`, saída `C:\Users\ronal\dscommerce-speckit\specs\005-manter-produtos\contracts\product-maintenance-openapi.yaml: OK`, resumo `"openapi": "VALID"` e **exit code 0**. O script completo também bloqueava conexões de rede via socket e fazia conferências separadas de chaves YAML, referências, links, matriz e exemplos; o trecho acima não representa esses auxiliares. Validação integral OpenAPI é distinta de parsing YAML e não comprova autorização, agregação de negócio, paginação, persistência, histórico, rollback ou conformidade do gate IV. Essas provas permanecem futuras.
+
+## Execução de T001 — contexto, versões e preservação — 2026-10-12
+
+**Escopo autorizado e resultado**: somente T001, sem dependências, concluída como preparação documental/de ambiente. A tarefa registra contexto, versões e preservação de evidências; não prevê execução de baseline. T005 contém as regressões focalizadas e T083 a suíte completa, ambas ainda futuras. Nenhuma fixture, teste, funcionalidade, validador OpenAPI, stage, commit ou ação remota foi executada neste checkpoint.
+
+- **Contexto anterior à execução**: raiz `C:/Users/ronal/dscommerce-speckit`; branch real `005-manter-produtos`; HEAD `0d4753dc2f1a97ef58f125e239476fd913f85646`; working tree limpa e índice vazio. Ao registrar esta evidência, o diff fica limitado a quickstart e ao marcador de T001 em tasks; HEAD/branch permanecem iguais.
+- **Fontes conferidas**: `AGENTS.md`, `docs/harness.md` e descrição exata de T001 em `tasks.md`. `pom.xml` fixa Java 21 e Spring Boot 3.3.4; `.mvn/wrapper/maven-wrapper.properties` fixa Wrapper 3.3.4, tipo only-script e distribuição Maven 3.9.16, com SHA-256 `5af3b743dd8b876b5c45da33b676251e5f1687712644abb4ee519ca56e1d89ce`. Nenhum desses arquivos foi alterado.
+- **Contexto da skill**: `.specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks`, exit 0, resolveu `C:/Users/ronal/dscommerce-speckit/specs/005-manter-produtos`. Checklist requirements: 16 revisados, zero abertos, apenas qualidade documental. `.specify/extensions.yml` ausente nas conferências anterior/posterior, sem hooks; ignore existente cobre `target/`. Nenhuma alteração de configuração/ignore foi necessária.
+
+**Única invocação Maven**, na raiz, PowerShell, entre **2026-10-12T20:56:36.7565030+00:00** e **2026-10-12T20:56:42.8875667+00:00**:
+
+```powershell
+.\mvnw.cmd --version
+```
+
+**Exit code 0**; consulta de versões concluída, sem lifecycle de build/testes. Saída efetiva:
+
+```text
+Apache Maven 3.9.16 (2bdd9fddda4b155ebf8000e807eb73fd829a51d5)
+Maven home: C:\Users\ronal\.m2\wrapper\dists\apache-maven-3.9.16\0daed3be3ebd1c706f0e69e8b07c6b73f5cc4ea3dfce72a8d0ec2e849ca2ddb0
+Java version: 21.0.12.1, vendor: Azul Systems, Inc., runtime: C:\Program Files\Zulu\zulu-21
+Default locale: pt_BR, platform encoding: UTF-8
+OS name: "windows 10", version: "10.0", arch: "amd64", family: "windows"
+```
+
+Console integral: [wrapper-version.log](../../target/feature-005-t001/20261012T205606812Z/wrapper-version.log); comando/horários/exit: [wrapper-version-result.json](../../target/feature-005-t001/20261012T205606812Z/wrapper-version-result.json). SHA-256 do console: `8DF53246B4C1E944F8DBD4D723159F4DEAB411AB250439DE64D0C595B4A0C336`. A consulta usou a instalação do Wrapper no cache local identificada na saída; nenhuma segunda invocação Maven foi realizada.
+
+**Preservação anterior à invocação**: os 78 arquivos existentes de `target/surefire-reports/` (39 XML e 39 TXT) foram copiados para `target/feature-005-t001/20261012T205606812Z/prior-surefire-reports/`, ignorado pelo Git. O [manifesto anterior](../../target/feature-005-t001/20261012T205606812Z/prior-surefire-manifest.json) registra caminho relativo, tamanho, lastWriteTime UTC e SHA-256 de cada arquivo; SHA-256 do manifesto: `11211808F07B527779747598E00BECA635CC4D914364A6E901E5627B720FB488`. Conferência concluída em **2026-10-12T20:57:36.0126928+00:00**: cópias idênticas aos originais e originais sem alteração de conteúdo, tamanho, timestamps ou conjunto de arquivos após a consulta de versões. Evidências anteriores não foram sobrescritas.
+
+A primeira conferência auxiliar do manifesto retornou exit 1 com `Surefire file set changed`: `@(Get-Content ... | ConvertFrom-Json)` encapsulou o array em um item no PowerShell (Count=1 contra 78 arquivos). A leitura direta de ConvertFrom-Json recuperou Count=78; a conferência corrigida verificou todos os hashes/metadados com exit 0. Foi erro do auxiliar de leitura, não mudança nos relatórios ou falha Maven; não houve repetição do Wrapper nem alteração de testes/produção para contornar resultado.
+
+**Leitura dos relatórios anteriores, sem executar testes**: os 39 `TEST-*.xml` existentes somam **926 testes, 0 falhas, 0 erros, 0 ignorados**, pelos atributos tests/failures/errors/skipped de testsuite. A contagem coincide com a baseline histórica de 926 da Feature 004 citada acima; não é nova baseline, execução no HEAD atual, GREEN da Feature 005 ou prova de seus requisitos. Não foram produzidos relatórios Surefire novos nesta T001.
+
+**Conclusão**: contexto esperado, versões exigidas e preservação conferidos; nenhum impedimento pendente de T001. Somente T001 recebe `[X]`; T002–T086 permanecem `[ ]`. As provas funcionais, regressões e reavaliação do gate IV continuam futuras; a exceção documentada não se transforma em PASS estrito pela consulta de versões.

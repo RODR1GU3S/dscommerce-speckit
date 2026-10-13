@@ -1,12 +1,14 @@
 package com.devsuperior.dscommerce.controllers.handlers;
 
 import com.devsuperior.dscommerce.dto.ErrorResponseDTO;
+import com.devsuperior.dscommerce.dto.AdminErrorResponseDTO;
 import com.devsuperior.dscommerce.services.exceptions.AuthenticationProcessingException;
 import com.devsuperior.dscommerce.services.exceptions.InvalidCredentialsException;
 import com.devsuperior.dscommerce.services.exceptions.InvalidOrderException;
 import com.devsuperior.dscommerce.services.exceptions.ProductNotFoundException;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
+import jakarta.validation.ValidationException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpHeaders;
@@ -19,11 +21,18 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
+import java.util.HashSet;
+import java.util.List;
+
 @ControllerAdvice
 public class GlobalExceptionHandler {
 
     private static final String LOGIN_PATH = "/login";
     private static final String ORDER_PATH = "/orders";
+    private static final String ADMIN_PATH = "/admin";
+    private static final String ADMIN_AUTHENTICATION_MESSAGE = "Authentication required or invalid";
+    private static final String ADMIN_ACCESS_MESSAGE = "Product maintenance not permitted";
+    private static final String ADMIN_PROCESSING_MESSAGE = "Product maintenance could not be completed";
     private static final String INVALID_ORDER_DATA_MESSAGE = "Invalid order data";
     private static final String ORDER_AUTHENTICATION_MESSAGE = "Authentication required or invalid";
     private static final String ORDER_ACCESS_MESSAGE = "Order registration not permitted";
@@ -116,8 +125,11 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(BadCredentialsException.class)
-    public ResponseEntity<ErrorResponseDTO> handleOrderAuthentication(
+    public ResponseEntity<?> handleOrderAuthentication(
             BadCredentialsException exception, HttpServletRequest request) {
+        if (isAdminRequest(request)) {
+            return adminErrorResponse(HttpStatus.UNAUTHORIZED, ADMIN_AUTHENTICATION_MESSAGE, request);
+        }
         if (!isOrderRequest(request)) {
             throw exception;
         }
@@ -125,8 +137,11 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ErrorResponseDTO> handleOrderAccess(
+    public ResponseEntity<?> handleOrderAccess(
             AccessDeniedException exception, HttpServletRequest request) {
+        if (isAdminRequest(request)) {
+            return adminErrorResponse(HttpStatus.FORBIDDEN, ADMIN_ACCESS_MESSAGE, request);
+        }
         if (!isOrderRequest(request)) {
             throw exception;
         }
@@ -134,15 +149,56 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponseDTO> handleOrderProcessing(
+    public ResponseEntity<?> handleOrderProcessing(
             Exception exception, HttpServletRequest request) throws Exception {
         // Let MVC preserve client-error statuses and headers; keep internal failures safely sanitized.
-        if (!isOrderRequest(request)
-                || (exception instanceof ErrorResponse error && error.getStatusCode().is4xxClientError())) {
+        boolean nativeClientError = exception instanceof ErrorResponse error && error.getStatusCode().is4xxClientError();
+        if (isAdminRequest(request) && !nativeClientError) {
+            var status = exception instanceof ValidationException validation
+                    ? adminValidationStatus(validation) : HttpStatus.INTERNAL_SERVER_ERROR;
+            var message = switch (status) {
+                case UNAUTHORIZED -> ADMIN_AUTHENTICATION_MESSAGE;
+                case FORBIDDEN -> ADMIN_ACCESS_MESSAGE;
+                default -> ADMIN_PROCESSING_MESSAGE;
+            };
+            return adminErrorResponse(status, message, request);
+        }
+        if (!isOrderRequest(request) || nativeClientError) {
             throw exception;
         }
         // Includes failures raised by transaction completion after the service method returns.
         return errorResponse(HttpStatus.INTERNAL_SERVER_ERROR, ORDER_PROCESSING_MESSAGE, request);
+    }
+
+    private static HttpStatus adminValidationStatus(ValidationException exception) {
+        Throwable cause = exception;
+        var wrappers = new HashSet<Throwable>();
+        // Unwrap only the known validation wrapper, never an internal failure's deeper cause.
+        while (cause != null && cause.getClass() == ValidationException.class && wrappers.add(cause)) {
+            cause = cause.getCause();
+        }
+        if (cause instanceof BadCredentialsException) {
+            return HttpStatus.UNAUTHORIZED;
+        }
+        if (cause instanceof AccessDeniedException) {
+            return HttpStatus.FORBIDDEN;
+        }
+        return HttpStatus.INTERNAL_SERVER_ERROR;
+    }
+
+    private static ResponseEntity<AdminErrorResponseDTO> adminErrorResponse(
+            HttpStatus status, String message, HttpServletRequest request) {
+        var response = ResponseEntity.status(status);
+        if (status == HttpStatus.UNAUTHORIZED) {
+            response.header(HttpHeaders.WWW_AUTHENTICATE, "Bearer");
+        }
+        return response.body(new AdminErrorResponseDTO(status.value(), status.getReasonPhrase(),
+                message, request.getRequestURI(), List.of()));
+    }
+
+    private static boolean isAdminRequest(HttpServletRequest request) {
+        var applicationPath = request.getRequestURI().substring(request.getContextPath().length());
+        return ADMIN_PATH.equals(applicationPath) || applicationPath.startsWith(ADMIN_PATH + "/");
     }
 
     private static ResponseEntity<ErrorResponseDTO> errorResponse(

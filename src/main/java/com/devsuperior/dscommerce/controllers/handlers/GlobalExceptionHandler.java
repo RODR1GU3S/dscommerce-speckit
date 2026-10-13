@@ -2,6 +2,8 @@ package com.devsuperior.dscommerce.controllers.handlers;
 
 import com.devsuperior.dscommerce.dto.ErrorResponseDTO;
 import com.devsuperior.dscommerce.dto.AdminErrorResponseDTO;
+import com.devsuperior.dscommerce.dto.AdminFieldErrorDTO;
+import com.devsuperior.dscommerce.controllers.AdminQueryParameters;
 import com.devsuperior.dscommerce.services.exceptions.AuthenticationProcessingException;
 import com.devsuperior.dscommerce.services.exceptions.InvalidCredentialsException;
 import com.devsuperior.dscommerce.services.exceptions.InvalidOrderException;
@@ -43,10 +45,23 @@ public class GlobalExceptionHandler {
             "Authentication could not be completed";
 
     @ExceptionHandler(ProductNotFoundException.class)
-    public ResponseEntity<ErrorResponseDTO> handleProductNotFound(ProductNotFoundException exception, HttpServletRequest request) {
+    public ResponseEntity<?> handleProductNotFound(ProductNotFoundException exception, HttpServletRequest request) {
         var status = HttpStatus.NOT_FOUND;
+        if (isAdminRequest(request)) {
+            return adminErrorResponse(status, "Product not found", request);
+        }
         var message = isOrderRequest(request) ? "Product not found" : exception.getMessage();
         return errorResponse(status, message, request);
+    }
+
+    @ExceptionHandler(AdminQueryParameters.InvalidParameterException.class)
+    public ResponseEntity<AdminErrorResponseDTO> handleAdminQueryParameter(
+            AdminQueryParameters.InvalidParameterException exception, HttpServletRequest request) {
+        if (!isAdminRequest(request)) throw exception;
+        var status = HttpStatus.BAD_REQUEST;
+        var error = new AdminFieldErrorDTO(exception.getField(), "INVALID_PARAMETER", "Invalid request parameter");
+        return ResponseEntity.status(status).body(new AdminErrorResponseDTO(status.value(), status.getReasonPhrase(),
+                "Invalid product maintenance data", request.getRequestURI(), List.of(error)));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

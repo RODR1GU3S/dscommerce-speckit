@@ -4,9 +4,12 @@ import com.devsuperior.dscommerce.dto.ErrorResponseDTO;
 import com.devsuperior.dscommerce.dto.AdminErrorResponseDTO;
 import com.devsuperior.dscommerce.dto.AdminFieldErrorDTO;
 import com.devsuperior.dscommerce.controllers.AdminQueryParameters;
+import com.devsuperior.dscommerce.validation.ValidProductInput;
 import com.devsuperior.dscommerce.services.exceptions.AuthenticationProcessingException;
 import com.devsuperior.dscommerce.services.exceptions.InvalidCredentialsException;
 import com.devsuperior.dscommerce.services.exceptions.InvalidOrderException;
+import com.devsuperior.dscommerce.services.exceptions.InvalidProductInputException;
+import com.devsuperior.dscommerce.services.exceptions.ProductCreationPersistenceException;
 import com.devsuperior.dscommerce.services.exceptions.ProductNotFoundException;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
@@ -20,10 +23,16 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.validation.ObjectError;
+import org.springframework.validation.method.ParameterErrors;
+import org.hibernate.validator.engine.HibernateConstraintViolation;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
 import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 @ControllerAdvice
@@ -35,6 +44,9 @@ public class GlobalExceptionHandler {
     private static final String ADMIN_AUTHENTICATION_MESSAGE = "Authentication required or invalid";
     private static final String ADMIN_ACCESS_MESSAGE = "Product maintenance not permitted";
     private static final String ADMIN_PROCESSING_MESSAGE = "Product maintenance could not be completed";
+    private static final String INVALID_ADMIN_DATA_MESSAGE = "Invalid product maintenance data";
+    private static final List<String> ADMIN_FIELDS = List.of(
+            "body", "id", "page", "size", "name", "description", "price", "image", "categoryIds");
     private static final String INVALID_ORDER_DATA_MESSAGE = "Invalid order data";
     private static final String ORDER_AUTHENTICATION_MESSAGE = "Authentication required or invalid";
     private static final String ORDER_ACCESS_MESSAGE = "Order registration not permitted";
@@ -58,14 +70,35 @@ public class GlobalExceptionHandler {
     public ResponseEntity<AdminErrorResponseDTO> handleAdminQueryParameter(
             AdminQueryParameters.InvalidParameterException exception, HttpServletRequest request) {
         if (!isAdminRequest(request)) throw exception;
-        var status = HttpStatus.BAD_REQUEST;
         var error = new AdminFieldErrorDTO(exception.getField(), "INVALID_PARAMETER", "Invalid request parameter");
-        return ResponseEntity.status(status).body(new AdminErrorResponseDTO(status.value(), status.getReasonPhrase(),
-                "Invalid product maintenance data", request.getRequestURI(), List.of(error)));
+        return adminInputResponse(List.of(error), request);
+    }
+
+    @ExceptionHandler(InvalidProductInputException.class)
+    public ResponseEntity<AdminErrorResponseDTO> handleInvalidProductInput(
+            InvalidProductInputException exception, HttpServletRequest request) {
+        if (!isAdminRequest(request)) throw exception;
+        return adminInputResponse(exception.getErrors(), request);
+    }
+
+    @ExceptionHandler(ProductCreationPersistenceException.class)
+    public ResponseEntity<AdminErrorResponseDTO> handleProductCreationPersistence(
+            ProductCreationPersistenceException exception, HttpServletRequest request) {
+        if (!isAdminRequest(request)) throw exception;
+        var applicationPath = request.getRequestURI().substring(request.getContextPath().length());
+        if ("POST".equals(request.getMethod()) && "/admin/products".equals(applicationPath)
+                && exception.isMissingCategoryReference()) {
+            return adminInputResponse(List.of(new AdminFieldErrorDTO(
+                    "categoryIds", "CATEGORY_NOT_FOUND", "Selected category does not exist")), request);
+        }
+        return adminErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, ADMIN_PROCESSING_MESSAGE, request);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErrorResponseDTO> handleValidation(MethodArgumentNotValidException exception, HttpServletRequest request) {
+    public ResponseEntity<?> handleValidation(MethodArgumentNotValidException exception, HttpServletRequest request) {
+        if (isAdminRequest(request)) {
+            return adminBindingResponse(exception.getBindingResult().getAllErrors(), request);
+        }
         var status = HttpStatus.BAD_REQUEST;
         var message = isOrderRequest(request) ? INVALID_ORDER_DATA_MESSAGE : isLoginRequest(request)
                 ? INVALID_LOGIN_DATA_MESSAGE
@@ -75,9 +108,14 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ResponseEntity<ErrorResponseDTO> handleUnreadableMessage(
+    public ResponseEntity<?> handleUnreadableMessage(
             HttpMessageNotReadableException exception,
             HttpServletRequest request) {
+        if (isAdminRequest(request)) {
+            // Reader failures, initial parser errors and absent/empty bodies carry no complete field evidence.
+            return adminInputResponse(List.of(new AdminFieldErrorDTO(
+                    "body", "INVALID_BODY", "Invalid request body")), request);
+        }
         if (isOrderRequest(request)) {
             return errorResponse(HttpStatus.BAD_REQUEST, INVALID_ORDER_DATA_MESSAGE, request);
         }
@@ -111,7 +149,17 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
-    public ResponseEntity<ErrorResponseDTO> handleConstraintViolation(ConstraintViolationException exception, HttpServletRequest request) {
+    public ResponseEntity<?> handleConstraintViolation(ConstraintViolationException exception, HttpServletRequest request) {
+        if (isAdminRequest(request)) {
+            var errors = new ArrayList<AdminFieldErrorDTO>();
+            for (var violation : exception.getConstraintViolations()) {
+                var error = adminInputDiagnostic(violation);
+                if (error == null) return adminErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, ADMIN_PROCESSING_MESSAGE, request);
+                errors.add(error);
+            }
+            // Entity/persistence constraints are internal; only the scoped input constraint is a consumer error.
+            return adminDiagnosedResponse(errors, request);
+        }
         if (isOrderRequest(request)) {
             // Incoming DTO validation is handled by handleValidation; service/persistence violations are internal.
             return errorResponse(HttpStatus.INTERNAL_SERVER_ERROR, ORDER_PROCESSING_MESSAGE, request);
@@ -123,6 +171,68 @@ public class GlobalExceptionHandler {
                 .orElse("Validation failed");
         var body = new ErrorResponseDTO(status.value(), status.getReasonPhrase(), message, request.getRequestURI());
         return ResponseEntity.status(status).body(body);
+    }
+
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ResponseEntity<?> handleMethodValidation(HandlerMethodValidationException exception, HttpServletRequest request) {
+        if (!isAdminRequest(request)) throw exception;
+        if (exception.isForReturnValue()) {
+            return adminErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, ADMIN_PROCESSING_MESSAGE, request);
+        }
+        var errors = new ArrayList<ObjectError>();
+        for (var result : exception.getAllValidationResults()) {
+            if (!(result instanceof ParameterErrors parameterErrors)) {
+                return adminErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, ADMIN_PROCESSING_MESSAGE, request);
+            }
+            errors.addAll(parameterErrors.getAllErrors());
+        }
+        return adminBindingResponse(errors, request);
+    }
+
+    private static ResponseEntity<AdminErrorResponseDTO> adminBindingResponse(
+            List<ObjectError> bindingErrors, HttpServletRequest request) {
+        var errors = new ArrayList<AdminFieldErrorDTO>();
+        for (var bindingError : bindingErrors) {
+            if (!bindingError.contains(ConstraintViolation.class)) {
+                return adminErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, ADMIN_PROCESSING_MESSAGE, request);
+            }
+            var error = adminInputDiagnostic(bindingError.unwrap(ConstraintViolation.class));
+            if (error == null) return adminErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, ADMIN_PROCESSING_MESSAGE, request);
+            errors.add(error);
+        }
+        return adminDiagnosedResponse(errors, request);
+    }
+
+    private static AdminFieldErrorDTO adminInputDiagnostic(ConstraintViolation<?> violation) {
+        if (!(violation.getConstraintDescriptor().getAnnotation() instanceof ValidProductInput)) return null;
+        HibernateConstraintViolation<?> coded = violation.unwrap(HibernateConstraintViolation.class);
+        return coded.getDynamicPayload(AdminFieldErrorDTO.class);
+    }
+
+    private static ResponseEntity<AdminErrorResponseDTO> adminDiagnosedResponse(
+            List<AdminFieldErrorDTO> errors, HttpServletRequest request) {
+        if (errors.isEmpty()) return adminErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, ADMIN_PROCESSING_MESSAGE, request);
+        return adminInputResponse(errors, request);
+    }
+
+    private static ResponseEntity<AdminErrorResponseDTO> adminInputResponse(
+            List<AdminFieldErrorDTO> errors, HttpServletRequest request) {
+        var ordered = errors.stream().distinct().sorted(Comparator
+                .comparingInt((AdminFieldErrorDTO error) -> adminFieldOrder(error.field()))
+                .thenComparingInt(error -> adminFieldIndex(error.field()))
+                .thenComparing(AdminFieldErrorDTO::code)
+                .thenComparing(AdminFieldErrorDTO::message)).toList();
+        var status = HttpStatus.BAD_REQUEST;
+        return ResponseEntity.status(status).body(new AdminErrorResponseDTO(status.value(), status.getReasonPhrase(),
+                INVALID_ADMIN_DATA_MESSAGE, request.getRequestURI(), ordered));
+    }
+
+    private static int adminFieldOrder(String field) {
+        return ADMIN_FIELDS.indexOf(field.startsWith("categoryIds[") ? "categoryIds" : field);
+    }
+
+    private static int adminFieldIndex(String field) {
+        return field.startsWith("categoryIds[") ? Integer.parseInt(field.substring("categoryIds[".length(), field.length() - 1)) : -1;
     }
 
     @ExceptionHandler(InvalidOrderException.class)
@@ -168,6 +278,13 @@ public class GlobalExceptionHandler {
             Exception exception, HttpServletRequest request) throws Exception {
         // Let MVC preserve client-error statuses and headers; keep internal failures safely sanitized.
         boolean nativeClientError = exception instanceof ErrorResponse error && error.getStatusCode().is4xxClientError();
+        if (isAdminRequest(request) && nativeClientError && exception instanceof ErrorResponse error
+                && List.of(405, 406, 415).contains(error.getStatusCode().value())) {
+            var status = HttpStatus.valueOf(error.getStatusCode().value());
+            return ResponseEntity.status(status).headers(error.getHeaders()).body(new AdminErrorResponseDTO(
+                    status.value(), status.getReasonPhrase(), "Product maintenance request not supported",
+                    request.getRequestURI(), List.of()));
+        }
         if (isAdminRequest(request) && !nativeClientError) {
             var status = exception instanceof ValidationException validation
                     ? adminValidationStatus(validation) : HttpStatus.INTERNAL_SERVER_ERROR;

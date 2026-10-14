@@ -188,3 +188,11 @@ Exceção ao princípio IV registrada em Constitution Check: diagnóstico sem es
 ## Pendências e limite da fase
 
 Sem dúvida material de negócio restante. Gate IV com exceção documentada, não PASS irrestrito; revisão de conformidade/alcance e provas indicadas são obrigatórias antes do fechamento futuro da implementação. Falta implementar e executar as verificações planejadas, incluindo DDL real, concorrência e tratamento tardio de integridade. Esses resultados não são presumidos pelo plano. H2 em memória e `ddl-auto=create` são baseline de desenvolvimento, não estratégia de preservação/implantação de uma base produtiva existente. Não gerar tasks, alterar a spec/checklist nem configurar outro banco nesta fase.
+
+## Acompanhamento documental T043 — 2026-10-14
+
+O [checkpoint US2/T043](quickstart.md#checkpoint-us2-t043) consolida somente evidências já arquivadas: T038 224 GREEN de entrada/HTTP/persistência; T039 14 GREEN de invariantes do diagnóstico; os dois REDs reais da T040, suas correções delimitadas na T041 e a seleção T042 23 GREEN. Registra V02/V05/V06/V08 na parcela de inclusão e US1.8 para POST sem categorias, mantendo PUT futuro em T044/T051/T053. T043 não executou testes ou verificações de componentes, nem altera desenho/contratos/constituição.
+
+**Gate IV permanece EXCEÇÃO DOCUMENTADA**, com a mesma justificativa FR-012/US2.6 e os mesmos limites. As afirmações de provas futuras da seção original pertencem ao desenho daquela data; o checkpoint identifica agora as parcelas de US2 executadas, sem reescrever esse histórico ou convertê-lo em PASS estrito. Imutabilidade em memória, zero DML e snapshot externo são provas distintas; guardas/revalidação/FK/rollback da inclusão não encerram conformidade de toda a feature. Metadata da FK é capturada na manutenção autorizada/revalidada, fora de isValid; não amplia a exceção.
+
+Permanecem T051 (PUT/revalidação), T067 (guardas tardias/conta ausente/wrappers/lookup), T074–T077 (falhas/rollback em etapas delimitadas) e T079 (revisão Governance), além das matrizes/constraints/histórico das histórias futuras e fechamento T081–T086. Flush não é commit; beforeCommit ou falha injetada antes de Connection.commit delegar não comprova falha física do banco. Sem promessa de rollback depois de commit confirmado. **T001–T043 [X]; T044–T086 abertas**: checkpoint US2, não encerramento da Feature 005.

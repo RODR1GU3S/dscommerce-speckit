@@ -10,12 +10,15 @@ import com.devsuperior.dscommerce.services.exceptions.InvalidCredentialsExceptio
 import com.devsuperior.dscommerce.services.exceptions.InvalidOrderException;
 import com.devsuperior.dscommerce.services.exceptions.InvalidProductInputException;
 import com.devsuperior.dscommerce.services.exceptions.ProductCreationPersistenceException;
+import com.devsuperior.dscommerce.services.exceptions.ProductDeletionIntegrityException;
 import com.devsuperior.dscommerce.services.exceptions.ProductNotFoundException;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.ValidationException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -34,6 +37,10 @@ import java.util.HashSet;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.sql.DatabaseMetaData;
+import java.sql.SQLException;
+import java.util.regex.Pattern;
+import javax.sql.DataSource;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
@@ -55,6 +62,19 @@ public class GlobalExceptionHandler {
     private static final String INVALID_CREDENTIALS_MESSAGE = "Invalid credentials";
     private static final String AUTHENTICATION_PROCESSING_MESSAGE =
             "Authentication could not be completed";
+    private static final Pattern ADMIN_PRODUCT_ITEM = Pattern.compile("/admin/products/[1-9][0-9]*");
+    private static final Pattern PRODUCT_DELETE = Pattern.compile(
+            "delete\\s+from\\s+tb_product\\s+where\\s+id\\s*=\\s*\\?", Pattern.CASE_INSENSITIVE);
+    private static final Pattern CATEGORY_PAIR_INSERT = Pattern.compile(
+            "insert\\s+into\\s+tb_product_category\\s*\\(\\s*product_id\\s*,\\s*category_id\\s*\\)"
+                    + "\\s*values\\s*\\(\\s*\\?\\s*,\\s*\\?\\s*\\)", Pattern.CASE_INSENSITIVE);
+    private DataSource persistenceDataSource;
+
+    /** Optional in MVC slices; absent/unavailable metadata never produces a business diagnosis. */
+    @Autowired(required = false)
+    public void setPersistenceDataSource(DataSource persistenceDataSource) {
+        this.persistenceDataSource = persistenceDataSource;
+    }
 
     @ExceptionHandler(ProductNotFoundException.class)
     public ResponseEntity<?> handleProductNotFound(ProductNotFoundException exception, HttpServletRequest request) {
@@ -286,6 +306,8 @@ public class GlobalExceptionHandler {
                     request.getRequestURI(), List.of()));
         }
         if (isAdminRequest(request) && !nativeClientError) {
+            var persistenceResponse = adminPersistenceResponse(exception, request);
+            if (persistenceResponse != null) return persistenceResponse;
             var status = exception instanceof ValidationException validation
                     ? adminValidationStatus(validation) : HttpStatus.INTERNAL_SERVER_ERROR;
             var message = switch (status) {
@@ -300,6 +322,88 @@ public class GlobalExceptionHandler {
         }
         // Includes failures raised by transaction completion after the service method returns.
         return errorResponse(HttpStatus.INTERNAL_SERVER_ERROR, ORDER_PROCESSING_MESSAGE, request);
+    }
+
+    private ResponseEntity<AdminErrorResponseDTO> adminPersistenceResponse(Exception exception, HttpServletRequest request) {
+        // Completion exceptions arrive here after the service proxy has unwound. Never inspect an aborted transaction.
+        if (TransactionSynchronizationManager.isActualTransactionActive()) return null;
+        var path = request.getRequestURI().substring(request.getContextPath().length());
+        boolean deletion = "DELETE".equals(request.getMethod()) && ADMIN_PRODUCT_ITEM.matcher(path).matches();
+        boolean writing = ("POST".equals(request.getMethod()) && "/admin/products".equals(path))
+                || ("PUT".equals(request.getMethod()) && ADMIN_PRODUCT_ITEM.matcher(path).matches());
+        if (!deletion && !writing) return null;
+        if (deletion && exception instanceof ProductDeletionIntegrityException) {
+            return adminErrorResponse(HttpStatus.CONFLICT, "Product deletion violates referential integrity", request);
+        }
+        var violation = referentialCause(exception);
+        if (violation == null || violation.getSQL() == null) return null;
+        String state = deletion ? "23503" : "23506";
+        var sqlException = violation.getSQLException();
+        if (!state.equals(violation.getSQLState()) || !state.equals(sqlException.getSQLState())
+                || sqlException.getErrorCode() != Integer.parseInt(state)) return null;
+        var operation = deletion ? PRODUCT_DELETE : CATEGORY_PAIR_INSERT;
+        if (!operation.matcher(violation.getSQL().strip()).matches()) return null;
+        // Hibernate's H2 23503 name includes trailing text; its 23506 extractor loses the first character.
+        // Recover only the complete vendor header identity, never search the appended SQL/payload or guess a suffix.
+        var prefix = "Referential integrity constraint violation: \"";
+        var message = sqlException.getMessage();
+        if (message == null || !message.startsWith(prefix)) return null;
+        var name = org.hibernate.exception.spi.TemplatedViolatedConstraintNameExtractor
+                .extractUsingTemplate(prefix, ": ", message);
+        if (name == null || name.isBlank() || !confirmedForeignKey(name, deletion)) return null;
+        if (deletion) return adminErrorResponse(HttpStatus.CONFLICT, "Product deletion violates referential integrity", request);
+        return adminInputResponse(List.of(new AdminFieldErrorDTO(
+                "categoryIds", "CATEGORY_NOT_FOUND", "Selected category does not exist")), request);
+    }
+
+    private static org.hibernate.exception.ConstraintViolationException referentialCause(Throwable failure) {
+        var visited = new HashSet<Throwable>();
+        for (var cause = failure; cause != null && visited.add(cause); cause = cause.getCause()) {
+            if (cause instanceof org.hibernate.exception.ConstraintViolationException violation) return violation;
+            // Only transaction/persistence transport wrappers; an unknown internal failure with a nested FK stays 500.
+            var type = cause.getClass();
+            if (type != org.springframework.dao.DataIntegrityViolationException.class
+                    && type != org.springframework.transaction.TransactionSystemException.class
+                    && type != org.springframework.orm.jpa.JpaSystemException.class
+                    && type != jakarta.persistence.PersistenceException.class
+                    && type != jakarta.persistence.RollbackException.class) return null;
+        }
+        return null;
+    }
+
+    private boolean confirmedForeignKey(String name, boolean deletion) {
+        if (persistenceDataSource == null) return false;
+        // Technical metadata only on a fresh connection after rollback; no row lookup or continuation of maintenance.
+        try (var connection = persistenceDataSource.getConnection()) {
+            var metadata = connection.getMetaData();
+            if (!"H2".equals(metadata.getDatabaseProductName())) return false;
+            var schema = connection.getSchema(); var catalog = connection.getCatalog();
+            if (schema == null || catalog == null) return false;
+            try (var keys = deletion ? metadata.getExportedKeys(catalog, schema, "TB_PRODUCT")
+                    : metadata.getImportedKeys(catalog, schema, "TB_PRODUCT_CATEGORY")) {
+                int matches = 0; boolean confirmed = true;
+                while (keys.next()) {
+                    if (!name.equals(keys.getString("FK_NAME"))) continue;
+                    matches++;
+                    boolean sameScope = schema.equals(keys.getString("FKTABLE_SCHEM"))
+                            && schema.equals(keys.getString("PKTABLE_SCHEM"))
+                            && catalog.equals(keys.getString("FKTABLE_CAT")) && catalog.equals(keys.getString("PKTABLE_CAT"))
+                            && keys.getShort("KEY_SEQ") == 1 && "ID".equals(keys.getString("PKCOLUMN_NAME"));
+                    boolean reference = deletion ? "TB_PRODUCT".equals(keys.getString("PKTABLE_NAME"))
+                            && keys.getString("FKCOLUMN_NAME") != null
+                            && (keys.getShort("DELETE_RULE") == DatabaseMetaData.importedKeyRestrict
+                            || keys.getShort("DELETE_RULE") == DatabaseMetaData.importedKeyNoAction)
+                            : "TB_PRODUCT_CATEGORY".equals(keys.getString("FKTABLE_NAME"))
+                            && "CATEGORY_ID".equals(keys.getString("FKCOLUMN_NAME"))
+                            && "TB_CATEGORY".equals(keys.getString("PKTABLE_NAME"));
+                    confirmed &= sameScope && reference;
+                }
+                // Composite/ambiguous/unknown identities remain internal, rather than inventing a business defect.
+                return matches == 1 && confirmed;
+            }
+        } catch (SQLException | RuntimeException unavailableMetadata) {
+            return false;
+        }
     }
 
     private static HttpStatus adminValidationStatus(ValidationException exception) {

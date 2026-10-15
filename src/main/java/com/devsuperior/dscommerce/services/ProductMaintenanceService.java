@@ -8,11 +8,13 @@ import com.devsuperior.dscommerce.entities.Category;
 import com.devsuperior.dscommerce.entities.Product;
 import com.devsuperior.dscommerce.entities.UserRole;
 import com.devsuperior.dscommerce.repositories.CategoryRepository;
+import com.devsuperior.dscommerce.repositories.OrderItemRepository;
 import com.devsuperior.dscommerce.repositories.ProductRepository;
 import com.devsuperior.dscommerce.repositories.UserAccountRepository;
 import com.devsuperior.dscommerce.security.AuthenticatedAccountPrincipal;
 import com.devsuperior.dscommerce.services.exceptions.InvalidProductInputException;
 import com.devsuperior.dscommerce.services.exceptions.ProductCreationPersistenceException;
+import com.devsuperior.dscommerce.services.exceptions.ProductDeletionIntegrityException;
 import com.devsuperior.dscommerce.services.exceptions.ProductNotFoundException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.AccessDeniedException;
@@ -35,16 +37,38 @@ public class ProductMaintenanceService {
     private final CategoryRepository categories;
     private final ProductRepository products;
     private final UserAccountRepository accounts;
+    private final OrderItemRepository orderItems;
 
     public ProductMaintenanceService(AdminAccessService access, ProductInputValidationService local,
                                      ProductCategoryDiagnosticService diagnostic, CategoryRepository categories,
-                                     ProductRepository products, UserAccountRepository accounts) {
+                                     ProductRepository products, UserAccountRepository accounts,
+                                     OrderItemRepository orderItems) {
         this.access = access;
         this.local = local;
         this.diagnostic = diagnostic;
         this.categories = categories;
         this.products = products;
         this.accounts = accounts;
+        this.orderItems = orderItems;
+    }
+
+    public void deleteProduct(Long id, AuthenticatedAccountPrincipal principal) {
+        access.requireAdmin(principal);
+        // Recheck effective roles even when the caller retained an old ADMIN collection.
+        var effectiveRoles = accounts.findEffectiveAccountRolesById(principal.accountId());
+        if (effectiveRoles.isEmpty()) throw new BadCredentialsException("Authentication required or invalid");
+        if (effectiveRoles.stream().noneMatch(row -> row.getRole() == UserRole.ADMIN)) {
+            throw new AccessDeniedException("Product maintenance not permitted");
+        }
+        var product = products.findAdminByIdForUpdate(id)
+                .orElseThrow(() -> new ProductNotFoundException("Product not found"));
+        if (orderItems.existsByProductId(id)) {
+            throw new ProductDeletionIntegrityException();
+        }
+        // Hibernate removes only this owner's join-table rows; Category and purchase entities are not cascaded.
+        // The precheck cannot exclude a concurrent reference: FK failures must escape the transaction unchanged.
+        products.delete(product);
+        products.flush();
     }
 
     public AdminProductDetailDTO replaceProduct(Long id, ProductWriteRequestDTO input, AuthenticatedAccountPrincipal principal) {

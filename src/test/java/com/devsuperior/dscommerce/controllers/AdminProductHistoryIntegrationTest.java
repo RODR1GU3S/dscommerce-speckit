@@ -9,6 +9,7 @@ import com.devsuperior.dscommerce.fixtures.AdminProductDatabaseProbe.ProductRow;
 import com.devsuperior.dscommerce.fixtures.AdminProductDatabaseProbe.Snapshot;
 import com.devsuperior.dscommerce.fixtures.AdminProductTestFixture;
 import com.devsuperior.dscommerce.fixtures.AdminProductTestFixture.ProductData;
+import com.devsuperior.dscommerce.services.exceptions.ProductDeletionIntegrityException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
@@ -40,6 +41,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -152,6 +154,87 @@ class AdminProductHistoryIntegrationTest {
         assertHistoricalOrder(subsequent.snapshot(), subsequent.id(), List.of(new ExpectedLine(target.id(), 2, new BigDecimal("12.00"))),
                 "24.00", "new-after-price-change");
         assertThat(database.snapshot()).isEqualTo(subsequent.snapshot());
+    }
+
+    @ParameterizedTest(name = "history after rejected DELETE context={0}, multiple items={1}")
+    @CsvSource({"ROOT,false", "/api,false", "ROOT,true", "/api,true"})
+    void rejectedDeletionAfterPriceChangePreservesHistoryAndNextPurchase(String external, boolean multiple) throws Exception {
+        String prefix = prefix(external);
+        var originalLines = multiple
+                ? List.of(new ExpectedLine(other.id(), 3, new BigDecimal("3.25")), oldLine()) : List.of(oldLine());
+        String originalTotal = multiple ? "29.75" : "20.00";
+        var original = registerOrder(prefix, originalLines, originalTotal, "t063-before-put");
+        assertThat(database.snapshot()).isEqualTo(original.snapshot());
+
+        var body = mapper.createObjectNode().put("name", target.name()).put("description", target.description())
+                .put("price", "12.00").put("image", target.image());
+        body.putArray("categoryIds").add(categoryId);
+        String route = "/admin/products/" + target.id();
+        var replacement = observe(put(prefix + route).contextPath(prefix).servletPath(route)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsBytes(body)), "t063-put", 200);
+        assertThat(replacement.result().getResponse().getStatus()).isEqualTo(200);
+        var expectedProduct = new ProductRow(target.id(), target.name(), target.description(), target.image(), new BigDecimal("12.00"));
+        var expectedProducts = original.snapshot().products().stream()
+                .map(product -> product.id() == target.id() ? expectedProduct : product).toList();
+        var expectedAfterPut = new Snapshot(expectedProducts, original.snapshot().categories(), original.snapshot().associations(),
+                original.snapshot().orders(), original.snapshot().items());
+        assertThat(replacement.snapshot()).isEqualTo(expectedAfterPut);
+        assertHistoricalOrder(replacement.snapshot(), original.id(), originalLines, originalTotal, "t063-after-put");
+        assertCatalogPrice(prefix, "12.00");
+        var beforeDelete = database.snapshot();
+        assertThat(beforeDelete).isEqualTo(expectedAfterPut);
+
+        var rejected = observe(delete(prefix + route).contextPath(prefix).servletPath(route)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken), "t063-delete", 409);
+        assertThat(rejected.result().getResponse().getStatus()).isEqualTo(409);
+        assertThat(rejected.result().getResolvedException()).isInstanceOf(ProductDeletionIntegrityException.class);
+        var error = json(rejected.result());
+        assertFields(error, "status", "error", "message", "path", "errors");
+        assertThat(error.path("status").intValue()).isEqualTo(409);
+        assertThat(error.path("error").asText()).isEqualTo("Conflict");
+        assertThat(error.path("message").asText()).isEqualTo("Product deletion violates referential integrity");
+        assertThat(error.path("path").asText()).isEqualTo(prefix + route);
+        assertThat(error.path("errors").isArray()).isTrue();
+        assertThat(error.path("errors")).isEmpty();
+        assertThat(rejected.snapshot()).isEqualTo(beforeDelete);
+        assertHistoricalOrder(rejected.snapshot(), original.id(), originalLines, originalTotal, "t063-after-delete");
+        assertCatalogPrice(prefix, "12.00");
+        assertThat(database.snapshot()).isEqualTo(beforeDelete);
+
+        var currentLine = new ExpectedLine(target.id(), 2, new BigDecimal("12.00"));
+        // The target moves from position 1 to position 0 in the multi-item purchase; old positions must not change.
+        var subsequentLines = multiple ? List.of(currentLine, new ExpectedLine(other.id(), 3, new BigDecimal("3.25")))
+                : List.of(currentLine);
+        String subsequentTotal = multiple ? "33.75" : "24.00";
+        var subsequent = registerOrder(prefix, subsequentLines, subsequentTotal, "t063-after-rejected-delete");
+        assertThat(subsequent.id()).isNotEqualTo(original.id());
+        var reread = database.snapshot();
+        assertThat(reread).isEqualTo(subsequent.snapshot());
+        assertThat(reread.orders()).hasSize(2);
+        assertThat(reread.items()).hasSize(originalLines.size() + subsequentLines.size());
+        assertThat(reread.orders().stream().filter(order -> order.id() == original.id()).toList())
+                .isEqualTo(original.snapshot().orders());
+        assertThat(reread.items().stream().filter(item -> item.orderId() == original.id()).toList())
+                .isEqualTo(original.snapshot().items());
+        assertThat(reread.items().stream().filter(item -> item.orderId() == subsequent.id()).map(ItemRow::id).toList())
+                .doesNotContainAnyElementsOf(original.snapshot().items().stream().map(ItemRow::id).toList());
+        assertThat(reread.products()).isEqualTo(beforeDelete.products());
+        assertThat(reread.categories()).isEqualTo(beforeDelete.categories());
+        assertThat(reread.associations()).isEqualTo(beforeDelete.associations());
+        assertHistoricalOrder(reread, original.id(), originalLines, originalTotal, "t063-old-after-new-order");
+        assertHistoricalOrder(reread, subsequent.id(), subsequentLines, subsequentTotal, "t063-new-after-delete");
+        for (var order : reread.orders()) {
+            System.out.printf("T063_ORDER orderId=%d buyerId=%d createdAt=%s status=%s%n",
+                    order.id(), order.buyerId(), order.createdAt(), order.status());
+        }
+        for (var item : reread.items()) {
+            System.out.printf("T063_ITEM orderId=%d itemId=%d productId=%d position=%d quantity=%d unitPrice=%s subtotal=%s%n",
+                    item.orderId(), item.id(), item.productId(), item.position(), item.quantity(), item.unitPrice().toPlainString(),
+                    item.unitPrice().multiply(BigDecimal.valueOf(item.quantity())).toPlainString());
+        }
+        System.out.printf("T063_HISTORY context=%s multiple=%s oldOrderId=%d newOrderId=%d oldTotal=%s newTotal=%s independent=true%n",
+                external, multiple, original.id(), subsequent.id(), originalTotal, subsequentTotal);
     }
 
     private Confirmation registerOrder(String prefix, List<ExpectedLine> lines, String expectedTotal, String phase) throws Exception {

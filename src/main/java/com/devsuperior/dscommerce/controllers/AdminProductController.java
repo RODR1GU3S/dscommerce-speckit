@@ -12,6 +12,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -59,6 +60,18 @@ public class AdminProductController {
         // The transactional proxy concludes before HTTP success is built, as on creation.
         var response = maintenance.replaceProduct(productId, input, principal);
         return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteProduct(
+            @PathVariable String id,
+            @RequestParam MultiValueMap<String, String> query,
+            @AuthenticationPrincipal AuthenticatedAccountPrincipal principal) {
+        AdminQueryParameters.requireNoQuery(query);
+        long productId = AdminQueryParameters.productId(id);
+        // The transactional service proxy must finish before HTTP success is built.
+        maintenance.deleteProduct(productId, principal);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping

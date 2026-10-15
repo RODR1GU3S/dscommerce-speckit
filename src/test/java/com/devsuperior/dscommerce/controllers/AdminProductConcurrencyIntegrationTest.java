@@ -3,6 +3,7 @@ package com.devsuperior.dscommerce.controllers;
 import com.devsuperior.dscommerce.DscommerceApplication;
 import com.devsuperior.dscommerce.config.AdminProductTestConfig;
 import com.devsuperior.dscommerce.entities.Product;
+import com.devsuperior.dscommerce.entities.Order;
 import com.devsuperior.dscommerce.entities.UserRole;
 import com.devsuperior.dscommerce.fixtures.AdminProductDatabaseProbe;
 import com.devsuperior.dscommerce.fixtures.AdminProductDatabaseProbe.ProductRow;
@@ -11,6 +12,9 @@ import com.devsuperior.dscommerce.fixtures.AdminProductTestFixture;
 import com.devsuperior.dscommerce.fixtures.AdminProductTestFixture.CategoryData;
 import com.devsuperior.dscommerce.fixtures.AdminProductTestFixture.ProductCategory;
 import com.devsuperior.dscommerce.repositories.ProductRepository;
+import com.devsuperior.dscommerce.repositories.OrderRepository;
+import com.devsuperior.dscommerce.repositories.OrderItemRepository;
+import com.devsuperior.dscommerce.services.OrderService;
 import com.devsuperior.dscommerce.services.ProductMaintenanceService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.aopalliance.intercept.MethodInterceptor;
@@ -47,6 +51,7 @@ import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -63,6 +68,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.LockSupport;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
@@ -79,6 +85,9 @@ class AdminProductConcurrencyIntegrationTest {
     @Autowired private ObjectMapper mapper;
     @Autowired private Probe probe;
     @Autowired private ProductMaintenanceService maintenance;
+    @Autowired private PurchaseDeletionProbe raceProbe;
+    private AdminProductTestFixture.Account raceBuyer;
+    private Racer purchaseRace, deletionRace;
     private AdminProductTestFixture fixture;
     private AdminProductDatabaseProbe database;
     private MockMvc mvc;
@@ -103,6 +112,7 @@ class AdminProductConcurrencyIntegrationTest {
         var adminA = fixture.createAccount("T052 admin A", "Disposable-T052", Set.of(UserRole.ADMIN));
         var adminB = fixture.createAccount("T052 admin B", "Disposable-T052", Set.of(UserRole.ADMIN));
         var buyerAccount = fixture.prepareBuyer(); buyer = buyerAccount.id();
+        raceBuyer = buyerAccount;
         var old = fixture.createCategory("Original compartilhada");
         var a1 = fixture.createCategory("A esquerda"); var a2 = fixture.createCategory("A direita");
         var b1 = fixture.createCategory("B unica");
@@ -197,6 +207,152 @@ class AdminProductConcurrencyIntegrationTest {
         System.out.printf("T052_CONCURRENCY first=%s second=%s sessions=%d,%d blockedAtLookup=true blockedAfterFlush=true versions=ORIGINAL->%s->%s dml=%d,%d commits=2 rollbacks=0 finalLockAvailable=true history=20.00 independentSnapshot=true%n",
                 first.name, second.name, first.session.get(), second.session.get(), first.name, second.name, first.dml.size(), second.dml.size());
         System.out.println("T052_TRACE " + probe.events);
+    }
+
+    @ParameterizedTest(name = "purchase/delete ordering={0}, real FK and two transactions")
+    @ValueSource(strings = {"PURCHASE_FIRST", "DELETE_FIRST"})
+    void purchaseDeletionRaceRespectsBothCommitOrdersWithoutOrphans(String ordering) throws Exception {
+        boolean purchaseFirst = ordering.equals("PURCHASE_FIRST");
+        var free = baseline.products().stream().filter(row -> row.id() != target).findFirst().orElseThrow();
+        assertThat(free.price()).isEqualTo(new BigDecimal("25.00"));
+        assertThat(baseline.items()).noneMatch(item -> item.productId() == free.id());
+        String buyerToken = fixture.login(raceBuyer);
+        purchaseRace = new Racer("BUY"); deletionRace = new Racer("DELETE");
+        Future<MvcResult> purchase, deletion;
+        if (purchaseFirst) {
+            deletion = submitRace(deletionRace, free.id(), slots.get(0).token);
+            await(deletionRace.ready, "delete locked product and real precheck returned false");
+            purchase = submitRace(purchaseRace, free.id(), buyerToken);
+            await(purchaseRace.ready, "purchase loaded both prices before save");
+        } else {
+            purchase = submitRace(purchaseRace, free.id(), buyerToken);
+            await(purchaseRace.ready, "purchase loaded product before concurrent deletion");
+            deletion = submitRace(deletionRace, free.id(), slots.get(0).token);
+            await(deletionRace.ready, "delete locked product and real precheck returned false");
+        }
+        assertThat(purchaseRace.session.get()).isPositive().isNotEqualTo(deletionRace.session.get());
+        assertThat(deletionRace.session.get()).isPositive();
+        assertThat(deletionRace.precheckFalse).isTrue();
+        assertThat(deletionRace.statements).anyMatch(sql -> sql.contains("tb_product") && sql.contains("for update"));
+        assertThat(purchaseRace.statements).noneMatch(sql -> sql.contains("for update"));
+        assertThat(purchaseRace.loadedPrice).isEqualTo(new BigDecimal("25.00"));
+        assertThat(purchaseRace.writes).isEmpty(); assertThat(deletionRace.writes).isEmpty();
+        assertThat(purchase.isDone()).isFalse(); assertThat(deletion.isDone()).isFalse();
+        assertThat(database.snapshot()).isEqualTo(baseline);
+
+        var winner = purchaseFirst ? purchaseRace : deletionRace;
+        var loser = purchaseFirst ? deletionRace : purchaseRace;
+        winner.allowDml.countDown();
+        await(winner.flushed, "winning real flush returned while transaction remains open");
+        assertThat(winner.commits.get()).isZero(); assertThat(winner.completion.get()).isEqualTo(-1);
+        assertThat(winner.writes).isNotEmpty().allMatch(write -> write.state() == null);
+        assertThat(database.snapshot()).as("flush does not publish winner before commit").isEqualTo(baseline);
+        assertThat(loser.writes).isEmpty();
+        winner.allowCommit.countDown();
+        var winningResult = (purchaseFirst ? purchase : deletion).get(WAIT_SECONDS, TimeUnit.SECONDS);
+        assertRaceCompletion(winner, true);
+        var afterWinner = database.snapshot();
+        if (purchaseFirst) {
+            assertThat(winningResult.getResponse().getStatus()).isEqualTo(201);
+            var confirmation = mapper.readTree(winningResult.getResponse().getContentAsByteArray());
+            long id = confirmation.path("id").longValue(); orders.add(id);
+            assertThat(confirmation.path("total").asText()).isEqualTo("60.00");
+            assertThat(afterWinner.products()).isEqualTo(baseline.products());
+            assertThat(afterWinner.categories()).isEqualTo(baseline.categories());
+            assertThat(afterWinner.associations()).isEqualTo(baseline.associations());
+            assertThat(afterWinner.orders()).hasSize(2); assertThat(afterWinner.items()).hasSize(3);
+            var order = afterWinner.orders().stream().filter(row -> row.id() == id).findFirst().orElseThrow();
+            assertThat(order.buyerId()).isEqualTo(buyer); assertThat(order.createdAt()).isNotNull();
+            assertThat(order.status()).isEqualTo("WAITING_PAYMENT");
+            var items = afterWinner.items().stream().filter(item -> item.orderId() == id).toList();
+            assertThat(items).hasSize(2);
+            assertThat(items.get(0).productId()).isEqualTo(target); assertThat(items.get(0).position()).isZero();
+            assertThat(items.get(0).quantity()).isEqualTo(1); assertThat(items.get(0).unitPrice()).isEqualTo(new BigDecimal("10.00"));
+            assertThat(items.get(1).productId()).isEqualTo(free.id()); assertThat(items.get(1).position()).isEqualTo(1);
+            assertThat(items.get(1).quantity()).isEqualTo(2); assertThat(items.get(1).unitPrice()).isEqualTo(new BigDecimal("25.00"));
+            assertThat(items.stream().map(item -> item.unitPrice().multiply(BigDecimal.valueOf(item.quantity())))
+                    .reduce(new BigDecimal("0.00"), BigDecimal::add)).isEqualTo(new BigDecimal("60.00"));
+            assertThat(purchaseRace.writes.stream().filter(write -> write.sql().startsWith("insert into tb_order_item "))).hasSize(2);
+        } else {
+            assertThat(winningResult.getResponse().getStatus()).isEqualTo(204);
+            assertThat(winningResult.getResponse().getContentAsByteArray()).isEmpty();
+            assertThat(winningResult.getResponse().getContentType()).isNull();
+            var expectedPairs = new HashSet<>(baseline.associations()); expectedPairs.removeIf(pair -> pair.productId() == free.id());
+            assertThat(afterWinner).isEqualTo(new Snapshot(baseline.products().stream().filter(row -> row.id() != free.id()).toList(),
+                    baseline.categories(), expectedPairs, baseline.orders(), baseline.items()));
+            assertThat(deletionRace.writes).anySatisfy(write -> {
+                assertThat(write.sql()).startsWith("delete from tb_product "); assertThat(write.rows()).isEqualTo(1);
+            });
+        }
+        loser.allowDml.countDown();
+        var losingResult = (purchaseFirst ? deletion : purchase).get(WAIT_SECONDS, TimeUnit.SECONDS);
+        assertRaceCompletion(loser, false);
+        String state = purchaseFirst ? "23503" : "23506";
+        assertThat(loser.failures).hasSize(1);
+        var failure = loser.failures.get(0);
+        assertThat(failure.getSQLState()).isEqualTo(state); assertThat(failure.getErrorCode()).isEqualTo(Integer.parseInt(state));
+        assertThat(failure.getMessage()).contains("FK_ORDER_ITEM_PRODUCT:");
+        assertThat(losingResult.getResolvedException()).isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+        assertThat(losingResult.getResponse().getStatus()).isEqualTo(purchaseFirst ? 409 : 500);
+        assertThat(losingResult.getResponse().getHeader(HttpHeaders.LOCATION)).isNull();
+        var error = mapper.readTree(losingResult.getResponse().getContentAsByteArray());
+        var fields = new ArrayList<String>(); error.fieldNames().forEachRemaining(fields::add);
+        assertThat(fields).containsExactlyInAnyOrderElementsOf(purchaseFirst
+                ? List.of("status", "error", "message", "path", "errors") : List.of("status", "error", "message", "path"));
+        assertThat(error.path("status").asInt()).isEqualTo(purchaseFirst ? 409 : 500);
+        assertThat(error.path("error").asText()).isEqualTo(purchaseFirst ? "Conflict" : "Internal Server Error");
+        assertThat(error.path("message").asText()).isEqualTo(purchaseFirst
+                ? "Product deletion violates referential integrity" : "Order registration could not be completed");
+        assertThat(error.path("path").asText()).isEqualTo(purchaseFirst ? "/api/admin/products/" + free.id() : "/api/orders");
+        if (purchaseFirst) {
+            assertThat(error.path("errors").isArray()).isTrue(); assertThat(error.path("errors")).isEmpty();
+            assertThat(deletionRace.writes).anySatisfy(write -> {
+                assertThat(write.sql()).startsWith("delete from tb_product_category "); assertThat(write.rows()).isEqualTo(1);
+                assertThat(write.state()).isNull();
+            });
+        } else {
+            assertThat(purchaseRace.writes).anySatisfy(write -> {
+                assertThat(write.sql()).startsWith("insert into tb_order "); assertThat(write.state()).isNull();
+            });
+            assertThat(purchaseRace.writes.stream().filter(write -> write.sql().startsWith("insert into tb_order_item ") && write.state() == null)).hasSize(1);
+        }
+        var after = database.snapshot();
+        assertThat(after).as("losing transaction must roll back only its attempted writes").isEqualTo(afterWinner);
+        var previousOrderIds = baseline.orders().stream().map(AdminProductDatabaseProbe.OrderRow::id).toList();
+        assertThat(after.orders().stream().filter(order -> previousOrderIds.contains(order.id())).toList()).isEqualTo(baseline.orders());
+        assertThat(after.items().stream().filter(item -> previousOrderIds.contains(item.orderId())).toList()).isEqualTo(baseline.items());
+        assertThat(after.items()).allSatisfy(item -> assertThat(after.products().stream().map(ProductRow::id).toList()).contains(item.productId()));
+        assertThat(after.categories()).isEqualTo(baseline.categories());
+        assertThat(database.accountIds()).hasSize(3);
+        System.out.printf("T064_RACE ordering=%s sessions=%d,%d winnerFlushInvisible=true winnerCommit=1 loserRollback=1 loserState=%s fk=FK_ORDER_ITEM_PRODUCT winnerHttp=%d loserHttp=%d priorHistory=20.00 orphans=0 independentSnapshot=true%n",
+                ordering, purchaseRace.session.get(), deletionRace.session.get(), state,
+                winningResult.getResponse().getStatus(), losingResult.getResponse().getStatus());
+        System.out.println("T064_BUY_SQL " + purchaseRace.writes);
+        System.out.println("T064_DELETE_SQL " + deletionRace.writes);
+        System.out.println("T064_TRACE BUY=" + purchaseRace.events + " DELETE=" + deletionRace.events);
+    }
+
+    private Future<MvcResult> submitRace(Racer participant, long product, String token) {
+        var future = workers.submit(() -> {
+            outsideTransaction(); raceProbe.participant.set(participant);
+            try {
+                boolean buying = participant.name.equals("BUY");
+                var request = buying ? post("/api/orders").contextPath("/api").servletPath("/orders")
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"items\":[{\"productId\":" + target
+                        + ",\"quantity\":1},{\"productId\":" + product + ",\"quantity\":2}]}")
+                        : delete("/api/admin/products/" + product).contextPath("/api").servletPath("/admin/products/" + product);
+                var result = mvc.perform(request.header(HttpHeaders.AUTHORIZATION, "Bearer " + token).accept(MediaType.APPLICATION_JSON)).andReturn();
+                outsideTransaction(); return result;
+            } finally { raceProbe.participant.remove(); }
+        });
+        requests.add(future); return future;
+    }
+
+    private void assertRaceCompletion(Racer participant, boolean committed) {
+        assertThat(participant.commits.get()).isEqualTo(committed ? 1 : 0);
+        assertThat(participant.rollbacks.get()).isEqualTo(committed ? 0 : 1);
+        assertThat(participant.completion.get()).isEqualTo(committed ? TransactionSynchronization.STATUS_COMMITTED : TransactionSynchronization.STATUS_ROLLED_BACK);
+        assertThat(participant.exited).isTrue();
     }
 
     private Future<MvcResult> submit(Slot slot) throws Exception {
@@ -304,6 +460,9 @@ class AdminProductConcurrencyIntegrationTest {
     }
     @AfterEach
     void releaseAndJoinBothWritersBeforeOwnedCleanup() throws Exception {
+        for (var participant : new Racer[]{purchaseRace, deletionRace}) if (participant != null) {
+            participant.allowDml.countDown(); participant.allowCommit.countDown();
+        }
         if (slots != null) slots.forEach(slot -> { slot.allowMutation.countDown(); slot.allowCommit.countDown(); });
         if (workers != null) {
             workers.shutdown();
@@ -314,6 +473,7 @@ class AdminProductConcurrencyIntegrationTest {
         }
         probe.active = false; outsideTransaction();
         if (fixture == null) return;
+        if (purchaseRace != null) database.snapshot().orders().forEach(order -> { if (!orders.contains(order.id())) orders.add(order.id()); });
         try (var connection = database.openConnection()) {
             connection.setAutoCommit(false);
             try (var items = connection.prepareStatement("delete from tb_order_item where order_id = ?");
@@ -350,7 +510,121 @@ class AdminProductConcurrencyIntegrationTest {
     private record Event(String writer, String stage) { }
 
     @TestConfiguration(proxyBeanMethods = false)
-    static class ProbeConfig { @Bean static Probe t052Probe() { return new Probe(); } }
+    static class ProbeConfig {
+        @Bean static Probe t052Probe() { return new Probe(); }
+        @Bean static PurchaseDeletionProbe t064RaceProbe() { return new PurchaseDeletionProbe(); }
+    }
+
+    private record RaceSql(String sql, int rows, String state) { }
+    private static final class Racer {
+        final String name;
+        final CountDownLatch ready = new CountDownLatch(1), allowDml = new CountDownLatch(1),
+                flushed = new CountDownLatch(1), allowCommit = new CountDownLatch(1);
+        final AtomicInteger session = new AtomicInteger(), commits = new AtomicInteger(), rollbacks = new AtomicInteger(),
+                completion = new AtomicInteger(-1);
+        final List<String> statements = new CopyOnWriteArrayList<>(), events = new CopyOnWriteArrayList<>();
+        final List<RaceSql> writes = new CopyOnWriteArrayList<>();
+        final List<SQLException> failures = new CopyOnWriteArrayList<>();
+        volatile boolean precheckFalse, registered, exited;
+        volatile BigDecimal loadedPrice;
+        Racer(String name) { this.name = name; }
+    }
+
+    /** T064 only: delegates real services/JDBC unchanged; coordinates before DML and after a real flush. */
+    public static class PurchaseDeletionProbe implements BeanPostProcessor {
+        final ThreadLocal<Racer> participant = new ThreadLocal<>();
+        private final ThreadLocal<Boolean> inService = ThreadLocal.withInitial(() -> false);
+        private Racer current() { return inService.get() ? participant.get() : null; }
+        @Override public Object postProcessAfterInitialization(Object bean, String name) {
+            if (bean instanceof DataSource source) {
+                return Proxy.newProxyInstance(DataSource.class.getClassLoader(), new Class<?>[]{DataSource.class}, (proxy, method, args) -> {
+                    var result = Probe.delegate(source, method, args); return result instanceof Connection connection ? connection(connection) : result;
+                });
+            }
+            boolean service = bean instanceof ProductMaintenanceService || bean instanceof OrderService;
+            boolean productRepository = bean instanceof ProductRepository;
+            boolean orderRepository = bean instanceof OrderRepository;
+            boolean itemRepository = bean instanceof OrderItemRepository;
+            if (!(service || productRepository || orderRepository || itemRepository)) return bean;
+            MethodInterceptor observer = invocation -> {
+                var racer = participant.get(); String method = invocation.getMethod().getName();
+                if (racer == null) return invocation.proceed();
+                if (service && (method.equals("deleteProduct") || method.equals("register"))) {
+                    outsideTransaction(); inService.set(true); racer.events.add("SERVICE_ENTER");
+                    try { return invocation.proceed(); }
+                    finally { outsideTransaction(); racer.exited = true; racer.events.add("SERVICE_EXIT"); inService.remove(); }
+                }
+                if (current() == null) return invocation.proceed();
+                if (itemRepository && method.equals("existsByProductId")) {
+                    var result = invocation.proceed(); racer.precheckFalse = Boolean.FALSE.equals(result);
+                    racer.events.add("PRECHECK_" + result); return result;
+                }
+                boolean buying = orderRepository && method.equals("saveAndFlush");
+                boolean deleting = productRepository && method.equals("delete") && racer.name.equals("DELETE");
+                if (buying || deleting) {
+                    assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isTrue();
+                    if (buying) racer.loadedPrice = ((Order) invocation.getArguments()[0]).getItems().get(1).getUnitPrice();
+                    else assertThat(racer.precheckFalse).isTrue();
+                    racer.events.add("READY_BEFORE_DML"); racer.ready.countDown(); await(racer.allowDml, racer.name + " DML released");
+                }
+                var result = invocation.proceed();
+                if (buying || (productRepository && method.equals("flush") && racer.name.equals("DELETE"))) {
+                    racer.events.add("FLUSH_RETURN"); racer.flushed.countDown(); await(racer.allowCommit, racer.name + " commit released");
+                }
+                return result;
+            };
+            if (bean instanceof Advised advised) { advised.addAdvice(0, observer); return bean; }
+            var factory = new ProxyFactory(bean); factory.setProxyTargetClass(true); factory.addAdvice(observer); return factory.getProxy();
+        }
+        private Connection connection(Connection delegate) {
+            return (Connection) Proxy.newProxyInstance(Connection.class.getClassLoader(), new Class<?>[]{Connection.class}, (proxy, method, args) -> {
+                var racer = current(); String name = method.getName();
+                if (racer != null && name.equals("commit")) racer.events.add("COMMIT_BEGIN");
+                var result = Probe.delegate(delegate, method, args);
+                if (racer != null && name.equals("commit")) { racer.commits.incrementAndGet(); racer.events.add("COMMIT_RETURN"); }
+                if (racer != null && name.equals("rollback")) { racer.rollbacks.incrementAndGet(); racer.events.add("ROLLBACK_RETURN"); }
+                if (result instanceof Statement statement) {
+                    String sql = args != null && args.length > 0 && args[0] instanceof String text ? text : null;
+                    return statement(statement, sql, delegate);
+                }
+                return result;
+            });
+        }
+        private Statement statement(Statement delegate, String prepared, Connection connection) {
+            Class<?> type = delegate instanceof PreparedStatement ? PreparedStatement.class : Statement.class;
+            return (Statement) Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[]{type}, (proxy, method, args) -> {
+                var racer = current();
+                String sql = prepared != null ? prepared : args != null && args.length > 0 && args[0] instanceof String text ? text : null;
+                boolean observed = racer != null && sql != null && method.getName().startsWith("execute");
+                String normalized = sql == null ? "" : sql.replaceAll("(?s)/\\*.*?\\*/", " ").stripLeading().toLowerCase(Locale.ROOT);
+                boolean dml = observed && List.of("insert ", "update ", "delete ", "merge ").stream().anyMatch(normalized::startsWith);
+                if (observed) {
+                    assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isTrue();
+                    assertThat(connection.getAutoCommit()).isFalse();
+                    assertThat(connection.getTransactionIsolation()).isEqualTo(Connection.TRANSACTION_READ_COMMITTED);
+                    try (var query = connection.createStatement(); var rows = query.executeQuery("SELECT SESSION_ID()")) {
+                        assertThat(rows.next()).isTrue(); int session = rows.getInt(1);
+                        racer.session.compareAndSet(0, session); assertThat(racer.session.get()).isEqualTo(session);
+                    }
+                    if (!racer.registered) {
+                        racer.registered = true;
+                        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                            @Override public void afterCompletion(int status) { racer.completion.set(status); racer.events.add("COMPLETION_" + status); }
+                        });
+                    }
+                    racer.statements.add(normalized);
+                }
+                try {
+                    var result = Probe.delegate(delegate, method, args);
+                    if (dml) racer.writes.add(new RaceSql(normalized, result instanceof Integer count ? count : -1, null));
+                    return result;
+                } catch (SQLException failure) {
+                    if (observed) { racer.failures.add(failure); racer.writes.add(new RaceSql(normalized, -1, failure.getSQLState())); racer.events.add("SQL_FAIL_" + failure.getSQLState()); }
+                    throw failure;
+                }
+            });
+        }
+    }
 
     /** Test-only, transparent Spring/JDBC observation; barriers never replace business results. */
     public static class Probe implements BeanPostProcessor {

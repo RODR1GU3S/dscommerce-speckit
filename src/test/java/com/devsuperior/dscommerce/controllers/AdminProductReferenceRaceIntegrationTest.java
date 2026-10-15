@@ -4,12 +4,15 @@ import com.devsuperior.dscommerce.DscommerceApplication;
 import com.devsuperior.dscommerce.config.AdminProductTestConfig;
 import com.devsuperior.dscommerce.dto.AdminProductDetailDTO;
 import com.devsuperior.dscommerce.dto.ProductInputDiagnostic;
+import com.devsuperior.dscommerce.dto.ProductWriteRequestDTO;
+import com.devsuperior.dscommerce.entities.Category;
 import com.devsuperior.dscommerce.entities.Product;
 import com.devsuperior.dscommerce.entities.UserRole;
 import com.devsuperior.dscommerce.entities.UserAccount;
 import com.devsuperior.dscommerce.fixtures.AdminProductDatabaseProbe;
 import com.devsuperior.dscommerce.fixtures.AdminProductTestFixture;
 import com.devsuperior.dscommerce.repositories.ProductRepository;
+import com.devsuperior.dscommerce.repositories.CategoryRepository;
 import com.devsuperior.dscommerce.repositories.UserAccountRepository;
 import com.devsuperior.dscommerce.services.AdminAccessService;
 import com.devsuperior.dscommerce.services.ProductCategoryDiagnosticService;
@@ -21,6 +24,10 @@ import org.aopalliance.intercept.MethodInterceptor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.springframework.aop.framework.Advised;
 import org.springframework.aop.framework.ProxyFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -65,9 +72,11 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Predicate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 /** T040 only: real boundary/write races and late FK classification, with deterministic test-only barriers. */
 @SpringBootTest(classes = DscommerceApplication.class, properties = "spring.jpa.properties.hibernate.jdbc.batch_size=0")
@@ -78,6 +87,7 @@ public class AdminProductReferenceRaceIntegrationTest {
     @Autowired private WebApplicationContext context;
     @Autowired private ObjectMapper mapper;
     @Autowired private Recorder recorder;
+    @PersistenceContext private EntityManager entityManager;
     private AdminProductDatabaseProbe database;
     private AdminProductTestFixture fixture;
     private AdminProductTestFixture.Account admin;
@@ -275,6 +285,147 @@ public class AdminProductReferenceRaceIntegrationTest {
         });
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"category", "removed-account", "revoked-admin"})
+    void t051RechecksChangesCommittedAfterPutBoundaryBeforeMaintenance(String change) throws Exception {
+        recorder.putManaged = entityManager::contains;
+        startPut(Point.BEFORE_MAINTENANCE, putBody("valid"));
+        recorder.gate.awaitReached();
+        assertBoundaryPassedBeforeWrite();
+        assertThat(recorder.putEntries.get()).isEqualTo(1); // outer advice reached; business body still blocked
+        assertThat(recorder.putTargetLookups.get()).isZero();
+        assertThat(recorder.sql).noneMatch(SqlEvent::isDml);
+        if (change.equals("category")) {
+            assertThat(sql("delete from tb_category where id = ?", a)).isEqualTo(1);
+        } else {
+            assertThat(sql("delete from tb_user_account_role where user_account_id = ? and role = 'ADMIN'", admin.id())).isEqualTo(1);
+            if (change.equals("removed-account")) assertThat(sql("delete from tb_user_account where id = ?", admin.id())).isEqualTo(1);
+        }
+        var afterConcurrentCommit = database.snapshot();
+        var expectedAccounts = database.accountIds();
+        var expectedRoles = database.roles(admin.id());
+        recorder.gate.release.countDown();
+        var result = finish();
+        assertThat(database.snapshot()).isEqualTo(afterConcurrentCommit);
+        assertThat(database.accountIds()).isEqualTo(expectedAccounts);
+        assertThat(database.roles(admin.id())).isEqualTo(expectedRoles);
+        assertPutNoDmlAndMemory();
+        assertThat(recorder.completions).containsExactly(TransactionSynchronization.STATUS_ROLLED_BACK);
+        assertThat(recorder.rollbacks.get()).isEqualTo(1);
+        assertThat(recorder.commits.get()).isZero();
+        assertThat(recorder.returns.get()).isZero();
+        if (change.equals("category")) {
+            assertThat(recorder.putTargetLookups.get()).isEqualTo(1);
+            assertThat(recorder.putCalls).startsWith("guard", "effective-roles", "target", "local", "write-diagnose");
+            assertThat(recorder.writeReferences.get()).isEqualTo(1);
+            assertThat(recorder.revalidatedPasses.get()).isZero();
+            assertThat(recorder.putTargetAfter).isEqualTo(recorder.putTargetBefore);
+            assertPutEnvelope(result, 400, "Invalid product maintenance data");
+            assertThat(diagnoses(result)).containsExactly("categoryIds[0]/CATEGORY_NOT_FOUND", "categoryIds[1]/CATEGORY_NOT_FOUND");
+        } else {
+            if (change.equals("removed-account")) {
+                assertThat(recorder.putCalls).containsExactly("guard");
+                assertThat(recorder.failure).isInstanceOf(org.springframework.security.authentication.BadCredentialsException.class);
+            } else {
+                assertThat(recorder.putCalls).containsExactly("guard", "effective-roles");
+                assertThat(recorder.failure).isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
+            }
+            assertThat(recorder.putTargetLookups.get()).isZero();
+            assertThat(recorder.putTarget).isNull();
+            assertThat(recorder.writeLocal.get()).isZero();
+            assertThat(recorder.writeReferences.get()).isZero();
+            assertThat(recorder.sql).noneMatch(event -> event.write() && (event.sql().contains("tb_product") || event.sql().contains("tb_category")));
+            assertPutEnvelope(result, change.equals("removed-account") ? 401 : 403,
+                    change.equals("removed-account") ? "Authentication required or invalid" : "Product maintenance not permitted");
+            assertThat(diagnoses(result)).isEmpty();
+        }
+        putProof(change, result);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"aggregate", "mixed"})
+    void t051RejectsMixedAndRepeatedMissingReferencesInPutBoundaryWithoutMaintenance(String kind) throws Exception {
+        var before = database.snapshot();
+        recorder.putManaged = entityManager::contains;
+        startPut(Point.NONE, putBody(kind));
+        var result = finish();
+        assertThat(database.snapshot()).isEqualTo(before);
+        assertThat(database.accountIds()).containsExactly(admin.id());
+        assertThat(database.roles(admin.id())).containsExactly(UserRole.ADMIN);
+        assertThat(recorder.putEntries.get()).isZero();
+        assertThat(recorder.putTargetLookups.get()).isZero();
+        assertThat(recorder.writeGuards.get()).isZero();
+        assertThat(recorder.writeLocal.get()).isZero();
+        assertThat(recorder.writeReferences.get()).isZero();
+        assertThat(recorder.completions).isEmpty();
+        assertThat(recorder.commits.get()).isZero();
+        assertThat(recorder.rollbacks.get()).isZero();
+        assertThat(recorder.putInputs).hasSize(2); // local policy + reference diagnosis during @Valid
+        assertPutNoDmlAndMemory();
+        assertPutEnvelope(result, 400, "Invalid product maintenance data");
+        assertThat(diagnoses(result)).containsExactlyElementsOf(kind.equals("aggregate")
+                ? List.of("name/INVALID_LENGTH", "description/INVALID_LENGTH", "price/NOT_POSITIVE", "image/INVALID_IMAGE_URL",
+                    "categoryIds[1]/CATEGORY_NOT_FOUND", "categoryIds[2]/CATEGORY_NOT_FOUND")
+                : List.of("categoryIds[1]/INVALID_TYPE", "categoryIds[2]/CATEGORY_NOT_FOUND", "categoryIds[3]/CATEGORY_NOT_FOUND"));
+        putProof(kind, result);
+    }
+
+    private String putBody(String kind) {
+        String fields = kind.equals("aggregate")
+                ? "\"name\":\" ab \",\"description\":\"short\",\"price\":\"0\",\"image\":\"/relative\""
+                : "\"name\":\" T051 Fone \",\"description\":\" Descricao completa T051 \",\"price\":\"1.000\",\"image\":\"https://example.invalid/t051.jpg\"";
+        String ids = switch (kind) {
+            case "aggregate" -> a + "," + Long.MAX_VALUE + "," + Long.MAX_VALUE + "," + b;
+            case "mixed" -> a + ",true," + Long.MAX_VALUE + "," + Long.MAX_VALUE + "," + b;
+            default -> a + "," + a + "," + b;
+        };
+        return "{" + fields + ",\"categoryIds\":[" + ids + "]}";
+    }
+
+    private void startPut(Point point, String body) {
+        recorder.startPut(point);
+        request = worker.submit(() -> {
+            noCallerTransaction();
+            String route = "/admin/products/" + legacyId;
+            var result = mvc.perform(put("/api" + route).contextPath("/api").servletPath(route)
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + token).contentType(MediaType.APPLICATION_JSON)
+                    .accept(MediaType.APPLICATION_JSON).content(body)).andReturn();
+            noCallerTransaction();
+            return result;
+        });
+    }
+
+    private void assertPutNoDmlAndMemory() {
+        noCallerTransaction();
+        assertThat(recorder.sql).noneMatch(SqlEvent::isDml); // all observed JDBC, including read-only boundary
+        assertThat(recorder.saveAttempts.get()).isZero();
+        assertThat(recorder.flushReturns.get()).isZero();
+        recorder.assertPutMemory();
+        assertThat(recorder.putCategories).isNotEmpty();
+    }
+
+    private void assertPutEnvelope(MvcResult result, int status, String message) throws Exception {
+        assertThat(result.getResponse().getStatus()).isEqualTo(status);
+        assertThat(result.getResponse().getHeader(HttpHeaders.LOCATION)).isNull();
+        assertThat(result.getResponse().getHeader(HttpHeaders.WWW_AUTHENTICATE)).isEqualTo(status == 401 ? "Bearer" : null);
+        var body = json(result);
+        var fields = new ArrayList<String>(); body.fieldNames().forEachRemaining(fields::add);
+        assertThat(fields).containsExactlyInAnyOrder("status", "error", "message", "path", "errors");
+        assertThat(body.path("status").asInt()).isEqualTo(status);
+        assertThat(body.path("error").asText()).isEqualTo(org.springframework.http.HttpStatus.valueOf(status).getReasonPhrase());
+        assertThat(body.path("message").asText()).isEqualTo(message);
+        assertThat(body.path("path").asText()).isEqualTo("/api/admin/products/" + legacyId);
+        assertThat(body.path("errors").isArray()).isTrue();
+        assertThat(result.getResponse().getContentAsString()).doesNotContain(token, "Disposable-T040", "select ", "SQLException");
+    }
+
+    private void putProof(String kind, MvcResult result) {
+        System.out.printf("T051_HTTP case=%s actual=%d proxyEntries=%d writeGuards=%d targetLookups=%d writeReferences=%d dml=%d flushes=%d commits=%d rollbacks=%d inputObservations=%d categoryObservations=%d memoryChecked=true snapshotChecked=true%n",
+                kind, result.getResponse().getStatus(), recorder.putEntries.get(), recorder.writeGuards.get(), recorder.putTargetLookups.get(),
+                recorder.writeReferences.get(), recorder.sql.stream().filter(SqlEvent::isDml).count(), recorder.flushReturns.get(), recorder.commits.get(),
+                recorder.rollbacks.get(), recorder.putInputs.size(), recorder.putCategories.size());
+    }
+
     private MvcResult finish() throws Exception { return request.get(30, TimeUnit.SECONDS); }
 
     private void assertBoundaryPassedBeforeWrite() {
@@ -407,14 +558,50 @@ public class AdminProductReferenceRaceIntegrationTest {
         public final List<Integer> completions = new CopyOnWriteArrayList<>();
         public final List<SqlEvent> sql = new CopyOnWriteArrayList<>();
         public final List<AccountRead> accounts = new CopyOnWriteArrayList<>();
+        public volatile boolean putEnabled;
+        public Predicate<Object> putManaged = ignored -> false;
+        public final AtomicInteger putEntries = new AtomicInteger();
+        public final AtomicInteger putTargetLookups = new AtomicInteger();
+        public final List<String> putCalls = new CopyOnWriteArrayList<>();
+        public final List<InputObservation> putInputs = new CopyOnWriteArrayList<>();
+        public final List<CategoryRead> putCategories = new CopyOnWriteArrayList<>();
+        public volatile Product putTarget;
+        public volatile ProductState putTargetBefore;
+        public volatile ProductState putTargetAfterDiagnosis;
+        public volatile ProductState putTargetAfter;
+        private Object putCollection;
         private final ThreadLocal<Boolean> write = ThreadLocal.withInitial(() -> false);
         private final ThreadLocal<Boolean> registered = ThreadLocal.withInitial(() -> false);
 
         public void start(Point point) {
+            putEnabled = false;
             gate = new Gate(point);
             for (var counter : List.of(boundaryPasses, writeGuards, writeLocal, writeReferences, revalidatedPasses,
                     saveAttempts, flushReturns, commits, rollbacks, returns)) counter.set(0);
             completions.clear(); sql.clear(); accounts.clear(); flushedId = 0; failure = null; active = true;
+        }
+
+        public void startPut(Point point) {
+            start(point);
+            putEntries.set(0); putTargetLookups.set(0);
+            putCalls.clear(); putInputs.clear(); putCategories.clear();
+            putTarget = null; putTargetBefore = putTargetAfterDiagnosis = putTargetAfter = null; putCollection = null;
+            putEnabled = true;
+        }
+
+        public void assertPutMemory() {
+            for (var input : putInputs) {
+                assertThat(input.after()).as(input.phase()).isEqualTo(input.before());
+                assertThat(input.sameMetadata()).isTrue();
+            }
+            for (var category : putCategories) {
+                assertThat(category.managedAtRead()).isTrue();
+                assertThat(CategoryState.capture(category.instance())).isEqualTo(category.before());
+            }
+            if (putTargetBefore != null) {
+                assertThat(putTargetAfterDiagnosis).isEqualTo(putTargetBefore);
+                assertThat(putTarget.getCategories()).isSameAs(putCollection);
+            }
         }
 
         public List<SqlEvent> succeededDml() {
@@ -434,10 +621,55 @@ public class AdminProductReferenceRaceIntegrationTest {
             boolean reference = bean instanceof ProductCategoryDiagnosticService;
             boolean repository = bean instanceof ProductRepository;
             boolean accountRepository = bean instanceof UserAccountRepository;
-            if (!(maintenance || guard || local || reference || repository || accountRepository)) return bean;
+            boolean categoryRepository = bean instanceof CategoryRepository;
+            if (!(maintenance || guard || local || reference || repository || accountRepository || categoryRepository)) return bean;
             MethodInterceptor advice = invocation -> {
                 String method = invocation.getMethod().getName();
                 if (!active) return invocation.proceed();
+                if (putEnabled && maintenance && method.equals("replaceProduct")) {
+                    noCallerTransaction();
+                    putEntries.incrementAndGet();
+                    write.set(true);
+                    try {
+                        gate.hit(Point.BEFORE_MAINTENANCE);
+                        var result = invocation.proceed();
+                        noCallerTransaction();
+                        assertThat(result).isInstanceOf(AdminProductDetailDTO.class);
+                        returns.incrementAndGet();
+                        return result;
+                    } catch (Throwable cause) { failure = cause; throw cause; }
+                    finally {
+                        if (putTarget != null) putTargetAfter = ProductState.capture(putTarget);
+                        write.remove(); registered.remove();
+                    }
+                }
+                if (putEnabled && accountRepository && method.equals("findEffectiveAccountRolesById") && write.get()) {
+                    putCalls.add("effective-roles");
+                }
+                if (putEnabled && repository && method.equals("findAdminByIdForUpdate")) {
+                    putTargetLookups.incrementAndGet(); putCalls.add("target");
+                    var result = (java.util.Optional<?>) invocation.proceed();
+                    result.ifPresent(value -> {
+                        putTarget = (Product) value;
+                        assertThat(putManaged.test(putTarget)).isTrue();
+                        // Test-only initialization allows a memory comparison before validation/mutation.
+                        putTargetBefore = ProductState.capture(putTarget);
+                        putCollection = putTarget.getCategories();
+                        putTargetAfterDiagnosis = putTargetBefore; // null-input paths have no diagnosis
+                    });
+                    return result;
+                }
+                if (putEnabled && categoryRepository && method.equals("findAllByIdIn")) {
+                    var result = (List<?>) invocation.proceed();
+                    result.forEach(value -> {
+                        var category = (Category) value;
+                        putCategories.add(new CategoryRead(category, CategoryState.capture(category), putManaged.test(category)));
+                    });
+                    return result;
+                }
+                if (putEnabled && repository && method.equals("flush") && write.get()) {
+                    var result = invocation.proceed(); flushReturns.incrementAndGet(); return result;
+                }
                 if (accountRepository && method.equals("findByIdWithRoles")) {
                     var result = (java.util.Optional<?>) invocation.proceed();
                     result.ifPresent(value -> {
@@ -460,6 +692,7 @@ public class AdminProductReferenceRaceIntegrationTest {
                     finally { write.remove(); registered.remove(); }
                 }
                 if (guard && method.equals("requireAdmin") && write.get()) {
+                    if (putEnabled) putCalls.add("guard");
                     assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isTrue();
                     assertThat(TransactionSynchronizationManager.isCurrentTransactionReadOnly()).isFalse();
                     writeGuards.incrementAndGet();
@@ -471,10 +704,25 @@ public class AdminProductReferenceRaceIntegrationTest {
                     }
                 }
                 if (local && method.equals("validate") && write.get()) writeLocal.incrementAndGet();
+                if (putEnabled && local && method.equals("validate")) {
+                    if (write.get()) putCalls.add("local");
+                    var input = (ProductWriteRequestDTO) invocation.getArguments()[0];
+                    var before = InputState.capture(input); var metadata = input.diagnostic();
+                    try { return invocation.proceed(); }
+                    finally { putInputs.add(new InputObservation("local", before, InputState.capture(input), input.diagnostic() == metadata)); }
+                }
                 if (reference && method.equals("diagnose")) {
                     boolean writing = write.get();
                     if (writing) writeReferences.incrementAndGet();
+                    var input = putEnabled ? (ProductWriteRequestDTO) invocation.getArguments()[0] : null;
+                    var before = input == null ? null : InputState.capture(input);
+                    var metadata = input == null ? null : input.diagnostic();
+                    if (putEnabled && writing) putCalls.add("write-diagnose");
                     var result = (ProductInputDiagnostic) invocation.proceed();
+                    if (putEnabled) {
+                        putInputs.add(new InputObservation("diagnose", before, InputState.capture(input), input.diagnostic() == metadata));
+                        if (putTarget != null) putTargetAfterDiagnosis = ProductState.capture(putTarget);
+                    }
                     if (result.errors().isEmpty()) {
                         if (writing) revalidatedPasses.incrementAndGet(); else boundaryPasses.incrementAndGet();
                     }
@@ -548,4 +796,26 @@ public class AdminProductReferenceRaceIntegrationTest {
     }
 
     public record AccountRead(boolean write, UserAccount instance, Set<UserRole> roles) { }
+
+    public record InputState(String name, String description, String price, String image, List<Long> ids,
+                             Map<ProductInputDiagnostic.Field, ProductInputDiagnostic.Representation> fields,
+                             Map<Integer, ProductInputDiagnostic.Representation> elements,
+                             List<com.devsuperior.dscommerce.dto.AdminFieldErrorDTO> errors) {
+        public static InputState capture(ProductWriteRequestDTO input) {
+            return new InputState(input.name(), input.description(), input.price(), input.image(),
+                    input.categoryIds() == null ? null : Collections.unmodifiableList(new ArrayList<>(input.categoryIds())),
+                    Map.copyOf(input.diagnostic().fields()), Map.copyOf(input.diagnostic().categoryElements()), List.copyOf(input.diagnostic().errors()));
+        }
+    }
+    public record InputObservation(String phase, InputState before, InputState after, boolean sameMetadata) { }
+    public record CategoryState(Long id, String name) {
+        static CategoryState capture(Category category) { return new CategoryState(category.getId(), category.getName()); }
+    }
+    public record CategoryRead(Category instance, CategoryState before, boolean managedAtRead) { }
+    public record ProductState(Long id, String name, String description, String image, BigDecimal price, List<CategoryState> categories) {
+        static ProductState capture(Product product) {
+            return new ProductState(product.getId(), product.getName(), product.getDescription(), product.getImage(), product.getPrice(),
+                    product.getCategories().stream().map(CategoryState::capture).sorted(java.util.Comparator.comparing(CategoryState::id)).toList());
+        }
+    }
 }

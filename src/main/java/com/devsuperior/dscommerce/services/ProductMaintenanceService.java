@@ -13,6 +13,7 @@ import com.devsuperior.dscommerce.repositories.UserAccountRepository;
 import com.devsuperior.dscommerce.security.AuthenticatedAccountPrincipal;
 import com.devsuperior.dscommerce.services.exceptions.InvalidProductInputException;
 import com.devsuperior.dscommerce.services.exceptions.ProductCreationPersistenceException;
+import com.devsuperior.dscommerce.services.exceptions.ProductNotFoundException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -24,7 +25,7 @@ import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 
-/** Inclusion only; the proxy commits before return when this call owns the REQUIRED transaction. */
+/** Product maintenance; the proxy commits before return when this call owns the REQUIRED transaction. */
 @Service
 @Transactional(propagation = Propagation.REQUIRED)
 public class ProductMaintenanceService {
@@ -44,6 +45,39 @@ public class ProductMaintenanceService {
         this.categories = categories;
         this.products = products;
         this.accounts = accounts;
+    }
+
+    public AdminProductDetailDTO replaceProduct(Long id, ProductWriteRequestDTO input, AuthenticatedAccountPrincipal principal) {
+        access.requireAdmin(principal);
+        // Recheck scalar database roles even if a caller's persistence context retained an old ADMIN collection.
+        var effectiveRoles = accounts.findEffectiveAccountRolesById(principal.accountId());
+        if (effectiveRoles.isEmpty()) throw new BadCredentialsException("Authentication required or invalid");
+        if (effectiveRoles.stream().noneMatch(row -> row.getRole() == UserRole.ADMIN)) {
+            throw new AccessDeniedException("Product maintenance not permitted");
+        }
+        var product = products.findAdminByIdForUpdate(id)
+                .orElseThrow(() -> new ProductNotFoundException("Product not found"));
+        if (input == null) {
+            throw new InvalidProductInputException(List.of(new AdminFieldErrorDTO(
+                    "body", "INVALID_BODY", "Invalid request body")));
+        }
+        var checked = local.validate(input);
+        var complete = diagnostic.diagnose(input, checked.diagnostic(), principal);
+        if (!complete.errors().isEmpty()) throw new InvalidProductInputException(complete.errors());
+        var values = checked.normalizedValues();
+        if (values == null) throw new IllegalStateException("Product normalization could not be completed");
+        var selected = new LinkedHashSet<>(values.categoryIds()).stream().map(categories::getReferenceById).toList();
+
+        // Mutate only the locked, managed target, after every local rule and reference has been rechecked.
+        product.replaceDetails(values.name(), values.description(), values.image(), values.price(), selected);
+        products.flush();
+        var options = product.getCategories().stream()
+                .sorted(Comparator.comparing(Category::getName).thenComparing(Category::getId))
+                .map(category -> new CategoryOptionDTO(category.getId(), category.getName()))
+                .toList();
+        // Mapping remains transactional; failures escape the proxy before a caller can confirm success.
+        return new AdminProductDetailDTO(product.getId(), product.getName(), product.getDescription(), product.getImage(),
+                product.getPrice().toPlainString(), options);
     }
 
     public AdminProductDetailDTO createProduct(ProductWriteRequestDTO input, AuthenticatedAccountPrincipal principal) {

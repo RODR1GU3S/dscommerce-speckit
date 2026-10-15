@@ -15,6 +15,7 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -45,6 +46,19 @@ public class AdminProductController {
         var location = ServletUriComponentsBuilder.fromCurrentRequestUri()
                 .path("/{id}").buildAndExpand(response.id()).toUri();
         return ResponseEntity.created(location).body(response);
+    }
+
+    @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<AdminProductDetailDTO> replaceProduct(
+            @PathVariable String id,
+            @Valid @RequestBody ProductWriteRequestDTO input,
+            @RequestParam MultiValueMap<String, String> query,
+            @AuthenticationPrincipal AuthenticatedAccountPrincipal principal) {
+        AdminQueryParameters.requireNoQuery(query);
+        long productId = AdminQueryParameters.productId(id);
+        // The transactional proxy concludes before HTTP success is built, as on creation.
+        var response = maintenance.replaceProduct(productId, input, principal);
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping

@@ -208,7 +208,7 @@ class ProductMaintenanceServiceTest {
         assertThat(database.accountIds()).containsExactly(principal.accountId());
         if (kind.equals("valid")) {
             assertThat(failure).isNull();
-            assertThat(recorder.putCalls).containsExactly("guard", "effective-roles", "target", "local", "write-diagnose", "guard");
+            assertThat(recorder.putCalls).containsExactly("guard", "effective-roles", "target", "local", "write-diagnose", "guard", "effective-roles");
             assertThat(recorder.writeLocal.get()).isEqualTo(1);
             assertThat(recorder.writeReferences.get()).isEqualTo(1);
             assertThat(recorder.revalidatedPasses.get()).isEqualTo(1);

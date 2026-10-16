@@ -94,8 +94,47 @@ class AdminGuardExceptionHandlerTest {
     @ParameterizedTest
     @MethodSource("nativeClientErrors")
     void shouldLeaveNativeMvcClientErrorsIntactRatherThanTurnThemIntoInternalFailures(Exception exception) {
-        assertThatThrownBy(() -> handler.handleOrderProcessing(exception, request("/api", "/admin/products/9")))
-                .isSameAs(exception);
+        var request = request("/api", "/admin/products/9");
+        if (exception instanceof NoResourceFoundException) {
+            assertThatThrownBy(() -> handler.handleOrderProcessing(exception, request)).isSameAs(exception);
+            return;
+        }
+        var nativeError = (org.springframework.web.ErrorResponse) exception;
+        var response = assertDoesNotThrow(() -> handler.handleOrderProcessing(exception, request));
+        assertEnvelope(response, nativeError.getStatusCode().value(), "Product maintenance request not supported",
+                "/api/admin/products/9", true);
+        assertThat(response.getHeaders()).isEqualTo(nativeError.getHeaders());
+        assertThat(response.getHeaders()).doesNotContainKeys(HttpHeaders.LOCATION, HttpHeaders.WWW_AUTHENTICATE);
+    }
+
+    @ParameterizedTest(name = "native unwritable context={0}, exception={1}")
+    @MethodSource("unwritableNativeErrors")
+    void shouldKeepNativeStatusAndHeadersWhenAdministrativeJsonCannotBeWritten(String context, Exception exception) {
+        var request = request(context, "/admin/products/9");
+        request.addHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_XML_VALUE);
+        var nativeError = (org.springframework.web.ErrorResponse) exception;
+        var response = assertDoesNotThrow(() -> handler.handleOrderProcessing(exception, request));
+        assertThat(response.getStatusCode()).isEqualTo(nativeError.getStatusCode());
+        assertThat(response.getHeaders()).isEqualTo(nativeError.getHeaders());
+        assertThat(response.getBody()).isNull();
+        assertThat(response.getHeaders()).doesNotContainKeys(HttpHeaders.LOCATION, HttpHeaders.WWW_AUTHENTICATE);
+    }
+
+    static Stream<Arguments> unwritableNativeErrors() {
+        return Stream.of("", "/api").flatMap(context -> nativeClientErrors()
+                .filter(exception -> !(exception instanceof NoResourceFoundException))
+                .map(exception -> Arguments.of(context, exception)));
+    }
+
+    @ParameterizedTest(name = "native outside admin path={0}, exception={1}")
+    @MethodSource("nativeErrorsOutsideAdmin")
+    void shouldRethrowTheSameNativeErrorsOutsideTheAdministrativeContract(String path, Exception exception) {
+        assertThatThrownBy(() -> handler.handleOrderProcessing(exception, request("/api", path))).isSameAs(exception);
+    }
+
+    static Stream<Arguments> nativeErrorsOutsideAdmin() {
+        return Stream.of("/products/9", "/orders", "/administrator/products/9")
+                .flatMap(path -> nativeClientErrors().map(exception -> Arguments.of(path, exception)));
     }
 
     static Stream<Exception> nativeClientErrors() {

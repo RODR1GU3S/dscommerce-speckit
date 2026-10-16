@@ -20,6 +20,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
@@ -37,6 +38,7 @@ import java.util.HashSet;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Collections;
 import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
 import java.util.regex.Pattern;
@@ -301,7 +303,11 @@ public class GlobalExceptionHandler {
         if (isAdminRequest(request) && nativeClientError && exception instanceof ErrorResponse error
                 && List.of(405, 406, 415).contains(error.getStatusCode().value())) {
             var status = HttpStatus.valueOf(error.getStatusCode().value());
-            return ResponseEntity.status(status).headers(error.getHeaders()).body(new AdminErrorResponseDTO(
+            var response = ResponseEntity.status(status).headers(error.getHeaders());
+            // Offering an unwritable body makes MVC log an exception-handler stack trace before its fallback.
+            // Keep native status/headers and omit only the representation the client cannot accept.
+            if (!acceptsAdministrativeJsonError(request)) return response.build();
+            return response.body(new AdminErrorResponseDTO(
                     status.value(), status.getReasonPhrase(), "Product maintenance request not supported",
                     request.getRequestURI(), List.of()));
         }
@@ -430,6 +436,18 @@ public class GlobalExceptionHandler {
         }
         return response.body(new AdminErrorResponseDTO(status.value(), status.getReasonPhrase(),
                 message, request.getRequestURI(), List.of()));
+    }
+
+    private static boolean acceptsAdministrativeJsonError(HttpServletRequest request) {
+        try {
+            var accepted = MediaType.parseMediaTypes(Collections.list(request.getHeaders(HttpHeaders.ACCEPT)));
+            return accepted.isEmpty() || accepted.stream().anyMatch(type -> type.getQualityValue() > 0
+                    && (type.isCompatibleWith(MediaType.APPLICATION_JSON)
+                    || type.isCompatibleWith(new MediaType("application", "*+json"))));
+        } catch (IllegalArgumentException invalidAccept) {
+            // The native 406 already describes the invalid negotiation; do not fail while writing its error.
+            return false;
+        }
     }
 
     private static boolean isAdminRequest(HttpServletRequest request) {

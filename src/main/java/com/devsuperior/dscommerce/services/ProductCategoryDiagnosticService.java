@@ -7,11 +7,16 @@ import com.devsuperior.dscommerce.dto.ProductInputDiagnostic.Representation;
 import com.devsuperior.dscommerce.dto.ProductWriteRequestDTO;
 import com.devsuperior.dscommerce.entities.Category;
 import com.devsuperior.dscommerce.repositories.CategoryRepository;
+import com.devsuperior.dscommerce.repositories.UserAccountRepository;
+import com.devsuperior.dscommerce.entities.UserRole;
 import com.devsuperior.dscommerce.security.AuthenticatedAccountPrincipal;
+import com.devsuperior.dscommerce.services.exceptions.OrderAccountResolutionException;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.hibernate.Session;
 import org.springframework.stereotype.Service;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
@@ -28,11 +33,13 @@ import java.util.stream.Collectors;
 public class ProductCategoryDiagnosticService {
     private final AdminAccessService access;
     private final CategoryRepository categories;
+    private final UserAccountRepository accounts;
     @PersistenceContext private EntityManager entityManager;
 
-    public ProductCategoryDiagnosticService(AdminAccessService access, CategoryRepository categories) {
+    public ProductCategoryDiagnosticService(AdminAccessService access, CategoryRepository categories, UserAccountRepository accounts) {
         this.access = access;
         this.categories = categories;
+        this.accounts = accounts;
     }
 
     /** Metadata only, invoked by authorized, revalidated creation before saving; never by isValid or after failure. */
@@ -67,6 +74,7 @@ public class ProductCategoryDiagnosticService {
     public ProductInputDiagnostic diagnose(ProductWriteRequestDTO input, ProductInputDiagnostic diagnostic,
                                            AuthenticatedAccountPrincipal principal) {
         access.requireAdmin(principal);
+        requireEffectiveAdmin(principal);
         Objects.requireNonNull(input, "Product input is required");
         Objects.requireNonNull(diagnostic, "Internal input diagnostic is required");
         var errors = new ArrayList<>(diagnostic.errors());
@@ -78,6 +86,21 @@ public class ProductCategoryDiagnosticService {
         }
         // Invalid/duplicated whole fields are already diagnosed and supply no trustworthy references.
         return new ProductInputDiagnostic(diagnostic.fields(), diagnostic.categoryElements(), errors);
+    }
+
+    private void requireEffectiveAdmin(AuthenticatedAccountPrincipal principal) {
+        // A shared OSIV context can retain initialized roles from JWT resolution. Scalar rows read the database
+        // without refreshing/clearing caller entities or flushing their pending changes (repository COMMIT hint).
+        List<UserAccountRepository.EffectiveAccountRole> roles;
+        try {
+            roles = accounts.findEffectiveAccountRolesById(principal.accountId());
+        } catch (RuntimeException cause) {
+            throw new OrderAccountResolutionException("Account resolution could not be completed", cause);
+        }
+        if (roles.isEmpty()) throw new BadCredentialsException("Authentication required or invalid");
+        if (roles.stream().noneMatch(row -> row.getRole() == UserRole.ADMIN)) {
+            throw new AccessDeniedException("Product maintenance not permitted");
+        }
     }
 
     private void diagnoseSelection(ProductWriteRequestDTO input, ProductInputDiagnostic diagnostic,

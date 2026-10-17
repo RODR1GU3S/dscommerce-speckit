@@ -64,7 +64,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
 
 /** T066: real filters/login/decoder/services/H2, without an outer test transaction or mock users. */
-@SpringBootTest(classes = DscommerceApplication.class, properties = "spring.jpa.open-in-view=false")
+@SpringBootTest(classes = DscommerceApplication.class,
+        properties = {"spring.jpa.open-in-view=false", "logging.level.root=INFO"})
 @ActiveProfiles("test")
 @ContextConfiguration(initializers = AdminProductTestConfig.class)
 @Import(AdminProductSecurityIntegrationTest.SqlConfig.class)

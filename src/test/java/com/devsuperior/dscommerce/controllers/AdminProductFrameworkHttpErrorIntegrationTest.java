@@ -67,7 +67,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
 
 /** T068: native MVC failures and real security/database; the observer never resolves or fabricates errors. */
-@SpringBootTest(classes = DscommerceApplication.class, properties = "spring.jpa.open-in-view=false")
+@SpringBootTest(classes = DscommerceApplication.class,
+        properties = {"spring.jpa.open-in-view=false", "logging.level.root=INFO"})
 @ActiveProfiles("test")
 @ContextConfiguration(initializers = AdminProductTestConfig.class)
 @Import(AdminProductFrameworkHttpErrorIntegrationTest.ObservationConfig.class)

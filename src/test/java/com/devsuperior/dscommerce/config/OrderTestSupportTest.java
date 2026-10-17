@@ -41,6 +41,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class OrderTestSupportTest {
 
     private final WebApplicationContextRunner runner = new WebApplicationContextRunner()
+            .withInitializer(new TestComponentExclusion())
             .withInitializer(new ConfigDataApplicationContextInitializer())
             .withPropertyValues("spring.profiles.active=test")
             .withUserConfiguration(DscommerceApplication.class, OrderTestConfig.class);

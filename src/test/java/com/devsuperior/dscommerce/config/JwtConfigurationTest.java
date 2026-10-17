@@ -21,6 +21,7 @@ class JwtConfigurationTest {
 
     private final WebApplicationContextRunner contextRunner =
             new WebApplicationContextRunner()
+                    .withInitializer(new TestComponentExclusion())
                     .withUserConfiguration(DscommerceApplication.class);
 
     @Test

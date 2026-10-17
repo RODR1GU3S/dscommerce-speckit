@@ -334,7 +334,7 @@ public class GlobalExceptionHandler {
         // Completion exceptions arrive here after the service proxy has unwound. Never inspect an aborted transaction.
         if (TransactionSynchronizationManager.isActualTransactionActive()) return null;
         var path = request.getRequestURI().substring(request.getContextPath().length());
-        boolean deletion = "DELETE".equals(request.getMethod()) && ADMIN_PRODUCT_ITEM.matcher(path).matches();
+        boolean deletion = isAdminProductDeletion(request, path);
         boolean writing = ("POST".equals(request.getMethod()) && "/admin/products".equals(path))
                 || ("PUT".equals(request.getMethod()) && ADMIN_PRODUCT_ITEM.matcher(path).matches());
         if (!deletion && !writing) return null;
@@ -360,6 +360,18 @@ public class GlobalExceptionHandler {
         if (deletion) return adminErrorResponse(HttpStatus.CONFLICT, "Product deletion violates referential integrity", request);
         return adminInputResponse(List.of(new AdminFieldErrorDTO(
                 "categoryIds", "CATEGORY_NOT_FOUND", "Selected category does not exist")), request);
+    }
+
+    private static boolean isAdminProductDeletion(HttpServletRequest request, String path) {
+        String prefix = "/admin/products/";
+        if (!"DELETE".equals(request.getMethod()) || !path.startsWith(prefix)) return false;
+        try {
+            // Use the endpoint's representation rules, including positive IDs with leading zeros.
+            AdminQueryParameters.productId(path.substring(prefix.length()));
+            return true;
+        } catch (AdminQueryParameters.InvalidParameterException invalidId) {
+            return false;
+        }
     }
 
     private static org.hibernate.exception.ConstraintViolationException referentialCause(Throwable failure) {

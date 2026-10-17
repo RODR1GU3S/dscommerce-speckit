@@ -114,7 +114,10 @@ class ProductDeletionIntegrityClassificationTest {
         var failure = catchThrowable(() -> maintenance.deleteProduct(sold.id(), admin)); outsideTransaction();
         assertThat(failure).isInstanceOf(ProductDeletionIntegrityException.class).hasNoCause();
         assertThat(database.snapshot()).isEqualTo(before);
-        assertResponse(handler.handleOrderProcessing((Exception) failure, request("DELETE", "/admin/products/" + sold.id())), 409);
+        for (String idPrefix : List.of("", "0", "00", "+")) {
+            assertResponse(handler.handleOrderProcessing((Exception) failure,
+                    request("DELETE", "/admin/products/" + idPrefix + sold.id())), 409);
+        }
         System.out.println("T060_REAL stage=precheck typed=true snapshotEqual=true");
     }
 
@@ -126,7 +129,10 @@ class ProductDeletionIntegrityClassificationTest {
         var failure = catchThrowable(() -> maintenance.deleteProduct(free.id(), admin)); outsideTransaction();
         assertRealConstraint(failure, "23503", "FK_T060_EXTRA_PRODUCT");
         assertThat(database.snapshot()).isEqualTo(before);
-        assertResponse(handler.handleOrderProcessing((Exception) failure, request("DELETE", "/admin/products/" + free.id())), 409);
+        for (String idPrefix : List.of("", "0")) {
+            assertResponse(handler.handleOrderProcessing((Exception) failure,
+                    request("DELETE", "/admin/products/" + idPrefix + free.id())), 409);
+        }
         try (var connection = database.openConnection(); var s = connection.createStatement(); var rows = s.executeQuery("select id,product_id from t060_extra order by id")) {
             for (int i = 1; i <= 2; i++) { assertThat(rows.next()).isTrue(); assertThat(rows.getInt(1)).isEqualTo(i); assertThat(rows.getLong(2)).isEqualTo(free.id()); }
             assertThat(rows.next()).isFalse();
@@ -142,7 +148,10 @@ class ProductDeletionIntegrityClassificationTest {
         assertThat(completion.completionStatus()).isEqualTo(TransactionSynchronization.STATUS_ROLLED_BACK);
         assertRealConstraint(failure, "23503", "FK_ORDER_ITEM_PRODUCT");
         assertThat(database.snapshot()).isEqualTo(before);
-        assertResponse(handler.handleOrderProcessing((Exception) failure, request("DELETE", "/admin/products/" + sold.id())), 409);
+        for (String idPrefix : List.of("", "0")) {
+            assertResponse(handler.handleOrderProcessing((Exception) failure,
+                    request("DELETE", "/admin/products/" + idPrefix + sold.id())), 409);
+        }
         System.out.println("T060_REAL stage=completionFlush bodyReturned=true completion=ROLLED_BACK fk=FK_ORDER_ITEM_PRODUCT state=23503 snapshotEqual=true");
     }
 
@@ -207,7 +216,15 @@ class ProductDeletionIntegrityClassificationTest {
                 new Control("wrong DELETE collection", "DELETE", "/admin/products", validFailure()),
                 new Control("wrong write FK", "PUT", "/admin/products/7", constraint("23506", 23506, "FK_PRODUCT_CATEGORY_PRODUCT", INSERT, false)),
                 new Control("wrong category write SQL", "PUT", "/admin/products/7", constraint("23506", 23506, "FK_PRODUCT_CATEGORY_CATEGORY", DELETE, false)),
-                new Control("precheck wrong operation", "PUT", "/admin/products/7", new ProductDeletionIntegrityException()));
+                new Control("precheck wrong operation", "PUT", "/admin/products/7", new ProductDeletionIntegrityException()),
+                new Control("leading zero internal failure", "DELETE", "/admin/products/07", new IllegalStateException(PRIVATE, validFailure())),
+                new Control("leading zero wrong operation", "PUT", "/admin/products/07", new ProductDeletionIntegrityException()),
+                new Control("leading zero wrong route", "DELETE", "/admin/categories/07", new ProductDeletionIntegrityException()),
+                new Control("extra path segment", "DELETE", "/admin/products/07/child", new ProductDeletionIntegrityException()),
+                new Control("similar route", "DELETE", "/admin/products-extra/07", new ProductDeletionIntegrityException()),
+                new Control("zero identifier", "DELETE", "/admin/products/00", new ProductDeletionIntegrityException()),
+                new Control("negative identifier", "DELETE", "/admin/products/-7", new ProductDeletionIntegrityException()),
+                new Control("overflow identifier", "DELETE", "/admin/products/09223372036854775808", new ProductDeletionIntegrityException()));
     }
 
     @Test

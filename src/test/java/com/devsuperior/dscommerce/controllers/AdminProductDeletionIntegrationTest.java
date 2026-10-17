@@ -10,6 +10,7 @@ import com.devsuperior.dscommerce.fixtures.AdminProductDatabaseProbe.Snapshot;
 import com.devsuperior.dscommerce.fixtures.AdminProductTestFixture;
 import com.devsuperior.dscommerce.fixtures.AdminProductTestFixture.ProductCategory;
 import com.devsuperior.dscommerce.fixtures.AdminProductTestFixture.ProductData;
+import com.devsuperior.dscommerce.services.exceptions.ProductDeletionIntegrityException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
@@ -42,6 +43,7 @@ import java.util.Set;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -135,6 +137,44 @@ class AdminProductDeletionIntegrationTest {
         assertEnvelope(reread.result(), 404, "Product not found");
         assertThat(reread.after()).isEqualTo(observed.before());
         assertEnvelope(observed.result(), 404, "Product not found");
+    }
+
+    static Stream<Arguments> referencedProductIdRepresentations() {
+        return Stream.of("ROOT", "/api").flatMap(external -> Stream.of("", "0")
+                .map(idPrefix -> Arguments.of(external, idPrefix)));
+    }
+
+    @ParameterizedTest(name = "P2 context={0}, id prefix='{1}'")
+    @MethodSource("referencedProductIdRepresentations")
+    void referencedProductIdWithLeadingZeroKeepsConflictAndHistory(String external, String idPrefix) throws Exception {
+        String prefix = prefix(external);
+        registerOrder(List.of(new Line(other.id(), 3, new BigDecimal("3.25")),
+                new Line(target.id(), 2, new BigDecimal("10.00"))), OrderStatus.WAITING_PAYMENT);
+        var before = database.snapshot();
+        var historicalItem = before.items().stream().filter(item -> item.productId() == target.id()).toList();
+        assertThat(historicalItem).hasSize(1);
+        assertThat(historicalItem.getFirst().unitPrice().multiply(BigDecimal.valueOf(historicalItem.getFirst().quantity())))
+                .isEqualTo(new BigDecimal("20.00"));
+        String path = "/admin/products/" + idPrefix + target.id();
+        var observed = observe(delete(prefix + path).contextPath(prefix).servletPath(path)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken), "p2-id-prefix-" + idPrefix, 409);
+        assertThat(observed.before()).isEqualTo(before);
+        assertThat(observed.after()).isEqualTo(before);
+        assertHistory(observed.after());
+        assertThat(observed.result().getHandler()).isNotNull();
+        assertThat(observed.result().getResolvedException()).isInstanceOf(ProductDeletionIntegrityException.class);
+        assertThat(observed.result().getResponse().getHeader(HttpHeaders.WWW_AUTHENTICATE)).isNull();
+        var error = json(observed.result());
+        fields(error, "status", "error", "message", "path", "errors");
+        assertThat(error.path("path").asText()).isEqualTo(prefix + path);
+        assertThat(error.path("errors").isArray()).isTrue(); assertThat(error.path("errors")).isEmpty();
+        System.out.printf("P2_DELETE_REFERENCE context=%s leadingZero=%s actual=%d envelopeShape=true pathPreserved=true independentSnapshotEqual=true historicalSubtotal=20.00%n",
+                external, !idPrefix.isEmpty(), observed.result().getResponse().getStatus());
+        assertAll("referenced product deletion must remain a contractual conflict",
+                () -> assertThat(observed.result().getResponse().getStatus()).as("deletion conflict HTTP status").isEqualTo(409),
+                () -> assertThat(error.path("status").asInt()).isEqualTo(409),
+                () -> assertThat(error.path("error").asText()).isEqualTo("Conflict"),
+                () -> assertThat(error.path("message").asText()).isEqualTo("Product deletion violates referential integrity"));
     }
 
     static Stream<Arguments> orderReferences() {

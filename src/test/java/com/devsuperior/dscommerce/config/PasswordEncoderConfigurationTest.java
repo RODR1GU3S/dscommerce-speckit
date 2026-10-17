@@ -15,6 +15,7 @@ class PasswordEncoderConfigurationTest {
 
     private final WebApplicationContextRunner contextRunner =
             new WebApplicationContextRunner()
+                    .withInitializer(new TestComponentExclusion())
                     .withUserConfiguration(DscommerceApplication.class)
                     .withPropertyValues(
                             "security.jwt.secret-base64=" + VALID_256_BIT_SECRET,

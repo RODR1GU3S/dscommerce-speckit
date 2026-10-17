@@ -16,13 +16,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.aop.support.AopUtils;
 import org.springframework.boot.autoconfigure.orm.jpa.HibernatePropertiesCustomizer;
-import org.springframework.boot.context.TypeExcludeFilter;
 import org.springframework.boot.test.context.ConfigDataApplicationContextInitializer;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.ConfigurableApplicationContext;
-import org.springframework.core.type.classreading.MetadataReader;
-import org.springframework.core.type.classreading.MetadataReaderFactory;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -54,7 +50,7 @@ class AdminProductTestSupportTest {
             .withPropertyValues("spring.profiles.active=test", "spring.h2.console.enabled=false",
                     "spring.jpa.open-in-view=false")
             .withInitializer(new ConfigDataApplicationContextInitializer())
-            .withInitializer(AdminProductTestSupportTest::excludeDiscoveredTestComponents)
+            .withInitializer(new TestComponentExclusion())
             .withInitializer(new AdminProductTestConfig())
             .withUserConfiguration(DscommerceApplication.class, ObservationConfig.class);
 
@@ -90,7 +86,7 @@ class AdminProductTestSupportTest {
                         "spring.datasource.url=" + OrderTestConfig.isolatedDatabaseUrl(),
                         "spring.h2.console.enabled=false")
                 .withInitializer(new ConfigDataApplicationContextInitializer())
-                .withInitializer(AdminProductTestSupportTest::excludeDiscoveredTestComponents)
+                .withInitializer(new TestComponentExclusion())
                 .withUserConfiguration(DscommerceApplication.class);
         uninitialized.run(context -> {
             assertThat(context).hasNotFailed();
@@ -442,27 +438,6 @@ class AdminProductTestSupportTest {
         assertThat(snapshot.associations()).isEmpty();
         assertThat(snapshot.orders()).isEmpty();
         assertThat(snapshot.items()).isEmpty();
-    }
-
-    // ContextRunner does not install SpringBootTest's test-component filter automatically.
-    private static void excludeDiscoveredTestComponents(ConfigurableApplicationContext context) {
-        context.getBeanFactory().registerSingleton("adminSupportTestComponentFilter", new TestComponentFilter());
-    }
-
-    private static final class TestComponentFilter extends TypeExcludeFilter {
-        @Override
-        public boolean match(MetadataReader reader, MetadataReaderFactory factory) {
-            var metadata = reader.getAnnotationMetadata();
-            return metadata.hasAnnotation("org.springframework.boot.test.context.TestConfiguration")
-                    || metadata.hasAnnotation("org.springframework.boot.test.context.TestComponent")
-                    || metadata.hasMetaAnnotation("org.springframework.boot.test.context.TestComponent");
-        }
-
-        @Override
-        public boolean equals(Object other) { return other instanceof TestComponentFilter; }
-
-        @Override
-        public int hashCode() { return TestComponentFilter.class.hashCode(); }
     }
 
     // Plain bean holder: only withUserConfiguration registers it, never component scanning.

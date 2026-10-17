@@ -264,7 +264,8 @@ class AdminProductPutHttpIntegrationTest {
         }
         var result = reject(request, kind, expected, 0);
         diagnostics(result, kind.equals("broken") ? new String[]{"body:INVALID_BODY"} : new String[]{});
-        if (kind.equals("patch")) assertThat(result.getResponse().getHeader(HttpHeaders.ALLOW)).contains("PUT").doesNotContain("PATCH", "DELETE");
+        if (kind.equals("patch")) assertThat(result.getResponse().getHeader(HttpHeaders.ALLOW))
+                .contains("GET", "PUT", "DELETE").doesNotContain("PATCH");
         if (kind.equals("media")) assertThat(result.getResponse().getHeader(HttpHeaders.ACCEPT)).contains(MediaType.APPLICATION_JSON_VALUE);
     }
 

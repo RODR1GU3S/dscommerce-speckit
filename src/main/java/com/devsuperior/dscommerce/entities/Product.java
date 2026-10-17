@@ -2,11 +2,13 @@ package com.devsuperior.dscommerce.entities;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.ForeignKey;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
+import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
@@ -14,6 +16,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
 
 import java.math.BigDecimal;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
@@ -31,10 +34,12 @@ public class Product {
     private String name;
 
     @NotBlank
+    @Lob
     @Column(nullable = false)
     private String description;
 
     @NotBlank
+    @Lob
     @Column(nullable = false)
     private String image;
 
@@ -47,7 +52,9 @@ public class Product {
     @JoinTable(
             name = "tb_product_category",
             joinColumns = @JoinColumn(name = "product_id"),
-            inverseJoinColumns = @JoinColumn(name = "category_id")
+            inverseJoinColumns = @JoinColumn(name = "category_id"),
+            foreignKey = @ForeignKey(name = "fk_product_category_product"),
+            inverseForeignKey = @ForeignKey(name = "fk_product_category_category")
     )
     private Set<Category> categories = new HashSet<>();
 
@@ -88,6 +95,29 @@ public class Product {
 
     public Set<Category> getCategories() {
         return categories;
+    }
+
+    /**
+     * Replace already authorized, fully validated and normalized data on this managed instance.
+     * The maintenance service owns business validation and the surrounding transaction.
+     */
+    public void replaceDetails(String name, String description, String image, BigDecimal price,
+                               Collection<Category> selectedCategories) {
+        Objects.requireNonNull(name, "Replacement name is required");
+        Objects.requireNonNull(description, "Replacement description is required");
+        Objects.requireNonNull(image, "Replacement image is required");
+        Objects.requireNonNull(price, "Replacement price is required");
+        // Snapshot before mutating: the selection may be this collection or a view backed by it.
+        var selection = new HashSet<>(Objects.requireNonNull(selectedCategories, "Replacement categories are required"));
+        selection.forEach(category -> Objects.requireNonNull(category, "Replacement category is required"));
+
+        this.name = name;
+        this.description = description;
+        this.image = image;
+        this.price = price;
+        // Keep Hibernate's managed collection; only its associations change, never Category entities.
+        this.categories.clear();
+        this.categories.addAll(selection);
     }
 
     @Override

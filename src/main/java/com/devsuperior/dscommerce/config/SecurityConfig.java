@@ -1,5 +1,7 @@
 package com.devsuperior.dscommerce.config;
 
+import com.devsuperior.dscommerce.security.AdminAccessDeniedHandler;
+import com.devsuperior.dscommerce.security.AdminAuthenticationEntryPoint;
 import com.devsuperior.dscommerce.security.OrderAccessDeniedHandler;
 import com.devsuperior.dscommerce.security.OrderAuthenticationEntryPoint;
 import com.devsuperior.dscommerce.security.OrderJwtAuthenticationConverter;
@@ -69,6 +71,38 @@ public class SecurityConfig {
 
     @Bean
     @Order(2)
+    public SecurityFilterChain adminProductSecurityFilterChain(HttpSecurity http, JwtDecoder decoder,
+                                                              OrderJwtAuthenticationConverter converter,
+                                                              ObjectMapper mapper) throws Exception {
+        var entryPoint = new AdminAuthenticationEntryPoint(mapper);
+        var deniedHandler = new AdminAccessDeniedHandler(mapper);
+        http
+                .securityMatcher(new AntPathRequestMatcher("/admin/**"))
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .headers(headers -> headers
+                        .frameOptions(frameOptions -> frameOptions.sameOrigin()))
+                .authorizeHttpRequests(authorize -> authorize
+                        .anyRequest().hasRole("ADMIN"))
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint(entryPoint).accessDeniedHandler(deniedHandler))
+                .oauth2ResourceServer(resourceServer -> resourceServer
+                        .authenticationEntryPoint(entryPoint).accessDeniedHandler(deniedHandler)
+                        .jwt(jwt -> jwt.decoder(decoder).jwtAuthenticationConverter(token -> {
+                            try {
+                                return converter.convert(token);
+                            } catch (OrderAccountResolutionException failure) {
+                                // Preserve internal lookup failures for the administrative entry point.
+                                throw new OAuth2AuthenticationException(new OAuth2Error("server_error"),
+                                        "Product maintenance could not be completed", failure);
+                            }
+                        })));
+        return http.build();
+    }
+
+    @Bean
+    @Order(3)
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())

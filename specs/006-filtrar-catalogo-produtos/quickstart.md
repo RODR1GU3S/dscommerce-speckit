@@ -213,3 +213,102 @@ A verificação em memória com Python `xml.etree.ElementTree` comparou os atrib
 Baseline focal **aprovada nesta revisão**, antes de mudar comportamento ou expectativas: consultas públicas existentes e componentes administrativos compartilháveis passaram na seleção autorizada. Essa evidência não comprova o filtro público novo, os 27 cenários futuros ou os gates funcionais finais; os 2.614 testes anteriores continuam históricos. Caracterização HTTP da T004, fixtures da T003 e implementação não foram iniciadas. Nenhuma produção, teste ou expectativa foi corrigida para obter aprovação; não houve falha da baseline a diagnosticar.
 
 Somente T002 é agora marcada `[X]`, preservando T001 `[X]` e T003–T030 abertas. Além dos artefatos de build/relatórios em `target/`, as alterações desta tarefa limitam-se ao acréscimo desta seção e ao marcador de T002. Sem stage, commit ou push. Revisão final de diff/whitespace e estado do Git são informados na entrega; nenhum impedimento remanescente para T002.
+
+## Execução da T003 — preparação isolada dos contextos públicos
+
+**Base conferida**: `55ad4a0f7d906c6fe0ca7336409c7db650e68796`, branch real `006-filtrar-catalogo-produtos`, raiz `C:/Users/ronal/dscommerce-speckit`, Git inicialmente limpo. T001/T002 estavam concluídas; seus registros permanecem intactos. Autorização restrita à T003, sem alterar produção, testes existentes, contratos ou configuração global.
+
+Pré-requisitos conferidos com `powershell -NoProfile -File .specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks`, seleção explícita de `SPECIFY_FEATURE_DIRECTORY` para a 006 e restauração de ponteiro/variável em `finally`, conforme T001: exit 0, diretório correto. Checklist 16/16, zero abertos; `.specify/extensions.yml` ausente. O ponteiro anterior foi preservado com SHA-256 `AE411ADECBDD12D3B7495C8CC3FA5D944BD7A8214735B0FF399E68C2CB8BADE5`.
+
+### Preparação criada e limites
+
+Criado somente [PublicCatalogNameFilterIntegrationTest.java](../../src/test/java/com/devsuperior/dscommerce/controllers/PublicCatalogNameFilterIntegrationTest.java) no código de testes. O grupo contém dois contextos servlet reais `RANDOM_PORT`, com identidades explícitas `feature006.catalog-test-context=root` e `api`, perfis `test` e caminhos de contexto vazio e `/api`. Cada um ativa explicitamente o initializer existente `AdminProductTestConfig`; não se modificaram seus defaults, `application-test.properties`, `import.sql`, segurança ou Logback global.
+
+O initializer fornece H2 exclusivo, `spring.sql.init.mode=never` e importação Hibernate vazia. OSIV é desativado somente nas propriedades desses testes. A configuração do inspector é uma classe estática aninhada `@TestConfiguration`, importada explicitamente por `@Import` nos dois contextos; não é configuração comum descoberta pelo component scan. A classe abstrata de controles e as fixtures não são componentes Spring. A revisão dessa estrutura confirma o isolamento de carregamento; nenhuma suíte de outros contextos foi repetida para esta etapa.
+
+O controle herdado `preparesAnIsolatedCommittedCatalogWithoutNameFilter` executa uma vez por contexto. Ele comprova banco inicialmente vazio pelas conexões independentes do `AdminProductDatabaseProbe`, propriedades de isolamento, contexto servlet efetivo, cadeia real de segurança, inspector focal único e ausência do interceptor OSIV. Reutiliza `AdminProductTestFixture` sem modificações: dois produtos determinísticos (`T003 Alpha`/`T003 Beta`), uma categoria/associação e um terceiro produto de outra fixture proprietária. Todos os IDs são capturados da preparação JDBC commitada, sem IDs absolutos ou consulta de produção como oráculo.
+
+Cada controle realiza apenas um GET real sem `name`, com `page=0&size=12`, conferindo os IDs/nomes conhecidos. A chamada ocorre fora de transação externa; snapshot independente antes/depois permanece igual, e o inspector observa somente SELECTs em transação na janela do GET, sem impor número fixo de consultas. A limpeza da primeira fixture preserva o produto da segunda; após fechar ambas, banco vazio novamente. Nenhuma conta é necessária neste controle público. Isso prepara infraestrutura e comprova o controle sem filtro; não caracteriza erros/defaults de paginação, variantes de token ou busca por nome da T004+.
+
+### Verificação mínima efetivamente executada
+
+Antes da execução, os **210 arquivos Surefire existentes** foram copiados e conferidos por SHA-256 em [surefire-before](../../target/feature006-t003-preparation-20261018T183008/surefire-before/), com [manifesto](../../target/feature006-t003-preparation-20261018T183008/surefire-before-manifest.json). Após executar, todos os 210 arquivos da origem e da cópia continuaram com tamanho/hash iguais ao manifesto, incluindo os relatórios da T002. Não houve Maven concorrente, repetição de baseline ou suíte completa. Sufixo novo, previamente livre, preserva os nomes dos relatórios anteriores.
+
+Comando literal, na raiz, via `cmd.exe /d /c`, com stdout/stderr em [console.log](../../target/feature006-t003-preparation-20261018T183008/console.log):
+
+```powershell
+.\mvnw.cmd "-Dtest=PublicCatalogNameFilterIntegrationTest" "-Dsurefire.reportNameSuffix=feature006-t003-preparation" test
+```
+
+Ambiente: Windows/PowerShell `5.1.19041.7663`, `JAVA_HOME=C:\Program Files\Zulu\zulu-21`; console registra Java `21.0.12.1`. Wrapper do projeto configurado para Maven `3.9.16`, sem modificar dependências. Início **2026-10-18T18:30:24.6628373-03:00**, fim **2026-10-18T18:31:33.8963921-03:00**, duração externa **69,234 segundos**; Maven reporta **01:03 min**. **Uma execução, exit 0, BUILD SUCCESS**. Metadados em [run-start.json](../../target/feature006-t003-preparation-20261018T183008/run-start.json) e [run-result.json](../../target/feature006-t003-preparation-20261018T183008/run-result.json).
+
+| Relatório Surefire | Testes | Falhas | Erros | Ignorados |
+| --- | ---: | ---: | ---: | ---: |
+| PublicCatalogNameFilterIntegrationTest$ApiContext | 1 | 0 | 0 | 0 |
+| PublicCatalogNameFilterIntegrationTest$RootContext | 1 | 0 | 0 | 0 |
+| PublicCatalogNameFilterIntegrationTest (contêiner) | 0 | 0 | 0 | 0 |
+| **Total** | **2** | **0** | **0** | **0** |
+
+Os três XMLs e o resumo final foram comparados às linhas do console e aos casos reportados por `xml.etree.ElementTree`, sem falhas/erros. Os dois registros `T003_CONTEXT` confirmam os critérios e URLs diferentes: raiz `jdbc:h2:mem:admin-product-test-40aa2768-8a98-4ce4-acec-6e215a448ea1`; `/api` `jdbc:h2:mem:admin-product-test-fce76e5b-1d3e-40da-b73a-304ae0a8cc55` (ambas com as opções locais do initializer). [verification.json](../../target/feature006-t003-preparation-20261018T183008/verification.json) registra a conferência e o SHA-256 do fonte efetivamente executado. Cópias dos seis relatórios atuais em [surefire-current](../../target/feature006-t003-preparation-20261018T183008/surefire-current/); evidências locais ignoradas em `target/`, não versionadas.
+
+**Conclusão**: critérios da T003 atendidos, sem impedimento; T001–T003 `[X]`, T004–T030 abertas. A classe agora existe; as menções anteriores à sua inexistência permanecem como histórico do planejamento. Nenhum comportamento produtivo mudou. Os dois controles não aprovam o filtro público, os 27 cenários, a futura caracterização HTTP de T004 ou os gates funcionais finais. Não se criou RED artificial para infraestrutura existente. Alterações limitadas ao novo teste, ao registro desta seção e ao marcador T003; sem stage, commit, push ou mudança de branch/main. Diff, arquivo novo, links e whitespace serão conferidos antes da entrega.
+
+## Execução da T004 — caracterização HTTP anterior ao filtro
+
+**Contexto recebido e preservado**: raiz `C:/Users/ronal/dscommerce-speckit`, branch `006-filtrar-catalogo-produtos`, HEAD `55ad4a0f7d906c6fe0ca7336409c7db650e68796`; somente quickstart/tasks modificados e `PublicCatalogNameFilterIntegrationTest.java` não rastreado, nenhum staged. T001–T003 concluídas. Os dois controles da T003, configurações dos contextos e helpers anteriores foram preservados; suas partes de fonte foram comparadas à cópia anterior à T004, sem mudança de conteúdo.
+
+Pré-requisitos repetidos com `powershell -NoProfile -File .specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks`, seleção temporária explícita de `SPECIFY_FEATURE_DIRECTORY` para a 006: exit 0, diretório correto; ponteiro/variável restaurados como em T001. SHA-256 do ponteiro: `AE411ADECBDD12D3B7495C8CC3FA5D944BD7A8214735B0FF399E68C2CB8BADE5`. Checklist somente lido, 16/16 e zero abertos; `.specify/extensions.yml` ausente antes/depois, sem hooks aplicáveis.
+
+Acrescentado somente `characterizesExistingPublicPaginationHttp` e seus auxiliares ao grupo existente. O método herdado é executado em raiz e `/api`, com tag exclusiva `feature006-t004`. Reutiliza os contextos da T003, HTTP servlet real, filtros reais, perfil `test`, H2 sem seeds e OSIV local desativado. Fixture commitada de dois produtos, `T004 Alpha`/`T004 Beta`, com IDs capturados e preços numéricos 10/20; não se modificam produção, expectativas de testes existentes ou configurações globais.
+
+### Matriz HTTP observada
+
+Cada linha abaixo foi exercitada nos dois contextos, sem/com `name=T004` e sem token/com Bearer deliberadamente inválido: **11 casos × 2 contextos × 2 variantes de name × 2 variantes de token = 88 solicitações**. Cada combinação foi registrada integralmente com status, query, cabeçalhos e corpo. `T004` pertence aos dois nomes da fixture: este controle não testa seleção por nome nem cria uma nova expectativa de que `name` deva continuar ignorado após a implementação.
+
+| Paginação enviada | Status | Resultado observado com dois produtos |
+| --- | ---: | --- |
+| Ausente | 200 | page 0, size 12, dois itens, totalElements 2, totalPages 1. |
+| `page=&size=2` | 200 | page 0, size 2, dois itens, totais 2/1. |
+| `page=1&size=` | 200 | page 1, size 12, conteúdo vazio, totais 2/1 preservados. |
+| `page=&size=` | 200 | page 0, size 12, dois itens, totais 2/1. |
+| `page=0&size=1` | 200 | Somente Alpha, size 1, totais 2/2. |
+| `page=0&size=50` | 200 | Dois itens, size 50, totais 2/1. |
+| `page=-1&size=12` | 400 | ErrorResponse com mensagem `page must be greater than or equal to 0`. |
+| `page=0&size=0` ou `page=0&size=51` | 400 | ErrorResponse com mensagem `size must be between 1 and 50`. |
+| `page=abc&size=12` ou `page=0&size=abc` | 400 | Erro nativo MVC/servlet, com timestamp e sem campo message. |
+
+Nas 48 respostas 200, página contém exatamente `content/page/size/totalElements/totalPages`; itens contêm exatamente `id/name/image/price`, preço numérico e nomes originais. Os IDs/nomes/valores foram comparados ao manifesto da fixture, não a outra consulta de produção. As 40 respostas 400 são rejeições esperadas, não falhas dos testes.
+
+**Limites numéricos**: corpo exato com quatro campos `status`, `error`, `message`, `path`, conferido diretamente conforme ErrorResponse, sem depender do `anyOf` permissivo do contrato. Exemplo efetivamente observado em raiz:
+
+```json
+{"status":400,"error":"Bad Request","message":"size must be between 1 and 50","path":"/products"}
+```
+
+**Conversão não numérica**: corpo efetivamente observado com `timestamp`, `status`, `error`, `path`; sem `message` nem array administrativo `errors`. Exemplo de `page=abc` em raiz:
+
+```json
+{"timestamp":"2026-10-18T21:40:05.167+00:00","status":400,"error":"Bad Request","path":"/products"}
+```
+
+Em `/api`, ambos os mecanismos devolvem `path=/api/products`. O console registra `MethodArgumentTypeMismatchException` resolvida por `DefaultHandlerExceptionResolver` para conversões inválidas; esses WARNs são compatíveis com os 400 observados. A distinção prevista em pesquisa/plano/contrato foi confirmada, sem divergência relevante que exija editar esses artefatos. O formato nativo acima é uma baseline observada nesta revisão/ambiente, não um novo DTO ou promessa de padronização.
+
+Cabeçalhos observados: `Content-Type: application/json`, `Cache-Control: no-cache, no-store, max-age=0, must-revalidate`, `Pragma: no-cache`, `Expires: 0`, `X-Content-Type-Options: nosniff`, `X-XSS-Protection: 0`, `X-Frame-Options: SAMEORIGIN`; sem `WWW-Authenticate` ou redirecionamento. Também registrados `Transfer-Encoding: chunked`, `Date` e cabeçalhos de conexão: nesta execução, respostas 200 usaram keep-alive e respostas 400, close. Cabeçalhos de transporte não são promovidos a regra de negócio ou novo contrato público.
+
+As quatro variantes de cada caso no mesmo contexto produziram status, corpo semântico e cabeçalhos relevantes equivalentes. Timestamp nativo foi conferido como texto ISO-8601 e substituído por marcador somente na comparação; `Date` foi validado em formato RFC 1123, sem igualdade literal entre instantes. Valores brutos permanecem nas evidências. Snapshot independente antes/depois foi igual, somente SELECTs observados na janela HTTP, sem transação externa e com limpeza apenas dos IDs da fixture.
+
+### Execução mínima e preservação das evidências
+
+Os **216 relatórios anteriores** foram copiados antes de executar para [surefire-before](../../target/feature006-t004-characterization-20261018T183724/surefire-before/) e conferidos por SHA-256. Após executar, tamanho/hash dos 216 arquivos da origem e da cópia permaneceram iguais ao [manifesto](../../target/feature006-t004-characterization-20261018T183724/surefire-before-manifest.json). Nenhum relatório de T002/T003 ou histórico anterior foi substituído; sufixo novo previamente livre. Fonte e documentos recebidos também foram copiados para comparação de preservação.
+
+Uma única execução sequencial pelo Wrapper, sem outra execução Maven/Surefire ativa:
+
+```powershell
+.\mvnw.cmd "-Dtest=PublicCatalogNameFilterIntegrationTest" "-Dgroups=feature006-t004" "-Dsurefire.reportNameSuffix=feature006-t004-characterization" test
+```
+
+Ambiente: Windows/PowerShell `5.1.19041.7663`, `JAVA_HOME=C:\Program Files\Zulu\zulu-21`, Java `21.0.12.1` registrado pelo console; Wrapper configurado para Maven `3.9.16`. Início **2026-10-18T18:38:55.5246748-03:00**, fim **2026-10-18T18:40:05.7360170-03:00**, duração externa **70,211 segundos**, Maven **01:04 min**. **Exit 0, BUILD SUCCESS; 2 testes, zero falhas, erros e ignorados**. ApiContext e RootContext reportam um teste cada; contêiner externo, zero. Três XMLs e três TXT, conferidos contra console e resumo final; todos os casos executados nos XMLs se chamam `characterizesExistingPublicPaginationHttp`. Os dois testes de preparação T003 foram preservados e não executados nesta seleção.
+
+Evidências locais ignoradas, não versionadas: [console.log](../../target/feature006-t004-characterization-20261018T183724/console.log), [88 observações HTTP](../../target/feature006-t004-characterization-20261018T183724/http-observations.json), [run-start.json](../../target/feature006-t004-characterization-20261018T183724/run-start.json), [run-result.json](../../target/feature006-t004-characterization-20261018T183724/run-result.json), [verification.json](../../target/feature006-t004-characterization-20261018T183724/verification.json) e [cópias Surefire atuais](../../target/feature006-t004-characterization-20261018T183724/surefire-current/). A verificação inclui hash do fonte executado, total de 88 observações sem duplicação, totais dos XMLs/console, preservação dos 216 relatórios e das partes anteriores do teste.
+
+**Conclusão T004**: caracterização GREEN concluída antes de qualquer mudança produtiva. T001–T004 `[X]`, T005–T030 abertas. O comportamento observado é do catálogo anterior à implementação do filtro; não demonstra os cenários de busca nem substitui o RED funcional da T007 ou validação futura. Não houve repetição do baseline T002, suíte completa, refatoração ou alteração de expectativas anteriores; contratos e demais artefatos aprovados preservados. Somente o teste em preparação, este registro e o marcador T004 foram atualizados. Nenhum stage, commit ou push; nenhum impedimento remanescente para esta tarefa.

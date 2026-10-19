@@ -2,6 +2,8 @@ package com.devsuperior.dscommerce.controllers;
 
 import com.devsuperior.dscommerce.DscommerceApplication;
 import com.devsuperior.dscommerce.config.AdminProductTestConfig;
+import com.devsuperior.dscommerce.dto.TokenResponseDTO;
+import com.devsuperior.dscommerce.entities.UserRole;
 import com.devsuperior.dscommerce.fixtures.AdminProductDatabaseProbe;
 import com.devsuperior.dscommerce.fixtures.AdminProductTestFixture;
 import com.devsuperior.dscommerce.fixtures.AdminProductTestFixture.ProductData;
@@ -32,6 +34,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.web.FilterChainProxy;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.NestedTestConfiguration;
@@ -857,6 +860,331 @@ class PublicCatalogNameFilterIntegrationTest {
                 sql.clear();
             }
         }
+
+        @Test
+        @Tag("feature006-t022")
+        void preservesPublicPaginationShapeAndAccess() throws Exception {
+            assertNoCallerTransaction();
+            var database = new AdminProductDatabaseProbe(context.getEnvironment().getRequiredProperty("spring.datasource.url"));
+            assertEmptyDatabase(database);
+            try (var fixture = new AdminProductTestFixture(context)) {
+                var products = List.of(
+                        fixture.createProduct("Cabo", "Fixture T022", "cabo.jpg", new BigDecimal("10.00")),
+                        fixture.createProduct("Fone Azul", "Fixture T022", "azul.jpg", new BigDecimal("20.00")),
+                        fixture.createProduct("Fone Preto", "Fixture T022", "preto.jpg", new BigDecimal("30.00")));
+                var buyer = fixture.prepareBuyer();
+                var before = database.snapshot();
+                assertThat(before.products()).extracting(AdminProductDatabaseProbe.ProductRow::id)
+                        .containsExactlyElementsOf(products.stream().map(ProductData::id).toList());
+                assertThat(before.products()).extracting(AdminProductDatabaseProbe.ProductRow::name)
+                        .containsExactly("Cabo", "Fone Azul", "Fone Preto");
+                assertThat(database.accountIds()).containsExactly(buyer.id());
+                assertThat(database.roles(buyer.id())).containsExactly(UserRole.CLIENT);
+
+                // Use the real HTTP login only to prepare a valid CLIENT token; never log credentials or JWTs.
+                var loginHeaders = new HttpHeaders();
+                loginHeaders.setContentType(MediaType.APPLICATION_JSON);
+                loginHeaders.setAccept(List.of(MediaType.APPLICATION_JSON));
+                var login = http.exchange(URI.create("http://localhost:" + port + expectedContextPath() + "/login"),
+                        HttpMethod.POST, new HttpEntity<>(Map.of("name", buyer.name(), "password", buyer.password()),
+                                loginHeaders), TokenResponseDTO.class);
+                assertThat(login.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(login.getBody() != null && "Bearer".equals(login.getBody().tokenType())
+                        && login.getBody().accessToken() != null).as("T022 real login token prepared").isTrue();
+                var clientToken = login.getBody().accessToken();
+                var identity = context.getBean(JwtDecoder.class).decode(clientToken);
+                assertThat(Long.toString(buyer.id()).equals(identity.getSubject())).isTrue();
+                assertThat(database.snapshot()).isEqualTo(before);
+                System.out.println("T022_LOGIN " + mapper.createObjectNode().put("context", expectedIdentity())
+                        .put("path", expectedContextPath() + "/login").put("status", 200)
+                        .put("clientIdentityVerified", true));
+
+                Map<String, JsonNode> controls = new LinkedHashMap<>();
+                for (var input : paginationCases()) {
+                    for (var filterVariant : List.of("omitted", "empty", "filled")) {
+                        String name = switch (filterVariant) { case "omitted" -> null; case "empty" -> ""; default -> "fone"; };
+                        var selected = "filled".equals(filterVariant) ? products.subList(1, 3) : products;
+                        var query = input.query() + (name == null ? ""
+                                : (input.query().isEmpty() ? "" : "&") + "name=" + name);
+                        for (var access : List.of("anonymous", "invalid", "client")) {
+                            var headers = new HttpHeaders();
+                            headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+                            if ("invalid".equals(access)) headers.setBearerAuth("deliberately-invalid");
+                            if ("client".equals(access)) headers.setBearerAuth(clientToken);
+                            var requestId = UUID.randomUUID().toString();
+                            headers.set("X-Feature006-Name-Observation", requestId);
+                            sql.clear();
+                            assertNoCallerTransaction();
+                            var response = http.exchange(URI.create("http://localhost:" + port + expectedContextPath()
+                                    + "/products?" + query), HttpMethod.GET, new HttpEntity<>(headers), String.class);
+                            var decoded = nameRequests.take(requestId);
+                            assertThat(decoded).as("T022 passive servlet observation").isNotNull();
+                            assertThat(decoded.query()).isEqualTo(query);
+                            assertThat(decoded.name()).isEqualTo(name);
+                            assertThat(decoded.contextPath()).isEqualTo(expectedContextPath());
+                            assertThat(decoded.uri()).isEqualTo(expectedContextPath() + "/products");
+                            assertThat(response.getStatusCode().value()).as(input.label()).isEqualTo(input.status());
+                            assertThat(response.getHeaders().getContentType()).isNotNull()
+                                    .satisfies(type -> assertThat(type.isCompatibleWith(MediaType.APPLICATION_JSON)).isTrue());
+                            var body = mapper.readTree(response.getBody());
+                            assertThat(body.isObject()).isTrue();
+                            var stable = stableT022Response(response.getStatusCode().value(), body, response.getHeaders());
+                            JsonNode expected;
+                            if (input.status() == 200) {
+                                var page = mapper.createObjectNode().put("page", input.page()).put("size", input.size())
+                                        .put("totalElements", selected.size())
+                                        .put("totalPages", (selected.size() + input.size() - 1) / input.size());
+                                var content = page.putArray("content");
+                                selected.stream().skip((long) input.page() * input.size()).limit(input.size())
+                                        .forEach(product -> content.add(nameItem(product)));
+                                expected = mapper.readTree(page.toString());
+                                for (var item : body.get("content")) {
+                                    assertThat(item.get("id").isIntegralNumber()).isTrue();
+                                    assertThat(item.get("name").isTextual()).isTrue();
+                                    assertThat(item.get("image").isTextual()).isTrue();
+                                    assertThat(item.get("price").isNumber()).isTrue();
+                                }
+                                for (var field : List.of("page", "size", "totalElements", "totalPages")) {
+                                    assertThat(body.get(field).isIntegralNumber()).isTrue();
+                                }
+                                assertThat(sql.events()).isNotEmpty();
+                            } else if (input.boundMessage() != null) {
+                                // Direct ErrorResponse check, independent of the permissive OpenAPI anyOf.
+                                expected = mapper.createObjectNode().put("status", 400).put("error", "Bad Request")
+                                        .put("message", input.boundMessage()).put("path", expectedContextPath() + "/products");
+                                assertThat(sql.events()).isEmpty();
+                            } else {
+                                // Transcribed from T004's real servlet baseline; timestamp is validated then normalized.
+                                expected = mapper.createObjectNode().put("timestamp", "<ISO-8601 timestamp>")
+                                        .put("status", 400).put("error", "Bad Request")
+                                        .put("path", expectedContextPath() + "/products");
+                                assertThat(sql.events()).isEmpty();
+                            }
+                            var actualComparable = input.status() == 400 && input.boundMessage() == null
+                                    ? stable.get("body") : body;
+                            assertThat(actualComparable).as("T022 " + input.label() + "/" + filterVariant + "/" + access)
+                                    .isEqualTo(expected);
+                            assertThat(database.snapshot()).isEqualTo(before);
+                            assertThat(database.accountIds()).containsExactly(buyer.id());
+                            assertThat(database.roles(buyer.id())).containsExactly(UserRole.CLIENT);
+                            assertThat(sql.events()).allSatisfy(event -> {
+                                assertThat(event.sql().stripLeading().toLowerCase(Locale.ROOT)).startsWith("select ");
+                                assertThat(event.transactionActive()).isTrue();
+                            });
+                            assertNoCallerTransaction();
+                            var key = input.label() + (input.status() == 400 ? "/error"
+                                    : "filled".equals(filterVariant) ? "/filtered" : "/unfiltered");
+                            var control = controls.putIfAbsent(key, stable);
+                            if (control != null) assertThat(stable).as("T022 name/access equivalence " + key).isEqualTo(control);
+                            var observed = mapper.createObjectNode().put("context", expectedIdentity())
+                                    .put("case", input.label()).put("filterVariant", filterVariant).put("access", access)
+                                    .put("query", decoded.query()).put("decodedName", decoded.name()).put("path", decoded.uri())
+                                    .put("status", response.getStatusCode().value()).put("snapshotEqual", true)
+                                    .put("accountIdsAndRolesEqual", true).put("hibernateDml", 0).put("callerTransaction", false);
+                            observed.set("headers", mapper.valueToTree(response.getHeaders()));
+                            observed.set("body", body);
+                            observed.set("expected", expected);
+                            observed.set("stable", stable);
+                            System.out.println("T022_HTTP " + observed);
+                        }
+                    }
+                }
+                // US4.4 also covers basic detail access. This product matches fone; US4.5-7 remain T023.
+                var detailProduct = products.get(1);
+                var detailExpected = nameItem(detailProduct);
+                detailExpected.put("description", "Fixture T022").putArray("categories");
+                var canonicalDetail = mapper.readTree(detailExpected.toString());
+                for (var access : List.of("anonymous", "invalid", "client")) {
+                    var headers = new HttpHeaders();
+                    headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+                    if ("invalid".equals(access)) headers.setBearerAuth("deliberately-invalid");
+                    if ("client".equals(access)) headers.setBearerAuth(clientToken);
+                    sql.clear();
+                    assertNoCallerTransaction();
+                    var response = http.exchange(URI.create("http://localhost:" + port + expectedContextPath()
+                            + "/products/" + detailProduct.id()), HttpMethod.GET, new HttpEntity<>(headers), String.class);
+                    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+                    assertThat(response.getHeaders().getContentType()).isNotNull()
+                            .satisfies(type -> assertThat(type.isCompatibleWith(MediaType.APPLICATION_JSON)).isTrue());
+                    assertThat(response.getHeaders().getFirst(HttpHeaders.WWW_AUTHENTICATE)).isNull();
+                    assertThat(response.getHeaders().getFirst(HttpHeaders.LOCATION)).isNull();
+                    var body = mapper.readTree(response.getBody());
+                    assertThat(body).isEqualTo(canonicalDetail);
+                    assertThat(database.snapshot()).isEqualTo(before);
+                    assertThat(database.accountIds()).containsExactly(buyer.id());
+                    assertThat(database.roles(buyer.id())).containsExactly(UserRole.CLIENT);
+                    assertThat(sql.events()).isNotEmpty().allSatisfy(event -> {
+                        assertThat(event.sql().stripLeading().toLowerCase(Locale.ROOT)).startsWith("select ");
+                        assertThat(event.transactionActive()).isTrue();
+                    });
+                    assertNoCallerTransaction();
+                    var observed = mapper.createObjectNode().put("context", expectedIdentity()).put("access", access)
+                            .put("path", expectedContextPath() + "/products/" + detailProduct.id()).put("status", 200)
+                            .put("snapshotEqual", true).put("accountIdsAndRolesEqual", true)
+                            .put("hibernateDml", 0).put("callerTransaction", false);
+                    observed.set("body", body);
+                    observed.set("expected", canonicalDetail);
+                    System.out.println("T022_DETAIL " + observed);
+                }
+                fixture.cleanUp();
+                assertEmptyDatabase(database);
+            } finally {
+                nameRequests.clear();
+                sql.clear();
+            }
+        }
+
+        private ObjectNode stableT022Response(int status, JsonNode body, HttpHeaders headers) {
+            ObjectNode stableBody = body.deepCopy();
+            if (stableBody.has("timestamp")) {
+                assertThat(stableBody.get("timestamp").isTextual()).isTrue();
+                OffsetDateTime.parse(stableBody.get("timestamp").asText());
+                stableBody.put("timestamp", "<ISO-8601 timestamp>");
+            }
+            assertThat(headers.getFirst(HttpHeaders.CACHE_CONTROL)).isEqualTo("no-cache, no-store, max-age=0, must-revalidate");
+            assertThat(headers.getFirst(HttpHeaders.PRAGMA)).isEqualTo("no-cache");
+            assertThat(headers.getFirst(HttpHeaders.EXPIRES)).isEqualTo("0");
+            assertThat(headers.getFirst("X-Content-Type-Options")).isEqualTo("nosniff");
+            assertThat(headers.getFirst("X-XSS-Protection")).isEqualTo("0");
+            assertThat(headers.getFirst("X-Frame-Options")).isEqualTo("SAMEORIGIN");
+            assertThat(headers.getFirst(HttpHeaders.LOCATION)).isNull();
+            assertThat(headers.getFirst(HttpHeaders.WWW_AUTHENTICATE)).isNull();
+            assertThat(headers.getFirst(HttpHeaders.VARY)).isNull();
+            var date = headers.getFirst(HttpHeaders.DATE);
+            if (date != null) ZonedDateTime.parse(date, DateTimeFormatter.RFC_1123_DATE_TIME);
+            var normalized = mapper.createObjectNode().put("status", status);
+            normalized.set("body", stableBody);
+            var stableHeaders = normalized.putObject("headers");
+            for (var name : List.of(HttpHeaders.CONTENT_TYPE, HttpHeaders.CACHE_CONTROL, HttpHeaders.PRAGMA,
+                    HttpHeaders.EXPIRES, HttpHeaders.VARY, HttpHeaders.LOCATION, HttpHeaders.WWW_AUTHENTICATE,
+                    "X-Content-Type-Options", "X-XSS-Protection", "X-Frame-Options")) {
+                if (headers.containsKey(name)) stableHeaders.set(name, mapper.valueToTree(headers.get(name)));
+            }
+            return normalized;
+        }
+
+        @Test
+        @Tag("feature006-t023")
+        void preservesDetailsAndLegacyIndependentlyOfFilter() throws Exception {
+            assertNoCallerTransaction();
+            var database = new AdminProductDatabaseProbe(context.getEnvironment().getRequiredProperty("spring.datasource.url"));
+            assertEmptyDatabase(database);
+            try (var fixture = new AdminProductTestFixture(context)) {
+                var current = fixture.createProduct("Fone Atual", "Current T023", "current.jpg", new BigDecimal("12.34"));
+                var excluded = fixture.createProduct("Cabo Antigo", "Excluded T023", "excluded.jpg", new BigDecimal("29.90"));
+                // Committed JDBC setup preserves legacy data without weakening administrative write validation.
+                var shortName = fixture.createProduct("x", "Short T023", "short.jpg", new BigDecimal("0.00"));
+                var longName = fixture.createProduct("a".repeat(81), "Long T023", "long.jpg", new BigDecimal("0.00"));
+                var spaced = fixture.createProduct("  Fone  Azul  ", "Spaced T023", "spaced.jpg", new BigDecimal("0.00"));
+                var products = List.of(current, excluded, shortName, longName, spaced);
+                var categories = List.of(fixture.createCategory("Zeta"), fixture.createCategory("Alpha"),
+                        fixture.createCategory("Alpha"));
+                var associations = categories.stream().map(category -> fixture.associate(excluded.id(), category.id())).toList();
+                var before = database.snapshot();
+                assertThat(before.products()).containsExactlyElementsOf(products.stream().map(product ->
+                        new AdminProductDatabaseProbe.ProductRow(product.id(), product.name(), product.description(),
+                                product.image(), product.price())).toList());
+                assertThat(before.categories()).containsExactlyElementsOf(categories.stream().map(category ->
+                        new AdminProductDatabaseProbe.CategoryRow(category.id(), category.name())).toList());
+                assertThat(before.associations()).hasSize(3).containsExactlyInAnyOrderElementsOf(associations);
+                assertThat(before.associations()).allSatisfy(pair -> assertThat(pair.productId()).isEqualTo(excluded.id()));
+                assertThat(before.orders()).isEmpty();
+                assertThat(before.items()).isEmpty();
+                assertThat(database.accountIds()).isEmpty();
+                var missingId = products.stream().mapToLong(ProductData::id).max().orElseThrow() + 1000;
+                assertThat(before.products()).extracting(AdminProductDatabaseProbe.ProductRow::id).doesNotContain(missingId);
+
+                // Fixed insertion manifests supply both selection and stored-name ordering; no production query is an oracle.
+                var reads = new ArrayList<T023Read>();
+                reads.add(t023CatalogRead("filtered-before-excluded-detail", "fone", List.of(spaced, current)));
+                reads.add(t023DetailRead("excluded-detail-deduplicated", excluded, List.of("Alpha", "Zeta")));
+                reads.add(new T023Read("missing-detail", "/products/" + missingId, "", null, 404,
+                        mapper.createObjectNode().put("status", 404).put("error", "Not Found")
+                                .put("message", "Product not found").put("path", expectedContextPath() + "/products/" + missingId)));
+                reads.add(t023CatalogRead("unfiltered-legacy", null, List.of(spaced, excluded, current, longName, shortName)));
+                reads.add(t023CatalogRead("short-search", "x", List.of(shortName)));
+                reads.add(t023DetailRead("short-detail", shortName, List.of()));
+                reads.add(t023CatalogRead("long-search", "A".repeat(81), List.of(longName)));
+                reads.add(t023DetailRead("long-detail", longName, List.of()));
+                reads.add(t023CatalogRead("spaced-search", " fone  azul ", List.of(spaced)));
+                reads.add(t023DetailRead("spaced-detail", spaced, List.of()));
+
+                for (var read : reads) {
+                    var query = read.query().isEmpty() ? "" : "?" + read.query();
+                    var headers = new HttpHeaders();
+                    headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+                    var requestId = UUID.randomUUID().toString();
+                    headers.set("X-Feature006-Name-Observation", requestId);
+                    sql.clear();
+                    assertNoCallerTransaction();
+                    var response = http.exchange(URI.create("http://localhost:" + port + expectedContextPath()
+                            + read.path() + query), HttpMethod.GET, new HttpEntity<>(headers), String.class);
+                    var decoded = nameRequests.take(requestId);
+                    if ("/products".equals(read.path())) {
+                        assertThat(decoded).as("T023 passive catalog observation").isNotNull();
+                        assertThat(decoded.query()).isEqualTo(read.query());
+                        assertThat(decoded.name()).isEqualTo(read.name());
+                        assertThat(decoded.uri()).isEqualTo(expectedContextPath() + read.path());
+                        assertThat(decoded.contextPath()).isEqualTo(expectedContextPath());
+                    } else {
+                        assertThat(decoded).isNull(); // Existing passive observer is scoped only to /products.
+                    }
+                    assertThat(response.getStatusCode().value()).as(read.label()).isEqualTo(read.status());
+                    assertThat(response.getHeaders().getContentType()).isNotNull()
+                            .satisfies(type -> assertThat(type.isCompatibleWith(MediaType.APPLICATION_JSON)).isTrue());
+                    assertThat(response.getHeaders().getFirst(HttpHeaders.WWW_AUTHENTICATE)).isNull();
+                    assertThat(response.getHeaders().getFirst(HttpHeaders.LOCATION)).isNull();
+                    var body = mapper.readTree(response.getBody());
+                    var expected = mapper.readTree(read.expected().toString());
+                    assertThat(body).as("T023 " + read.label() + " exact original representation").isEqualTo(expected);
+                    if (read.status() == 200) {
+                        if ("/products".equals(read.path())) {
+                            for (var item : body.get("content")) assertThat(item.get("price").isNumber()).isTrue();
+                        } else {
+                            assertThat(body.get("price").isNumber()).isTrue();
+                            assertThat(body.get("categories").isArray()).isTrue();
+                        }
+                    }
+                    assertThat(database.snapshot()).isEqualTo(before);
+                    assertThat(database.accountIds()).isEmpty();
+                    assertThat(sql.events()).isNotEmpty().allSatisfy(event -> {
+                        assertThat(event.sql().stripLeading().toLowerCase(Locale.ROOT)).startsWith("select ");
+                        assertThat(event.transactionActive()).isTrue();
+                    });
+                    assertNoCallerTransaction();
+                    var observation = mapper.createObjectNode().put("context", expectedIdentity()).put("case", read.label())
+                            .put("path", expectedContextPath() + read.path()).put("query", read.query())
+                            .put("name", read.name()).put("status", response.getStatusCode().value())
+                            .put("snapshotEqual", true).put("hibernateDml", 0).put("callerTransaction", false);
+                    observation.set("body", body);
+                    observation.set("expected", expected);
+                    System.out.println("T023_HTTP " + observation);
+                }
+                fixture.cleanUp();
+                assertEmptyDatabase(database);
+            } finally {
+                nameRequests.clear();
+                sql.clear();
+            }
+        }
+
+        private T023Read t023CatalogRead(String label, String name, List<ProductData> products) {
+            var page = mapper.createObjectNode().put("page", 0).put("size", 12)
+                    .put("totalElements", products.size()).put("totalPages", products.isEmpty() ? 0 : 1);
+            var content = page.putArray("content");
+            products.forEach(product -> content.add(nameItem(product)));
+            var query = (name == null ? "" : "name=" + URLEncoder.encode(name, StandardCharsets.UTF_8) + "&")
+                    + "page=0&size=12";
+            return new T023Read(label, "/products", query, name, 200, page);
+        }
+
+        private T023Read t023DetailRead(String label, ProductData product, List<String> categoryNames) {
+            var detail = nameItem(product).put("description", product.description());
+            detail.set("categories", mapper.valueToTree(categoryNames));
+            return new T023Read(label, "/products/" + product.id(), "", null, 200, detail);
+        }
+
+        private record T023Read(String label, String path, String query, String name, int status, JsonNode expected) { }
 
         private ObjectNode nameItem(ProductData product) {
             return mapper.createObjectNode().put("id", product.id()).put("name", product.name())

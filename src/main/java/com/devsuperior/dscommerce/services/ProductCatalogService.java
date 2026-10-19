@@ -27,14 +27,15 @@ public class ProductCatalogService {
     }
 
     @Transactional(readOnly = true)
-    public PageResponseDTO<ProductCatalogItemDTO> listProducts(int page, int size) {
+    public PageResponseDTO<ProductCatalogItemDTO> listProducts(String name, int page, int size) {
+        var filter = ProductNameFilter.normalize(name);
         var sort = Sort.by(
                 Sort.Order.asc("name"),
                 Sort.Order.asc("id")
         );
-        var products =
-                productRepository.findAll(
-                        PageRequest.of(page, size, sort));
+        var products = filter.isEmpty()
+                ? productRepository.findAll(PageRequest.of(page, size, sort))
+                : productRepository.findPageByName(filter, PageRequest.of(page, size));
         var content = products.getContent().stream()
                 .map(ProductCatalogItemDTO::new)
                 .toList();

@@ -142,7 +142,7 @@ class AdminProductRepositoryTest {
         var before = database.snapshot();
         sql.clear();
         var request = PageRequest.of(page, size);
-        var result = filter == null ? repository.findAdminPage(request) : repository.findAdminPageByName(filter, request);
+        var result = filter == null ? repository.findAdminPage(request) : repository.findPageByName(filter, request);
         assertNoCallerTransaction();
         assertThat(database.snapshot()).as("independent snapshot after repository return, before cleanup").isEqualTo(before);
         assertThat(sql.events()).isNotEmpty().allSatisfy(event -> {

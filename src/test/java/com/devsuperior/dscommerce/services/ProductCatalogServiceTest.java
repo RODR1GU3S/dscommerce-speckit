@@ -7,6 +7,8 @@ import com.devsuperior.dscommerce.repositories.ProductRepository;
 import com.devsuperior.dscommerce.services.exceptions.ProductNotFoundException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -24,6 +26,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -82,7 +85,7 @@ class ProductCatalogServiceTest {
         when(productRepository.findAll(any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(product), PageRequest.of(0, 12), 1));
 
-        var response = productCatalogService.listProducts(0, 12);
+        var response = productCatalogService.listProducts(null, 0, 12);
 
         ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
         verify(productRepository).findAll(pageableCaptor.capture());
@@ -102,7 +105,7 @@ class ProductCatalogServiceTest {
         when(productRepository.findAll(any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(), PageRequest.of(2, 5), 52));
 
-        productCatalogService.listProducts(2, 5);
+        productCatalogService.listProducts(null, 2, 5);
 
         ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
         verify(productRepository).findAll(pageableCaptor.capture());
@@ -126,7 +129,7 @@ class ProductCatalogServiceTest {
         when(productRepository.findAll(any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(), PageRequest.of(999, 12), 52));
 
-        var response = productCatalogService.listProducts(999, 12);
+        var response = productCatalogService.listProducts(null, 999, 12);
 
         assertThat(response.content()).isEmpty();
         assertThat(response.page()).isEqualTo(999);
@@ -152,7 +155,7 @@ class ProductCatalogServiceTest {
                         )
                 );
 
-        var response = productCatalogService.listProducts(0, 12);
+        var response = productCatalogService.listProducts(null, 0, 12);
 
         assertThat(response.content()).hasSize(1);
         var dto = response.content().getFirst();
@@ -160,5 +163,48 @@ class ProductCatalogServiceTest {
         assertThat(dto.name()).isEqualTo(product.getName());
         assertThat(dto.image()).isEqualTo(product.getImage());
         assertThat(dto.price()).isEqualTo(price);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", " \t "})
+    void listProductsShouldKeepTheUnfilteredQueryForEmptyNormalizedName(String name) {
+        var request = PageRequest.of(0, 12, Sort.by(Sort.Order.asc("name"), Sort.Order.asc("id")));
+        when(productRepository.findAll(request)).thenReturn(new PageImpl<>(List.of(), request, 0));
+
+        var response = productCatalogService.listProducts(name, 0, 12);
+
+        assertThat(response.content()).isEmpty();
+        assertThat(response.page()).isZero();
+        assertThat(response.size()).isEqualTo(12);
+        assertThat(response.totalElements()).isZero();
+        assertThat(response.totalPages()).isZero();
+        verify(productRepository).findAll(request);
+        verifyNoMoreInteractions(productRepository);
+    }
+
+    @Test
+    void listProductsShouldNormalizeNameAndMapTheFilteredPageWithoutChangingStoredData() {
+        var request = PageRequest.of(1, 2);
+        var price = new BigDecimal("123.4500");
+        var product = new Product(42L, " Fone Azul ", "fone.jpg", price);
+        when(productRepository.findPageByName("FONE", request))
+                .thenReturn(new PageImpl<>(List.of(product), request, 5));
+
+        var response = productCatalogService.listProducts(" FONE ", 1, 2);
+
+        assertThat(response.page()).isEqualTo(1);
+        assertThat(response.size()).isEqualTo(2);
+        assertThat(response.totalElements()).isEqualTo(5);
+        assertThat(response.totalPages()).isEqualTo(3);
+        assertThat(response.content()).singleElement().satisfies(dto -> {
+            assertThat(dto.id()).isEqualTo(42L);
+            assertThat(dto.name()).isEqualTo(" Fone Azul ");
+            assertThat(dto.image()).isEqualTo("fone.jpg");
+            assertThat(dto.price()).isEqualTo(price);
+        });
+        assertThat(product.getName()).isEqualTo(" Fone Azul ");
+        assertThat(product.getPrice()).isEqualTo(price);
+        verify(productRepository).findPageByName("FONE", request);
+        verifyNoMoreInteractions(productRepository);
     }
 }

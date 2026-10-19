@@ -22,6 +22,7 @@ import java.util.List;
 
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasSize;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -99,7 +100,7 @@ class ProductControllerTest {
                 1
         );
 
-        when(productCatalogService.listProducts(0, 12)).thenReturn(response);
+        when(productCatalogService.listProducts(null, 0, 12)).thenReturn(response);
 
         mockMvc.perform(get("/products"))
                 .andExpect(status().isOk())
@@ -120,7 +121,7 @@ class ProductControllerTest {
                 6
         );
 
-        when(productCatalogService.listProducts(1, 10)).thenReturn(response);
+        when(productCatalogService.listProducts(null, 1, 10)).thenReturn(response);
 
         mockMvc.perform(get("/products")
                         .param("page", "1")
@@ -143,7 +144,7 @@ class ProductControllerTest {
                 5
         );
 
-        when(productCatalogService.listProducts(999, 12)).thenReturn(response);
+        when(productCatalogService.listProducts(null, 999, 12)).thenReturn(response);
 
         mockMvc.perform(get("/products")
                         .param("page", "999")
@@ -172,7 +173,7 @@ class ProductControllerTest {
                 1
         );
 
-        when(productCatalogService.listProducts(0, 12)).thenReturn(response);
+        when(productCatalogService.listProducts(null, 0, 12)).thenReturn(response);
 
         mockMvc.perform(get("/products"))
                 .andExpect(status().isOk())
@@ -199,7 +200,7 @@ class ProductControllerTest {
                 1
         );
 
-        when(productCatalogService.listProducts(0, 12)).thenReturn(response);
+        when(productCatalogService.listProducts(null, 0, 12)).thenReturn(response);
 
         mockMvc.perform(get("/products"))
                 .andExpect(status().isOk())
@@ -231,8 +232,8 @@ class ProductControllerTest {
                 26
         );
 
-        when(productCatalogService.listProducts(0, 2)).thenReturn(firstPage);
-        when(productCatalogService.listProducts(1, 2)).thenReturn(secondPage);
+        when(productCatalogService.listProducts(null, 0, 2)).thenReturn(firstPage);
+        when(productCatalogService.listProducts(null, 1, 2)).thenReturn(secondPage);
 
         mockMvc.perform(get("/products")
                         .param("page", "0")
@@ -251,6 +252,31 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.content[0].id").value(50))
                 .andExpect(jsonPath("$.content[1].name").value("Product 02"))
                 .andExpect(jsonPath("$.content[1].id").value(49));
+    }
+
+    @Test
+    void listProductsShouldForwardNameUnchangedWithPagination() throws Exception {
+        String name = " FONE ";
+        var response = new PageResponseDTO<>(List.of(new ProductCatalogItemDTO(
+                42L, " Fone Azul ", "fone.jpg", new BigDecimal("123.45"))), 1, 2, 5, 3);
+        when(productCatalogService.listProducts(name, 1, 2)).thenReturn(response);
+
+        mockMvc.perform(get("/products").param("name", name).param("page", "1").param("size", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.keys()", containsInAnyOrder(
+                        "content", "page", "size", "totalElements", "totalPages")))
+                .andExpect(jsonPath("$.page").value(1))
+                .andExpect(jsonPath("$.size").value(2))
+                .andExpect(jsonPath("$.totalElements").value(5))
+                .andExpect(jsonPath("$.totalPages").value(3))
+                .andExpect(jsonPath("$.content", hasSize(1)))
+                .andExpect(jsonPath("$.content[0].keys()", containsInAnyOrder("id", "name", "image", "price")))
+                .andExpect(jsonPath("$.content[0].id").value(42))
+                .andExpect(jsonPath("$.content[0].name").value(" Fone Azul "))
+                .andExpect(jsonPath("$.content[0].image").value("fone.jpg"))
+                .andExpect(jsonPath("$.content[0].price").isNumber())
+                .andExpect(jsonPath("$.content[0].price").value(123.45));
+        verify(productCatalogService).listProducts(name, 1, 2);
     }
 
     @Test

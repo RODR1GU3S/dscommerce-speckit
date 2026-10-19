@@ -149,9 +149,9 @@ class AdminProductPublicRegressionIntegrationTest {
         proof("public-errors", invalid ? "INVALID_IRRELEVANT" : "ANONYMOUS");
     }
 
-    @ParameterizedTest(name = "admin filter remains scoped, irrelevant invalid public token={0}")
+    @ParameterizedTest(name = "public name filter/category representations, irrelevant invalid token={0}")
     @ValueSource(booleans = {false, true})
-    void adminFilterAndCategoryIdentifiersDoNotChangePublicContract(boolean invalid) throws Exception {
+    void publicNameFilterPreservesCategoryRepresentationsAndAdministrativeIsolation(boolean invalid) throws Exception {
         var alpha = product("Alpha", "10.00");
         var beta = product("Beta", "12.00");
         var c1 = fixture.createCategory("Same name");
@@ -173,9 +173,14 @@ class AdminProductPublicRegressionIntegrationTest {
             ids.add(row.path("id").longValue());
         });
         assertThat(ids).containsExactlyInAnyOrder(c1.id(), c2.id());
-        for (String query : List.of("", "?name=ALP", "?name=does-not-exist", "?name=%25_")) {
-            assertPage(json(send("GET", "/products" + query, invalid ? INVALID_TOKEN : null, null, null), 200), 0, 12, List.of(alpha, beta), false);
-        }
+        assertPage(json(send("GET", "/products", invalid ? INVALID_TOKEN : null, null, null), 200),
+                0, 12, List.of(alpha, beta), false);
+        assertPage(json(send("GET", "/products?name=ALP", invalid ? INVALID_TOKEN : null, null, null), 200),
+                0, 12, List.of(alpha), false);
+        assertPage(json(send("GET", "/products?name=does-not-exist", invalid ? INVALID_TOKEN : null, null, null), 200),
+                0, 12, List.of(), false);
+        assertPage(json(send("GET", "/products?name=%25_", invalid ? INVALID_TOKEN : null, null, null), 200),
+                0, 12, List.of(), false);
         var publicDetail = json(send("GET", "/products/" + alpha.id(), invalid ? INVALID_TOKEN : null, null, null), 200);
         assertProduct(publicDetail, alpha, true);
         assertThat(publicDetail.path("categories")).isEqualTo(mapper.valueToTree(List.of("Same name")));

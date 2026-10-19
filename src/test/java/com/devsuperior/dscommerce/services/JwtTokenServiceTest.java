@@ -9,6 +9,8 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -19,12 +21,21 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
 @ActiveProfiles("test")
 class JwtTokenServiceTest {
+
+    @DynamicPropertySource
+    static void isolatedDatabase(DynamicPropertyRegistry registry) {
+        // This context owns its schema, including create-drop on cache eviction.
+        var databaseUrl = "jdbc:h2:mem:jwt-token-service-" + UUID.randomUUID()
+                + ";DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE";
+        registry.add("spring.datasource.url", () -> databaseUrl);
+    }
 
     private static final String SERVICE_BEAN_NAME = "jwtTokenService";
     private static final Long ACCOUNT_ID = 42L;

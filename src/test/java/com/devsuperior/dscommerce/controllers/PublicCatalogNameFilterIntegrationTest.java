@@ -605,6 +605,259 @@ class PublicCatalogNameFilterIntegrationTest {
             }
         }
 
+        @Test
+        @Tag("feature006-t017")
+        void paginatesFilteredResultsInStoredNameIdOrder() throws Exception {
+            assertNoCallerTransaction();
+            var database = new AdminProductDatabaseProbe(context.getEnvironment().getRequiredProperty("spring.datasource.url"));
+            assertEmptyDatabase(database);
+            try (var fixture = new AdminProductTestFixture(context)) {
+                var manifest = fixture.prepareV03();
+                var products = manifest.insertedProducts();
+                var expectedOrder = manifest.filteredOrder();
+                var orderedProducts = expectedOrder.stream().map(id -> products.stream()
+                        .filter(product -> product.id() == id).findFirst().orElseThrow()).toList();
+                assertThat(products).extracting(ProductData::name)
+                        .containsExactly("Telefone D", "Fone C", "Fone B", "Fone B", "Fone A", "Cabo");
+                assertThat(orderedProducts).extracting(ProductData::name)
+                        .containsExactly("Fone A", "Fone B", "Fone B", "Fone C", "Telefone D");
+                assertThat(expectedOrder).hasSize(5).doesNotHaveDuplicates();
+                assertThat(expectedOrder.get(1)).isLessThan(expectedOrder.get(2));
+                var before = database.snapshot();
+                assertThat(before.products()).extracting(AdminProductDatabaseProbe.ProductRow::id)
+                        .containsExactlyElementsOf(products.stream().map(ProductData::id).toList());
+                assertThat(before.products()).extracting(AdminProductDatabaseProbe.ProductRow::name)
+                        .containsExactlyElementsOf(products.stream().map(ProductData::name).toList());
+                assertThat(before.categories()).extracting(AdminProductDatabaseProbe.CategoryRow::id)
+                        .containsExactlyElementsOf(manifest.categories().stream()
+                                .map(AdminProductTestFixture.CategoryData::id).toList());
+                assertThat(before.associations()).hasSize(2)
+                        .containsExactlyInAnyOrderElementsOf(manifest.associations());
+                assertThat(manifest.associations()).allSatisfy(pair ->
+                        assertThat(pair.productId()).isEqualTo(expectedOrder.getFirst()));
+
+                var seen = new ArrayList<Long>();
+                var sizes = new ArrayList<Integer>();
+                var assertions = new ArrayList<Executable>();
+                for (int page = 0; page < 3; page++) {
+                    // V03's insertion manifest supplies the oracle; no production query computes it.
+                    var expectedProducts = orderedProducts.subList(page * 2, Math.min(page * 2 + 2, 5));
+                    var expected = mapper.createObjectNode().put("page", page).put("size", 2)
+                            .put("totalElements", 5).put("totalPages", 3);
+                    var expectedContent = expected.putArray("content");
+                    for (var product : expectedProducts) expectedContent.add(nameItem(product));
+                    var canonicalExpected = mapper.readTree(expected.toString());
+                    var query = "name=fone&page=" + page + "&size=2";
+                    var uri = URI.create("http://localhost:" + port + expectedContextPath() + "/products?" + query);
+                    var requestId = UUID.randomUUID().toString();
+                    var headers = new HttpHeaders();
+                    headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+                    headers.set("X-Feature006-Name-Observation", requestId);
+                    sql.clear();
+                    assertNoCallerTransaction();
+                    var response = http.exchange(uri, HttpMethod.GET, new HttpEntity<>(headers), String.class);
+                    var decoded = nameRequests.take(requestId);
+                    assertThat(decoded).as("T017 passive servlet observation").isNotNull();
+                    assertThat(decoded.query()).isEqualTo(query);
+                    assertThat(decoded.name()).isEqualTo("fone");
+                    assertThat(decoded.contextPath()).isEqualTo(expectedContextPath());
+                    assertThat(decoded.uri()).isEqualTo(expectedContextPath() + "/products");
+                    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+                    assertThat(response.getHeaders().getContentType()).isNotNull()
+                            .satisfies(type -> assertThat(type.isCompatibleWith(MediaType.APPLICATION_JSON)).isTrue());
+                    var actual = mapper.readTree(response.getBody());
+                    assertThat(actual.get("content").isArray()).isTrue();
+                    sizes.add(actual.get("content").size());
+                    for (var item : actual.get("content")) seen.add(item.get("id").asLong());
+                    assertThat(database.snapshot()).isEqualTo(before);
+                    assertThat(sql.events()).isNotEmpty().allSatisfy(event -> {
+                        assertThat(event.sql().stripLeading().toLowerCase(Locale.ROOT)).startsWith("select ");
+                        assertThat(event.transactionActive()).isTrue();
+                    });
+                    assertNoCallerTransaction();
+                    var observation = mapper.createObjectNode().put("context", expectedIdentity())
+                            .put("page", page).put("filter", "fone").put("rawQuery", decoded.query())
+                            .put("decodedName", decoded.name()).put("path", decoded.uri())
+                            .put("status", response.getStatusCode().value()).put("guardsPassed", true)
+                            .put("snapshotEqual", true).put("hibernateDml", 0).put("callerTransaction", false);
+                    observation.set("filteredOrder", mapper.valueToTree(expectedOrder));
+                    observation.set("expected", canonicalExpected);
+                    observation.set("actual", actual);
+                    System.out.println("T017_HTTP " + observation);
+                    assertions.add(() -> assertThat(actual).as("T017 exact page, IDs, stored names and totals")
+                            .isEqualTo(canonicalExpected));
+                }
+                assertions.add(() -> assertThat(sizes).containsExactly(2, 2, 1));
+                assertions.add(() -> assertThat(seen).containsExactlyElementsOf(expectedOrder).doesNotHaveDuplicates());
+                fixture.cleanUp();
+                assertEmptyDatabase(database);
+                assertAll("T017 complete V03 navigation with name/id ordering", assertions);
+            } finally {
+                nameRequests.clear();
+                sql.clear();
+            }
+        }
+
+        @ParameterizedTest(name = "{0}")
+        @MethodSource("com.devsuperior.dscommerce.controllers.PublicCatalogNameFilterIntegrationTest#emptyPageScenarios")
+        @Tag("feature006-t018")
+        void returnsCoherentEmptyFilteredPages(EmptyPageScenario scenario) throws Exception {
+            assertNoCallerTransaction();
+            var database = new AdminProductDatabaseProbe(context.getEnvironment().getRequiredProperty("spring.datasource.url"));
+            assertEmptyDatabase(database);
+            try (var fixture = new AdminProductTestFixture(context)) {
+                if (scenario.populated()) {
+                    var manifest = fixture.prepareV03();
+                    assertThat(manifest.insertedProducts()).extracting(ProductData::name)
+                            .containsExactly("Telefone D", "Fone C", "Fone B", "Fone B", "Fone A", "Cabo");
+                    assertThat(manifest.filteredOrder()).hasSize(5).doesNotHaveDuplicates();
+                    var prepared = database.snapshot();
+                    assertThat(prepared.products()).extracting(AdminProductDatabaseProbe.ProductRow::id)
+                            .containsExactlyElementsOf(manifest.insertedProducts().stream().map(ProductData::id).toList());
+                    assertThat(prepared.products()).extracting(AdminProductDatabaseProbe.ProductRow::name)
+                            .containsExactlyElementsOf(manifest.insertedProducts().stream().map(ProductData::name).toList());
+                    assertThat(prepared.categories()).extracting(AdminProductDatabaseProbe.CategoryRow::id)
+                            .containsExactlyElementsOf(manifest.categories().stream()
+                                    .map(AdminProductTestFixture.CategoryData::id).toList());
+                    assertThat(prepared.associations()).hasSize(2)
+                            .containsExactlyInAnyOrderElementsOf(manifest.associations());
+                }
+                var before = database.snapshot();
+                var expected = mapper.createObjectNode().put("page", scenario.page()).put("size", scenario.size())
+                        .put("totalElements", scenario.totalElements()).put("totalPages", scenario.totalPages());
+                expected.putArray("content");
+                var canonicalExpected = mapper.readTree(expected.toString());
+                var query = (scenario.filter() == null ? "" : "name="
+                        + URLEncoder.encode(scenario.filter(), StandardCharsets.UTF_8) + "&")
+                        + "page=" + scenario.page() + "&size=" + scenario.size();
+                var uri = URI.create("http://localhost:" + port + expectedContextPath() + "/products?" + query);
+                var requestId = UUID.randomUUID().toString();
+                var headers = new HttpHeaders();
+                headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+                headers.set("X-Feature006-Name-Observation", requestId);
+                sql.clear();
+                assertNoCallerTransaction();
+                var response = http.exchange(uri, HttpMethod.GET, new HttpEntity<>(headers), String.class);
+                var decoded = nameRequests.take(requestId);
+                assertThat(decoded).as("T018 passive servlet observation").isNotNull();
+                assertThat(decoded.query()).isEqualTo(query);
+                assertThat(decoded.name()).isEqualTo(scenario.filter());
+                assertThat(decoded.contextPath()).isEqualTo(expectedContextPath());
+                assertThat(decoded.uri()).isEqualTo(expectedContextPath() + "/products");
+                assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(response.getHeaders().getContentType()).isNotNull()
+                        .satisfies(type -> assertThat(type.isCompatibleWith(MediaType.APPLICATION_JSON)).isTrue());
+                var actual = mapper.readTree(response.getBody());
+                assertThat(database.snapshot()).isEqualTo(before);
+                assertThat(sql.events()).isNotEmpty().allSatisfy(event -> {
+                    assertThat(event.sql().stripLeading().toLowerCase(Locale.ROOT)).startsWith("select ");
+                    assertThat(event.transactionActive()).isTrue();
+                });
+                assertNoCallerTransaction();
+                var observation = mapper.createObjectNode().put("context", expectedIdentity())
+                        .put("scenario", scenario.label()).put("populated", scenario.populated())
+                        .put("filter", scenario.filter()).put("rawQuery", decoded.query())
+                        .put("decodedName", decoded.name()).put("path", decoded.uri())
+                        .put("status", response.getStatusCode().value()).put("guardsPassed", true)
+                        .put("snapshotEqual", true).put("hibernateDml", 0).put("callerTransaction", false);
+                observation.set("expected", canonicalExpected);
+                observation.set("actual", actual);
+                System.out.println("T018_HTTP " + observation);
+                assertThat(actual).as("T018 " + scenario.label() + " exact empty content and requested pagination/totals")
+                        .isEqualTo(canonicalExpected);
+                fixture.cleanUp();
+                assertEmptyDatabase(database);
+            } finally {
+                nameRequests.clear();
+                sql.clear();
+            }
+        }
+
+        @Test
+        @Tag("feature006-t019")
+        void doesNotRetainNameBetweenRequests() throws Exception {
+            assertNoCallerTransaction();
+            var database = new AdminProductDatabaseProbe(context.getEnvironment().getRequiredProperty("spring.datasource.url"));
+            assertEmptyDatabase(database);
+            try (var fixture = new AdminProductTestFixture(context)) {
+                var manifest = fixture.prepareV03();
+                var products = manifest.insertedProducts();
+                assertThat(products).extracting(ProductData::name)
+                        .containsExactly("Telefone D", "Fone C", "Fone B", "Fone B", "Fone A", "Cabo");
+                var completeOrder = manifest.unfilteredOrder();
+                assertThat(completeOrder).hasSize(6).doesNotHaveDuplicates();
+                assertThat(completeOrder.stream().map(id -> products.stream()
+                        .filter(product -> product.id() == id).findFirst().orElseThrow().name()).toList())
+                        .containsExactly("Cabo", "Fone A", "Fone B", "Fone B", "Fone C", "Telefone D");
+                assertThat(manifest.filteredOrder()).containsExactlyElementsOf(completeOrder.subList(1, 6));
+                var before = database.snapshot();
+                assertThat(before.products()).extracting(AdminProductDatabaseProbe.ProductRow::id)
+                        .containsExactlyElementsOf(products.stream().map(ProductData::id).toList());
+                assertThat(before.products()).extracting(AdminProductDatabaseProbe.ProductRow::name)
+                        .containsExactlyElementsOf(products.stream().map(ProductData::name).toList());
+                assertThat(before.categories()).extracting(AdminProductDatabaseProbe.CategoryRow::id)
+                        .containsExactlyElementsOf(manifest.categories().stream()
+                                .map(AdminProductTestFixture.CategoryData::id).toList());
+                assertThat(before.associations()).hasSize(2)
+                        .containsExactlyInAnyOrderElementsOf(manifest.associations());
+
+                for (boolean filtered : List.of(true, false)) {
+                    // Both page oracles come from the insertion manifest, never from the preceding response.
+                    var order = filtered ? manifest.filteredOrder() : completeOrder;
+                    var expected = mapper.createObjectNode().put("page", 0).put("size", 2)
+                            .put("totalElements", filtered ? 5 : 6).put("totalPages", 3);
+                    var expectedContent = expected.putArray("content");
+                    for (var id : order.subList(0, 2)) {
+                        expectedContent.add(nameItem(products.stream().filter(product -> product.id() == id)
+                                .findFirst().orElseThrow()));
+                    }
+                    var canonicalExpected = mapper.readTree(expected.toString());
+                    var query = (filtered ? "name=fone&" : "") + "page=0&size=2";
+                    var uri = URI.create("http://localhost:" + port + expectedContextPath() + "/products?" + query);
+                    var requestId = UUID.randomUUID().toString();
+                    var headers = new HttpHeaders();
+                    headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+                    headers.set("X-Feature006-Name-Observation", requestId);
+                    sql.clear();
+                    assertNoCallerTransaction();
+                    var response = http.exchange(uri, HttpMethod.GET, new HttpEntity<>(headers), String.class);
+                    var decoded = nameRequests.take(requestId);
+                    assertThat(decoded).as("T019 passive servlet observation").isNotNull();
+                    assertThat(decoded.query()).isEqualTo(query);
+                    assertThat(decoded.name()).isEqualTo(filtered ? "fone" : null);
+                    assertThat(decoded.contextPath()).isEqualTo(expectedContextPath());
+                    assertThat(decoded.uri()).isEqualTo(expectedContextPath() + "/products");
+                    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+                    assertThat(response.getHeaders().getContentType()).isNotNull()
+                            .satisfies(type -> assertThat(type.isCompatibleWith(MediaType.APPLICATION_JSON)).isTrue());
+                    var actual = mapper.readTree(response.getBody());
+                    assertThat(database.snapshot()).isEqualTo(before);
+                    assertThat(sql.events()).isNotEmpty().allSatisfy(event -> {
+                        assertThat(event.sql().stripLeading().toLowerCase(Locale.ROOT)).startsWith("select ");
+                        assertThat(event.transactionActive()).isTrue();
+                    });
+                    assertNoCallerTransaction();
+                    var observation = mapper.createObjectNode().put("context", expectedIdentity())
+                            .put("step", filtered ? "filtered" : "omitted-after-filter")
+                            .put("rawQuery", decoded.query()).put("decodedName", decoded.name())
+                            .put("path", decoded.uri()).put("status", response.getStatusCode().value())
+                            .put("guardsPassed", true).put("snapshotEqual", true)
+                            .put("hibernateDml", 0).put("callerTransaction", false);
+                    observation.set("completeOrder", mapper.valueToTree(completeOrder));
+                    observation.set("expected", canonicalExpected);
+                    observation.set("actual", actual);
+                    System.out.println("T019_HTTP " + observation);
+                    assertThat(actual).as("T019 " + (filtered ? "restricted first request" : "complete catalog page after omission")
+                            + " exact IDs, stored values and metadata").isEqualTo(canonicalExpected);
+                }
+                fixture.cleanUp();
+                assertEmptyDatabase(database);
+            } finally {
+                nameRequests.clear();
+                sql.clear();
+            }
+        }
+
         private ObjectNode nameItem(ProductData product) {
             return mapper.createObjectNode().put("id", product.id()).put("name", product.name())
                     .put("image", product.image()).put("price", product.price());
@@ -679,6 +932,22 @@ class PublicCatalogNameFilterIntegrationTest {
 
     enum InternalSpaceScenario { COMMON, LEGACY, NBSP }
     static Stream<InternalSpaceScenario> internalSpaceScenarios() { return Stream.of(InternalSpaceScenario.values()); }
+
+    record EmptyPageScenario(String label, boolean populated, String filter, int page, int size,
+                             int totalElements, int totalPages) {
+        @Override public String toString() { return label; }
+    }
+
+    static Stream<EmptyPageScenario> emptyPageScenarios() {
+        return Stream.of(
+                new EmptyPageScenario("no-matches-first", true, "inexistente", 0, 2, 0, 0),
+                new EmptyPageScenario("no-matches-nonzero", true, "inexistente", 2, 2, 0, 0),
+                new EmptyPageScenario("beyond-five-matches", true, "fone", 3, 2, 5, 3),
+                new EmptyPageScenario("empty-filtered-first", false, "fone", 0, 2, 0, 0),
+                new EmptyPageScenario("empty-filtered-nonzero", false, "fone", 2, 2, 0, 0),
+                new EmptyPageScenario("empty-unfiltered-first", false, null, 0, 2, 0, 0),
+                new EmptyPageScenario("empty-unfiltered-nonzero", false, null, 2, 2, 0, 0));
+    }
 
     record NameRequest(String query, String name, String uri, String contextPath) { }
 

@@ -949,3 +949,226 @@ Os dez relatórios novos estão em [surefire-current-http](../../target/feature0
 **Conclusão T016**: checkpoint conjunto US2 GREEN nos seis cenários e regressões unitárias afetadas, com ausência de mutações observada nas janelas HTTP e nomes originais preservados. Nenhuma correção necessária; produção e assertions intactas. T001–T016 `[X]`; T017–T030 abertas, sem iniciar US3 ou encerrar a feature completa. Limites: Windows/H2 configurado, variantes/páginas dos casos US2 e janelas síncronas; sem prova de outros bancos, CI, durabilidade, efeitos fora da janela, JDBC direto universal ou suíte completa. Sem impedimento remanescente, stage, commit, push, troca de branch ou alteração de main.
 
 Conferência final: diff documental incremental contra as cópias recebidas, referências dos seletores, relatórios e novos artefatos locais revisados; `git diff --check` exit 0, sem problemas de whitespace, e 166 links locais dos dois documentos resolvidos. Auditoria confirmou somente T016 alterada nas tasks recebidas, conteúdo anterior do quickstart preservado e todos os fontes/testes recebidos idênticos. Git final: os mesmos quatro arquivos rastreados modificados, nenhum staged ou não rastreado; raiz/branch/HEAD e main mantidos. Alterações desta tarefa somente no quickstart e marcador T016; extensões ausentes na conferência pós-execução, sem hooks aplicáveis.
+
+## Execução da T017 — paginação filtrada e desempate por ID
+
+**Contexto recebido em 2026-10-19**: raiz `C:/Users/ronal/dscommerce-speckit`, branch real `006-filtrar-catalogo-produtos`, HEAD `b5c0a241806acb437ba10a80b7174b5cc35fd72d`, Git limpo, nenhum staged ou não rastreado. T001–T016 `[X]`; lidas integralmente T017 e suas condições, dependência T016 e cenários US3.1/US3.2, com as decisões correspondentes da spec/plano/pesquisa/modelo/contrato conferidas. Escopo exclusivo de teste T017, sem iniciar T018+; cópias e hashes recebidos preservados antes de editar.
+
+Pré-requisitos: `powershell -NoProfile -File .specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks`, com `SPECIFY_FEATURE_DIRECTORY=C:/Users/ronal/dscommerce-speckit/specs/006-filtrar-catalogo-produtos` temporário: exit 0, diretório correto e cinco documentos opcionais disponíveis. Variável e bytes do ponteiro restaurados em `finally`; SHA-256 mantido `AE411ADECBDD12D3B7495C8CC3FA5D944BD7A8214735B0FF399E68C2CB8BADE5`. Checklist somente lido, 16/16, zero abertos; ignores existentes suficientes. `.specify/extensions.yml` ausente antes/depois, sem hooks aplicáveis.
+
+### Teste acrescentado e resultados concretos
+
+Acrescentado somente `paginatesFilteredResultsInStoredNameIdOrder`, com tag `feature006-t017`, em [PublicCatalogNameFilterIntegrationTest.java](../../src/test/java/com/devsuperior/dscommerce/controllers/PublicCatalogNameFilterIntegrationTest.java). O mesmo método é herdado pelos contextos aninhados reais raiz e `/api`, com perfil test, filtros reais, H2 isolado sem seeds e OSIV local desativado. Reutiliza `prepareV03()` de [AdminProductTestFixture.java](../../src/test/java/com/devsuperior/dscommerce/fixtures/AdminProductTestFixture.java), sem alterar esse suporte ou seus defaults.
+
+A V03 prepara e commita seis produtos em ordem de inserção diferente da ordem pública: Telefone D, Fone C, dois Fone B, Fone A e Cabo. Fone A tem duas associações com categorias distintas; os IDs, nomes, categorias e pares são conferidos por snapshot independente antes do HTTP. O oráculo é o `filteredOrder` do manifesto de inserção, com nomes esperados fixos e IDs capturados; não é calculado por consulta de produção. O teste confere também que os dois IDs de Fone B no manifesto estão em ordem crescente.
+
+| Página, sempre `name=fone&size=2` | Conteúdo exato esperado e observado | Quantidade | totalElements / totalPages |
+| --- | --- | ---: | --- |
+| 0 | Fone A; Fone B com menor ID | 2 | 5 / 3 |
+| 1 | Fone B com maior ID; Fone C | 2 | 5 / 3 |
+| 2 | Telefone D | 1 | 5 / 3 |
+
+Cada resposta é comparada ao **JSON integral esperado**, incluindo IDs capturados, nomes originais, imagem, preço numérico e todos os metadados; HTTP 200 isolado não aprova seleção. A união das três páginas deve coincidir exatamente com os cinco IDs do manifesto e não conter duplicação. Isso exclui Cabo, mantém Fone A uma única vez apesar das duas categorias e verifica o desempate de Fone B atravessando a fronteira entre páginas 0 e 1. Nesta execução, ambos os contextos produziram a sequência capturada `[5,3,4,2,1]`, com empate `[3,4]`; esses números são observações locais, não constantes fixadas no teste.
+
+Nas seis chamadas, filtro decodificado igual a `fone`, query/rota/contexto corretos, snapshots independentes iguais após cada GET e antes da limpeza, somente SELECTs Hibernate em transação na janela observada e ausência de transação externa do chamador. Nenhum número rígido de SELECT/count é exigido. Cleanup por ownership e banco vazio conferidos antes das assertions funcionais finais; preparação e limpeza não integram a janela de leitura.
+
+O diff do fonte contém uma única inserção: todos os testes, helpers e assertions anteriores de US1/US2 foram mantidos. Os outros **166 arquivos rastreados de `src/`** conservaram seus hashes, incluindo toda produção e suportes de fixture. Nenhuma alteração produtiva, de consulta/count/ordem, segurança ou representação foi necessária.
+
+### Seleção executada e resultado
+
+Uma única execução Maven sequencial pelo Wrapper, após conferir ausência de outro Maven/Surefire ativo e sufixo novo previamente livre:
+
+```powershell
+.\mvnw.cmd "-Dtest=PublicCatalogNameFilterIntegrationTest" "-Dgroups=feature006-t017" "-Dsurefire.reportNameSuffix=feature006-t017-pagination" test
+```
+
+A seleção usa a classe externa isoladamente e somente a tag do novo método, mantendo a descoberta dos contextos aninhados. Console, três XMLs e três TXTs confirmaram um caso em raiz e um em `/api`; o contêiner externo tem zero testes. Nenhum método anterior da classe, checkpoint US1/US2, baseline, serviço/repositório ou suíte completa foi reexecutado. As seis requisições são três páginas em cada um dos dois casos de teste, não seis testes distintos.
+
+| Relatório Surefire | Testes | Falhas | Erros | Ignorados |
+| --- | ---: | ---: | ---: | ---: |
+| PublicCatalogNameFilterIntegrationTest$ApiContext | 1 | 0 | 0 | 0 |
+| PublicCatalogNameFilterIntegrationTest$RootContext | 1 | 0 | 0 | 0 |
+| PublicCatalogNameFilterIntegrationTest (contêiner) | 0 | 0 | 0 | 0 |
+| **Total da única execução** | **2** | **0** | **0** | **0** |
+
+**BUILD SUCCESS, exit code 0**, na primeira execução, sem elementos de falha/erro/skip. As seis observações HTTP têm corpos e metadados exatos; a conferência adicional dos relatórios/observações confirmou 2/2/1, união exata, ausência de duplicação e os dois IDs empatados crescentes. **GREEN de comportamento já existente**, sem fabricar RED, alterar produção ou enfraquecer assertions. Compilação/preparação sem falhas observadas; nenhum impedimento remanescente.
+
+Comando na raiz via `cmd.exe /d /c`, stdout/stderr em [console.log](../../target/feature006-t017-pagination-20261019T073140/console.log). Windows/PowerShell `5.1.19041.7663`, `JAVA_HOME=C:\Program Files\Zulu\zulu-21`, Java `21.0.12.1` no console; Wrapper configurado para Maven `3.9.16`. Início **2026-10-19T07:31:57.9696365-03:00**, fim **07:33:06.8042524-03:00**, duração externa **68,835 s**, Maven **01:03 min**. Produção atualizada sem recompilação; **91 fontes de teste recompilados**, release 21, sem erro. Sem comando separado de compilação.
+
+### Preservação, evidências e limites
+
+Os **304 relatórios anteriores**, inclusive RED/GREEN de US1 e evidências de US2, foram copiados antes do Maven para [surefire-before](../../target/feature006-t017-pagination-20261019T073140/surefire-before/), com [manifesto SHA-256](../../target/feature006-t017-pagination-20261019T073140/surefire-before-manifest.json). Após executar, origem e cópia mantiveram todos os tamanhos/hashes. Os seis relatórios novos estão em [surefire-current](../../target/feature006-t017-pagination-20261019T073140/surefire-current/); nenhum relatório anterior sobrescrito.
+
+Evidências locais adicionais: [run-start.json](../../target/feature006-t017-pagination-20261019T073140/run-start.json), [run-result.json](../../target/feature006-t017-pagination-20261019T073140/run-result.json), [observações HTTP](../../target/feature006-t017-pagination-20261019T073140/http-observations.json) e [verification.json](../../target/feature006-t017-pagination-20261019T073140/verification.json). Registram seleção efetiva, navegação/IDs/nomes/metadados, fontes executados e preservação dos testes/relatórios recebidos. Artefatos em `target/` são locais, ignorados e podem faltar em outro checkout. Conferências documentais/estáticas não contam como testes adicionais.
+
+**Conclusão T017**: critérios US3.1/US3.2 atendidos; T001–T017 `[X]`, T018–T030 abertas. Isso não encerra US3: páginas vazias/banco vazio, independência entre solicitações e checkpoint conjunto permanecem T018/T019/T020. Alcance: HTTP real Windows/H2, V03 estável, filtro `fone`, páginas 0/1/2 tamanho 2, sem credenciais e janelas síncronas observadas; não prova outros bancos, mutações concorrentes, CI, durabilidade, JDBC direto universal, efeitos fora da janela ou suíte completa. Sem stage, commit, push, troca de branch ou alteração de main.
+
+Conferência final: diff completo dos três arquivos, referências de método/tag/fixture e novos artefatos locais revisados; `git diff --check` exit 0, sem problemas de whitespace, e 176 links locais dos dois documentos resolvidos. Auditoria confirmou somente T017 alterada nas tasks recebidas, conteúdo anterior do quickstart e testes US1/US2 preservados, sem arquivo novo rastreável. Git final: somente quickstart, tasks e `PublicCatalogNameFilterIntegrationTest.java` modificados, nenhum staged ou não rastreado; raiz/branch/HEAD e main mantidos. Extensões ausentes na conferência pós-execução, sem hooks aplicáveis.
+
+## Execução da T018 — páginas vazias e metadados coerentes
+
+**Contexto recebido em 2026-10-19**: raiz `C:/Users/ronal/dscommerce-speckit`, branch real `006-filtrar-catalogo-produtos`, HEAD `b5c0a241806acb437ba10a80b7174b5cc35fd72d`. Confirmados por Git somente `PublicCatalogNameFilterIntegrationTest.java`, este quickstart e tasks modificados, nenhum staged ou não rastreado. As alterações recebidas da T017 foram preservadas. T001–T017 estavam `[X]`; lidas T018, sua dependência T017 e condições, cenários US3.3–US3.5 e regras correspondentes da spec, plano, pesquisa, modelo e contrato. Escopo exclusivo de testes T018, sem produção ou antecipação de T019+.
+
+Pré-requisitos: `.\.specify\scripts\powershell\check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks` inicialmente retornou a Feature 005 pelo seletor local, sem definir o escopo deste pedido. Reexecutado por `powershell -NoProfile -File .specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks`, com `SPECIFY_FEATURE_DIRECTORY=C:/Users/ronal/dscommerce-speckit/specs/006-filtrar-catalogo-produtos` temporário: exit 0, FEATURE_DIR correto e os cinco documentos opcionais disponíveis. Variável e bytes do ponteiro restaurados em `finally`; SHA-256 preservado `AE411ADECBDD12D3B7495C8CC3FA5D944BD7A8214735B0FF399E68C2CB8BADE5`. Checklist somente lido, 16/16, zero pendentes; ignores existentes suficientes. `.specify/extensions.yml` ausente na conferência inicial; conferência pós-execução registrada abaixo.
+
+### Casos acrescentados e resultados concretos
+
+Acrescentado `returnsCoherentEmptyFilteredPages`, parametrizado por `emptyPageScenarios`, com tag exclusiva `feature006-t018`, ao [grupo HTTP existente](../../src/test/java/com/devsuperior/dscommerce/controllers/PublicCatalogNameFilterIntegrationTest.java). Sete variantes herdadas por raiz e `/api`, em contextos servlet reais distintos, perfil test, filtros reais, H2 isolado sem seeds e OSIV local desativado. Cada invocação começa e termina com banco vazio e usa fixture própria; nenhum caso depende de pesquisa anterior. Isso não implementa a sequência com catálogo preenchido da T019.
+
+| Cenário | Preparação e filtro | page / size enviados e observados | totalElements / totalPages observados |
+| --- | --- | --- | --- |
+| US3.3 | V03, `name=inexistente` | 0 / 2 | 0 / 0 |
+| US3.3, página não zero | V03, `name=inexistente` | 2 / 2 | 0 / 0 |
+| US3.4 | V03, `name=fone`, além das cinco correspondências | 3 / 2 | 5 / 3 |
+| US3.5 | Banco vazio, `name=fone` | 0 / 2 | 0 / 0 |
+| US3.5, página não zero | Banco vazio, `name=fone` | 2 / 2 | 0 / 0 |
+| US3.5 | Banco vazio, `name` omitido | 0 / 2 | 0 / 0 |
+| US3.5, página não zero | Banco vazio, `name` omitido | 2 / 2 | 0 / 0 |
+
+**As sete linhas passaram nos dois contextos**: todas retornaram HTTP 200/JSON e `content=[]`, com os cinco campos exatos e valores numéricos de paginação/totais comparados ao JSON integral esperado. A página 3 permaneceu 3 e conservou totais 5/3; nenhuma correspondência e banco vazio conservaram totais 0/0 inclusive em página 2. Sem clamp, 404 ou substituição por outra página.
+
+Nos casos preenchidos, `prepareV03()` commitou seis produtos (Telefone D, Fone C, dois Fone B, Fone A e Cabo), com cinco correspondências conhecidas para `fone` e duas associações de categorias. IDs capturados, nomes, categorias e pares foram conferidos em snapshot por conexão independente antes do GET; os totais esperados são constantes do cenário, sem consulta produtiva como oráculo. Nos casos vazios não se inseriu produto ou seed global.
+
+Em cada uma das 14 janelas de GET: query bruta, `name` decodificado (inclusive ausência), rota e context path conferidos; snapshot independente após retorno e antes do cleanup igual ao anterior; somente SELECTs Hibernate em transação observados, zero DML observado e nenhuma transação externa do chamador. Não se fixa quantidade de SELECT/count. Limpeza por ownership e banco vazio após cada caso aprovados. Os nomes/IDs de dados da T017 não são reutilizados como estado entre testes.
+
+### Única seleção Maven executada
+
+Conferidos ausência de outro processo Java/Maven ativo e sufixo livre; execução sequencial pelo Wrapper, na raiz via `cmd.exe /d /c`, com stdout/stderr preservados:
+
+```powershell
+.\mvnw.cmd "-Dtest=PublicCatalogNameFilterIntegrationTest" "-Dgroups=feature006-t018" "-Dsurefire.reportNameSuffix=feature006-t018-empty-pages" test
+```
+
+| Relatório Surefire | Testes | Falhas | Erros | Ignorados |
+| --- | ---: | ---: | ---: | ---: |
+| PublicCatalogNameFilterIntegrationTest$ApiContext | 7 | 0 | 0 | 0 |
+| PublicCatalogNameFilterIntegrationTest$RootContext | 7 | 0 | 0 | 0 |
+| PublicCatalogNameFilterIntegrationTest (contêiner) | 0 | 0 | 0 | 0 |
+| **Total da única execução** | **14** | **0** | **0** | **0** |
+
+**BUILD SUCCESS, exit code 0**, primeira execução. **14 invocações JUnit e 14 requisições HTTP**, contagens distintas que coincidem porque cada teste novo faz exatamente um GET (sete por contexto). Três XMLs e três TXTs comparados ao console; todos os testcases pertencem somente a `returnsCoherentEmptyFilteredPages`, sem falha/erro/skip ou omissão de contexto/variante. A seleção não repetiu T017, US1/US2, baseline, serviços, checkpoints anteriores ou suíte completa. GREEN de comportamento existente, sem RED artificial, correção produtiva ou enfraquecimento de assertions.
+
+Ambiente observado: Windows/PowerShell `5.1.19041.7663`, `JAVA_HOME=C:\Program Files\Zulu\zulu-21`, Java `21.0.12.1` no console; Wrapper configurado para Maven `3.9.16`. Início **2026-10-19T10:57:24.0685793-03:00**, fim **10:59:05.3279185-03:00**, duração externa **101,259 s**, Maven **01:31 min**. Produção atualizada sem recompilação; **91 fontes de teste recompilados**, release 21, sem erro. Sem comando separado de compilação ou execução de versão do Maven.
+
+### Preservação, conferências e limites
+
+Antes de editar, guardadas cópias dos três arquivos recebidos e hashes dos 257 arquivos rastreados. A remoção em memória somente das duas inserções da T018 reproduziu exatamente o fonte recebido, preservando T017 e todos os casos/assertions US1/US2. Os outros **254 arquivos rastreados** conservaram hashes, incluindo toda produção, fixtures, configuração e artefatos aprovados.
+
+Os **310 relatórios Surefire anteriores** foram copiados antes do Maven para [surefire-before](../../target/feature006-t018-empty-pages-20261019T105700/surefire-before/) com [manifesto de tamanho/SHA-256](../../target/feature006-t018-empty-pages-20261019T105700/surefire-before-manifest.json). Após executar, origem e cópia mantiveram todos os tamanhos/hashes. Os seis novos relatórios estão em [surefire-current](../../target/feature006-t018-empty-pages-20261019T105700/surefire-current/); nenhum relatório anterior sobrescrito.
+
+Evidências locais ignoradas: [console.log](../../target/feature006-t018-empty-pages-20261019T105700/console.log), [run-start.json](../../target/feature006-t018-empty-pages-20261019T105700/run-start.json), [run-result.json](../../target/feature006-t018-empty-pages-20261019T105700/run-result.json), [14 observações HTTP](../../target/feature006-t018-empty-pages-20261019T105700/http-observations.json) e [verification.json](../../target/feature006-t018-empty-pages-20261019T105700/verification.json). A conferência adicional comparou todas as sete combinações por contexto a um manifesto fixo de página/tamanho/totais, query/rota e guards, além dos XMLs e preservação de relatórios/fontes. Comando auxiliar `& target/feature006-t018-empty-pages-20261019T105700/verify.ps1`: primeira tentativa exit 1 por tratar o array JSON do manifesto como um único objeto no PowerShell 5.1; corrigida a enumeração no script local, nova conferência exit 0. Isso foi falha do verificador auxiliar, sem falha de teste, edição de fonte ou repetição Maven. Artefatos em `target/` podem faltar em outro checkout; conferências estáticas não contam como testes adicionais.
+
+**Conclusão T018**: US3.3–US3.5 atendidos nos contextos previstos, sem impedimento remanescente; somente T018 passa a `[X]`, preservando T001–T017 `[X]` e T019–T030 abertas. Não encerra US3, a feature ou seus gates finais. Limites: Windows/H2 configurado, V03 estável e banco vazio, variantes/páginas descritas, sem credenciais e janelas síncronas; não prova outros bancos, concorrência, CI, durabilidade, JDBC direto universal, efeitos fora da janela ou suíte completa. Nenhum stage, commit, push ou troca de branch.
+
+Conferência final: diff completo dos três arquivos e incremento contra as cópias recebidas revisados, método/tag/provider/fixture e 185 links locais dos dois documentos conferidos. `git diff --check` exit 0, sem problemas de whitespace; nenhum arquivo novo rastreável. Histórico do quickstart preservado integralmente; nas tasks recebidas mudou somente T018. Fonte executado e testes anteriores preservados, demais 254 hashes rastreados iguais. Git final: somente os mesmos três arquivos modificados, nenhum staged ou não rastreado; raiz/branch/HEAD e main mantidos. `.specify/extensions.yml` ausente também após execução, sem hooks aplicáveis.
+
+## Execução da T019 — ausência de retenção do filtro entre consultas
+
+**Contexto recebido em 2026-10-19**: raiz `C:/Users/ronal/dscommerce-speckit`, branch real `006-filtrar-catalogo-produtos`, HEAD `b5c0a241806acb437ba10a80b7174b5cc35fd72d`. Confirmados por `git rev-parse --show-toplevel`, `git branch --show-current`, `git rev-parse HEAD`, `git status --short --untracked-files=all` e `git diff --cached --name-only`: somente `PublicCatalogNameFilterIntegrationTest.java`, quickstart e tasks modificados, nenhum staged ou não rastreado. T001–T018 `[X]`; lidas integralmente T019, dependência T018 e condições, US3.6 e regras correspondentes de FR-005 e dos artefatos aprovados, já lidos nesta sessão. Preservados casos e evidências T017/T018 e US1/US2; escopo exclusivo da T019, sem iniciar T020+.
+
+Pré-requisitos: `powershell -NoProfile -File .specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks`, com `SPECIFY_FEATURE_DIRECTORY=C:/Users/ronal/dscommerce-speckit/specs/006-filtrar-catalogo-produtos` temporário: exit 0, FEATURE_DIR correto e os cinco documentos opcionais disponíveis. Variável e bytes do ponteiro restaurados em `finally`; SHA-256 preservado `AE411ADECBDD12D3B7495C8CC3FA5D944BD7A8214735B0FF399E68C2CB8BADE5`. Checklist somente lido, 16/16, zero pendentes; ignores existentes suficientes. Extensões ausentes na conferência inicial, sem hook prévio aplicável.
+
+### Sequência comprovada e oráculos independentes
+
+Acrescentado somente `doesNotRetainNameBetweenRequests`, tag `feature006-t019`, ao [grupo HTTP existente](../../src/test/java/com/devsuperior/dscommerce/controllers/PublicCatalogNameFilterIntegrationTest.java). O método é herdado por raiz e `/api`, com HTTP servlet real, filtros reais, perfil test, H2 isolado sem seeds e OSIV local desativado. Cada contexto prepara sua V03 commitada e usa o mesmo `TestRestTemplate`, servidor, contexto e dados nos dois GETs consecutivos; não há limpeza, recriação do contexto ou mudança da fixture entre as requisições.
+
+| Ordem no mesmo contexto | Query enviada | Conteúdo esperado e observado | page / size | totalElements / totalPages |
+| --- | --- | --- | --- | --- |
+| 1 — pesquisa restritiva | `name=fone&page=0&size=2` | Fone A; Fone B de menor ID | 0 / 2 | 5 / 3 |
+| 2 — parâmetro omitido após a pesquisa | `page=0&size=2` | Cabo; Fone A | 0 / 2 | 6 / 3 |
+
+**As duas etapas passaram em ambos os contextos**. Cada resposta HTTP 200/JSON foi comparada ao corpo integral esperado: cinco campos da página, IDs capturados, nomes originais, imagem e preço numérico. A primeira comparação comprova a restrição antes da segunda chamada. A segunda exige a página do catálogo completo, com Cabo antes de Fone A e total 6; não apenas igualdade/diferença entre respostas. A observação servlet passiva confirmou query bruta, `name=fone` na primeira e `name` efetivamente ausente (`null`) na segunda, além de `/products` ou `/api/products` conforme o contexto.
+
+Os dois esperados vêm dos manifestos de inserção `filteredOrder` e `unfilteredOrder` de `prepareV03()`, nunca da consulta produtiva ou da primeira resposta. O manifesto completo tem seis IDs únicos, com nomes conferidos como Cabo/Fone A/Fone B/Fone B/Fone C/Telefone D; a ordem filtrada corresponde aos cinco itens após Cabo. Snapshot independente antes do HTTP conferiu os IDs/nomes inseridos, categorias e dois pares de associação. Nesta execução, em cada contexto, os IDs completos capturados foram `[6,5,3,4,2,1]`, primeira página filtrada `[5,3]` e segunda página sem filtro `[6,5]`; são observações locais, não constantes do teste.
+
+Após cada GET e antes de qualquer cleanup, snapshot independente igual ao anterior; somente SELECTs Hibernate em transação e zero DML observados na janela da chamada, sem transação externa do chamador. Não se exige quantidade rígida de SELECT/count. Limpeza por ownership somente após a sequência; banco vazio antes da preparação e depois da limpeza. Nenhuma produção, fixture, consulta, segurança ou configuração global foi alterada.
+
+### Única execução Maven e seleção efetiva
+
+Conferidos ausência de outro processo Java/Maven ativo e sufixo previamente livre. Comando na raiz, sequencial pelo Wrapper via `cmd.exe /d /c`, stdout/stderr preservados:
+
+```powershell
+.\mvnw.cmd "-Dtest=PublicCatalogNameFilterIntegrationTest" "-Dgroups=feature006-t019" "-Dsurefire.reportNameSuffix=feature006-t019-request-independence" test
+```
+
+| Relatório Surefire | Testes | Falhas | Erros | Ignorados |
+| --- | ---: | ---: | ---: | ---: |
+| PublicCatalogNameFilterIntegrationTest$ApiContext | 1 | 0 | 0 | 0 |
+| PublicCatalogNameFilterIntegrationTest$RootContext | 1 | 0 | 0 | 0 |
+| PublicCatalogNameFilterIntegrationTest (contêiner) | 0 | 0 | 0 | 0 |
+| **Total da única execução** | **2** | **0** | **0** | **0** |
+
+**BUILD SUCCESS, exit code 0**, primeira execução: **2 testes de integração e 4 requisições HTTP** (dois GETs por teste/contexto); **nenhum teste unitário executado**. Três XMLs e três TXTs conferidos contra console e testcases; somente `doesNotRetainNameBetweenRequests`, um caso em cada contexto, sem omissão ou elementos de falha/erro/skip. Não se repetiram T017/T018, US1/US2, seleções anteriores, checkpoint conjunto T020 ou suíte completa. **GREEN de comportamento existente**, sem RED artificial, correção de produção ou enfraquecimento de assertions.
+
+Windows/PowerShell `5.1.19041.7663`, `JAVA_HOME=C:\Program Files\Zulu\zulu-21`, Java `21.0.12.1` no console; Wrapper configurado para Maven `3.9.16`. Início **2026-10-19T11:08:16.8865478-03:00**, fim **11:09:32.9525353-03:00**, duração externa **76,066 s**, Maven **01:10 min**. Produção atualizada sem recompilação; 91 fontes de teste recompilados, release 21, sem erro. Sem comando separado de compilação/versão.
+
+### Preservação e limites
+
+Cópias dos três arquivos recebidos e hashes de 257 arquivos rastreados guardados antes da edição. Remover em memória somente a inserção T019 reproduziu exatamente o fonte recebido, preservando todos os casos/helpers/assertions anteriores. Os outros **254 arquivos rastreados** mantiveram hashes, incluindo produção e artefatos aprovados. Histórico do quickstart preservado por acréscimo; nas tasks recebidas muda somente T019.
+
+Os **316 relatórios anteriores** foram copiados e conferidos antes do Maven em [surefire-before](../../target/feature006-t019-request-independence-20261019T110800/surefire-before/), com [manifesto de tamanho/SHA-256](../../target/feature006-t019-request-independence-20261019T110800/surefire-before-manifest.json). Depois da execução, origem e cópia mantiveram todos os tamanhos/hashes, inclusive T017/T018 e US1/US2. Os seis novos relatórios estão em [surefire-current](../../target/feature006-t019-request-independence-20261019T110800/surefire-current/); nenhum relatório anterior sobrescrito.
+
+Evidências locais ignoradas: [console.log](../../target/feature006-t019-request-independence-20261019T110800/console.log), [run-start.json](../../target/feature006-t019-request-independence-20261019T110800/run-start.json), [run-result.json](../../target/feature006-t019-request-independence-20261019T110800/run-result.json), [quatro observações HTTP](../../target/feature006-t019-request-independence-20261019T110800/http-observations.json) e [verification.json](../../target/feature006-t019-request-independence-20261019T110800/verification.json). Conferência auxiliar `& target/feature006-t019-request-independence-20261019T110800/verify.ps1`, exit 0: sequência por contexto, IDs/nomes e metadados contra manifesto, campos/valores, ausência do parâmetro na segunda query, guards, XML/TXT/console e preservação de relatórios/fontes. Essa conferência estática não é novo teste ou execução Maven; `target/` pode faltar em outro checkout.
+
+**Conclusão T019**: US3.6 e os critérios da tarefa atendidos; T001–T019 `[X]`, T020–T030 abertas. Sem pendência funcional remanescente da T019; checkpoint conjunto US3 e fechamento da feature continuam futuros. Alcance: sequência síncrona pública sem credenciais, V03 estável, página 0 tamanho 2 em Windows/H2, raiz e `/api`; não prova outras paginações, concorrência, outros bancos, CI, durabilidade, JDBC direto universal ou efeitos fora das janelas observadas. Sem stage, commit, push ou troca de branch.
+
+Conferência final: diff dos três arquivos, incremento contra as cópias recebidas, referências de método/tag/fixture, novos artefatos locais e 194 links locais dos dois documentos revisados. `git diff --check` exit 0, sem problemas de whitespace. Histórico anterior do quickstart e fonte anterior preservados, somente T019 alterada nas tasks recebidas, demais 254 hashes rastreados iguais. Git final: somente os mesmos três arquivos modificados, nenhum staged ou não rastreado; raiz/branch/HEAD e main mantidos. `.specify/extensions.yml` ausente também após execução, sem hooks aplicáveis.
+
+## Execução da T020 — validação conjunta de US3
+
+**Contexto recebido em 2026-10-19**: raiz `C:/Users/ronal/dscommerce-speckit`, branch real `006-filtrar-catalogo-produtos`, HEAD `b5c0a241806acb437ba10a80b7174b5cc35fd72d`. Conferidos por Git raiz, branch, revisão, status e índice: somente `PublicCatalogNameFilterIntegrationTest.java`, quickstart e tasks modificados, nenhum staged ou não rastreado. T001–T019 `[X]`; lidas integralmente T020, dependência T019 e critérios, com T017/T018 e US3.1–US3.6 conferidos nas fontes aprovadas já lidas nesta sessão. Escopo exclusivo do checkpoint conjunto US3, sem T021+.
+
+Pré-requisitos: `powershell -NoProfile -File .specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks`, com `SPECIFY_FEATURE_DIRECTORY=C:/Users/ronal/dscommerce-speckit/specs/006-filtrar-catalogo-produtos` temporário: exit 0, FEATURE_DIR correto e cinco documentos opcionais disponíveis. Variável e bytes do ponteiro restaurados em `finally`; SHA-256 mantido `AE411ADECBDD12D3B7495C8CC3FA5D944BD7A8214735B0FF399E68C2CB8BADE5`. Checklist somente lido, 16/16, zero pendentes; ignores existentes suficientes. Extensões ausentes na conferência inicial, sem hook prévio aplicável.
+
+### Seleção conferida antes da execução
+
+O [manifesto prévio](../../target/feature006-t020-us3-checkpoint-20261019T111300/selection-preflight.json) registra somente as três tags/métodos novos de US3: T017 `paginatesFilteredResultsInStoredNameIdOrder`, T018 `returnsCoherentEmptyFilteredPages` e T019 `doesNotRetainNameBetweenRequests`. Conferidos no fonte os métodos/tags únicos, sete variantes do provider T018 e herança de `ContextControl` pelos dois contextos aninhados `RootContext` e `ApiContext`, com caminhos vazio e `/api`; respectivas classes compiladas presentes. Seleção pela classe externa e expressão de tags, preservando a descoberta dos aninhados, sem misturar seletores de método de outras classes.
+
+Expectativa prévia: **9 testes por contexto (1 + 7 + 1), 18 no total**, com **12 requisições por contexto (3 + 7 + 2), 24 no total**. A necessidade de reexecutar conjuntamente T017–T019 decorre expressamente da T020; não é repetição automática de baselines ou checkpoints anteriores. Nenhum serviço unitário, teste US1/US2, grupo completo ou suíte completa foi selecionado.
+
+### Única execução e resultados efetivos
+
+Conferidos ausência de outro processo Java/Maven ativo e sufixo previamente livre. Comando na raiz, sequencial pelo Wrapper via `cmd.exe /d /c`, stdout/stderr preservados:
+
+```powershell
+.\mvnw.cmd "-Dtest=PublicCatalogNameFilterIntegrationTest" "-Dgroups=feature006-t017|feature006-t018|feature006-t019" "-Dsurefire.reportNameSuffix=feature006-t020-us3-checkpoint" test
+```
+
+| Método efetivamente executado | Testes raiz | Testes /api | Total de testes | Requisições HTTP |
+| --- | ---: | ---: | ---: | ---: |
+| paginatesFilteredResultsInStoredNameIdOrder | 1 | 1 | 2 | 6 |
+| returnsCoherentEmptyFilteredPages | 7 | 7 | 14 | 14 |
+| doesNotRetainNameBetweenRequests | 1 | 1 | 2 | 4 |
+| **Total da única execução** | **9** | **9** | **18** | **24** |
+
+**BUILD SUCCESS, exit code 0**, primeira execução, **18 testes de integração, zero falhas/erros/ignorados**. Console e três XMLs/três TXTs Surefire conferidos por classe, método, testcase e resumo: nove casos em cada contexto e zero no contêiner externo; nenhuma omissão, skip ou teste fora da seleção. As 24 requisições são operações dentro desses 18 testes, não 24 testes adicionais. Nenhum teste unitário executado. **Não houve execução complementar**, correção de fonte ou repetição Maven.
+
+Ambiente: Windows/PowerShell `5.1.19041.7663`, `JAVA_HOME=C:\Program Files\Zulu\zulu-21`, Java `21.0.12.1` no console; Wrapper configurado para Maven `3.9.16`. Início **2026-10-19T11:13:45.4395942-03:00**, fim **11:14:24.8147908-03:00**, duração externa **39,375 s**, Maven **34.012 s**. Produção e testes atualizados, sem recompilação; sem comando separado de compilação/versão.
+
+### Critérios de US3 conferidos conjuntamente
+
+| Cenários | Resultado concreto nos dois contextos |
+| --- | --- |
+| US3.1–US3.2 | V03 com cinco correspondências: páginas 0/1/2 size2 em 2/2/1, totais 5/3. Nomes Fone A/Fone B/Fone B/Fone C/Telefone D, IDs capturados em ordem exata, sem perdas/duplicações, empate dos Fone B por ID crescente. Produto com duas categorias não duplicado. |
+| US3.3 | V03 e trecho `inexistente`: páginas 0 e 2 size2, HTTP 200, conteúdo vazio e totais 0/0; página e tamanho conservados. |
+| US3.4 | V03 e `fone`: página 3 size2 vazia, HTTP 200, page 3 preservada e totais 5/3, sem clamp ou 404. |
+| US3.5 | Banco vazio com `fone` e com parâmetro omitido, páginas 0 e 2 size2: HTTP 200, vazio e totais 0/0, sem seeds globais. |
+| US3.6 | Mesmo contexto/fixture, `fone` seguido de `name` omitido, ambos page0 size2: primeiro Fone A/Fone B, totais 5/3; depois Cabo/Fone A, totais 6/3. Sem reiniciar contexto ou alterar dados entre GETs; segunda resposta esperada pelo manifesto completo independente. |
+
+Todas as respostas foram confrontadas com o JSON integral esperado nos testes (campos, IDs, nomes originais, imagem, preço numérico e metadados), sem usar consulta de produção como oráculo. A conferência adicional das 24 observações auditou as variantes por contexto, queries/rotas, valores/metadados, navegação e união de IDs, empate, páginas vazias e sequência filtrada→omitida. Controles de transporte/decodificação passaram, incluindo ausência efetiva de `name` na segunda consulta T019.
+
+Nas 24 janelas síncronas: snapshots independentes após retorno e antes de cleanup iguais aos anteriores, somente SELECTs Hibernate em transação, zero DML observado e nenhuma transação externa do chamador. Preparação JDBC commitada, fixtures isoladas e limpeza por ownership conferidas pelos testes; não se exige número fixo de SELECT/count. Os IDs podem diferir das execuções isoladas anteriores porque vários casos usam o mesmo contexto com limpeza entre fixtures; as assertions continuam usando IDs capturados de cada preparação, sem números absolutos.
+
+Leitura atual de `ProductCatalogService.listProducts` e `ProductRepository.findPageByName` confirmou paginação no banco por `PageRequest`, predicado literal parametrizado equivalente em seleção/count, ordem `p.name ASC, p.id ASC` sobre o nome armazenado, sem fetch de coleção na consulta paginada ou pós-filtro em memória. O stream do serviço apenas mapeia a página para DTO; transação de leitura mantida. Essa revisão estática complementa as provas HTTP/SQL/snapshots e não é nova execução de teste. Tudo já estava GREEN; produção e asserções foram preservadas, sem fabricar RED.
+
+### Evidências, preservação e limites
+
+Cópias dos três arquivos recebidos e hashes dos 257 arquivos rastreados guardados antes de executar. **Todos os 167 arquivos de `src/` permaneceram byte a byte iguais**, incluindo o grupo HTTP recebido, serviços, repositório, fixtures e testes anteriores. Alterações da T020 somente neste registro e no marcador da task; os outros **255 arquivos rastreados** mantiveram hashes.
+
+Os **322 relatórios anteriores** foram copiados e conferidos antes do Maven em [surefire-before](../../target/feature006-t020-us3-checkpoint-20261019T111300/surefire-before/), com [manifesto de tamanho/SHA-256](../../target/feature006-t020-us3-checkpoint-20261019T111300/surefire-before-manifest.json). Depois da execução, origem e cópia mantiveram todos os tamanhos/hashes, incluindo evidências isoladas T017–T019 e US1/US2. Seis novos relatórios em [surefire-current](../../target/feature006-t020-us3-checkpoint-20261019T111300/surefire-current/); nenhum anterior sobrescrito.
+
+Evidências locais ignoradas: [console.log](../../target/feature006-t020-us3-checkpoint-20261019T111300/console.log), [run-start.json](../../target/feature006-t020-us3-checkpoint-20261019T111300/run-start.json), [run-result.json](../../target/feature006-t020-us3-checkpoint-20261019T111300/run-result.json), [24 observações HTTP](../../target/feature006-t020-us3-checkpoint-20261019T111300/http-observations.json) e [verification.json](../../target/feature006-t020-us3-checkpoint-20261019T111300/verification.json). Comando auxiliar `& target/feature006-t020-us3-checkpoint-20261019T111300/verify.ps1`, exit 0, conferiu seleção exata, XML/TXT/console, seis cenários, preservação de relatórios e fontes. Conferência estática não conta como teste adicional; `target/` pode faltar em outro checkout.
+
+**Conclusão T020**: checkpoint conjunto US3 GREEN nos seis cenários, sem pendência ou falha a corrigir. T001–T020 `[X]`, T021–T030 abertas. Não encerra US4, gates finais ou feature integral. Alcance: Windows/H2 configurado, V03 estável/banco vazio, parâmetros e páginas descritos, sem credenciais, dois contextos reais e janelas síncronas; não prova outros bancos, concorrência, CI, durabilidade, JDBC direto universal, efeitos fora da janela ou suíte completa. Sem stage, commit, push, troca de branch ou execução de T021+.
+
+Conferência final: diff dos três arquivos e incremento documental contra as cópias recebidas revisados, referências de seleção/métodos/tags/fixture e 203 links locais conferidos. `git diff --check` exit 0, sem problemas de whitespace. Histórico do quickstart preservado; nas tasks recebidas mudou somente T020; todo `src/` e demais 255 hashes rastreados mantidos. Git final: somente os mesmos três arquivos modificados, sendo o fonte HTTP alteração recebida e intacta nesta tarefa; nenhum staged ou não rastreado. Raiz/branch/HEAD e main mantidos. `.specify/extensions.yml` ausente também após execução, sem hooks aplicáveis.

@@ -726,3 +726,226 @@ Antes da primeira execução, os **260 relatórios anteriores** foram copiados p
 **Conclusão T012**: grupo exigido completo e GREEN na mesma revisão de trabalho, após corrigir somente a omissão de seleção com o complemento disjunto. T001–T012 `[X]`; T013–T030 abertas. Primeiro checkpoint funcional de US1 e regressões compartilhadas, sem encerrar as quatro histórias P1 ou os 27 cenários da feature. Não há impedimento remanescente nem defeito de produção demonstrado nesta tarefa. Limites: Windows/H2 configurado, sem prova de outros bancos, CI, SLA, concorrência, durabilidade ou suíte completa. Somente quickstart e marcador T012 alterados nesta execução; fontes/testes preservados, sem stage, commit, push ou troca de branch.
 
 Conferência final: diff documental, seleção real, XMLs/TXTs/consoles, correspondência RED/GREEN e artefatos novos locais revisados. Helper não rastreado recebido permanece idêntico e com whitespace válido. `git diff --check` exit 0, sem diagnósticos; 124 links locais dos dois documentos resolvidos. Auditoria confirmou conteúdo anterior do quickstart e todos os fontes recebidos intactos, com somente T012 alterada nas tasks recebidas. Git final: os mesmos 14 arquivos rastreados ` M`, somente `ProductNameFilter.java` com `??`, nenhum staged; raiz/branch/HEAD mantidos. Extensões ausentes na conferência pós-execução, sem hooks aplicáveis.
+
+## Execução da T013 — espaços externos e ausência de filtro
+
+**Contexto recebido em 2026-10-19**: raiz `C:/Users/ronal/dscommerce-speckit`, branch real `006-filtrar-catalogo-produtos`, HEAD `529aefd18b0e5afaedb6c849f88cb6541f48273c`, Git limpo, nenhum staged ou não rastreado. T001–T012 `[X]`; dependência T012 conferida com o checkpoint US1 registrado no commit recebido. Lidas integralmente T013 e suas condições, US2.1/US2.2/US2.5 da spec, decisões R2/R4/R7 e desenho correspondente. A execução atual é exclusiva de T013; as evidências históricas de US1 não foram reexecutadas.
+
+Pré-requisitos: `powershell -NoProfile -File .specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks`, com `SPECIFY_FEATURE_DIRECTORY=C:/Users/ronal/dscommerce-speckit/specs/006-filtrar-catalogo-produtos` temporário: exit 0, `FEATURE_DIR` correto e cinco documentos opcionais disponíveis. Variável e bytes do ponteiro restaurados em `finally`; SHA-256 mantido `AE411ADECBDD12D3B7495C8CC3FA5D944BD7A8214735B0FF399E68C2CB8BADE5`. Checklist somente lido, 16/16, zero abertos. Ignores Java/Maven existentes suficientes; `.specify/extensions.yml` ausente antes/depois, sem hooks aplicáveis.
+
+### Cobertura acrescentada e oráculos
+
+Acrescentados somente o método parametrizado `normalizesOnlyExternalFilterWhitespace`, o record de entradas e seu provider em [PublicCatalogNameFilterIntegrationTest.java](../../src/test/java/com/devsuperior/dscommerce/controllers/PublicCatalogNameFilterIntegrationTest.java), com tag `feature006-t013`. São **19 variantes em cada contexto HTTP servlet real**, raiz e `/api`, com filtros reais, perfil test, H2 isolado sem seeds e OSIV local desativado:
+
+| Variantes por contexto | Quantidade | Oráculo da página `page=0&size=1` |
+| --- | ---: | --- |
+| Controle `FONE`, ` FONE `, tab/NBSP/U+2003 só à esquerda, só à direita ou dos dois lados, combinação de todos com espaço comum | 12 | Somente o ID capturado de Fone Azul; totalElements 1, totalPages 1. |
+| `name` omitido, vazio, somente espaços comuns, somente tab, somente NBSP, somente U+2003 e combinação desses espaços | 7 | Somente o ID capturado de Cabo na primeira página sem filtro; totalElements 2, totalPages 2. |
+
+Cada invocação prepara e commita sua própria fixture com Fone Azul e Cabo, em ordem de inserção diferente da ordem pública. O esperado usa esses IDs e valores conhecidos, sem consultar produção para calcular seleção ou copiar o algoritmo de normalização. O nome armazenado crescente coloca Cabo primeiro na página sem filtro; o catálogo completo continua tendo dois produtos. FONE seleciona Fone Azul e exclui Cabo. A paginação explícita é a mesma para todas as variantes; tamanho 1 distingue também os totais de páginas 1 e 2. A prova é a igualdade com o **JSON integral esperado**, incluindo ID, nome original, imagem, preço numérico e todos os metadados, não apenas HTTP 200 ou igualdade entre respostas.
+
+O observador servlet passivo confere valor decodificado idêntico ao enviado, inclusive `null` no omitido, vazio e caracteres Unicode; o transporte usa `URLEncoder` UTF-8. Os dois produtos preparados são verificados por conexão independente antes da chamada. Na janela de cada GET, somente SELECTs Hibernate em transação e snapshot independente igual depois do retorno; ausência de transação externa e cleanup por ownership conferidos antes da assertion funcional final. Nenhum nome armazenado ou devolvido passa por limpeza no teste.
+
+O diff do fonte contém somente **duas inserções**, preservando integralmente os testes, helpers, preparação e assertions anteriores de US1/T003/T004. Os outros **166 fontes rastreados** conservaram seus hashes, incluindo toda produção e os demais testes. Nenhum método de T014, caso de serviço de T015 ou correção/checkpoint T016 foi executado ou implementado.
+
+### Comando e resultado efetivamente executados
+
+Uma única execução Maven, sequencial, após conferir ausência de outro Maven/Surefire ativo, usando Wrapper e sufixo novo previamente livre:
+
+```powershell
+.\mvnw.cmd "-Dtest=PublicCatalogNameFilterIntegrationTest" "-Dgroups=feature006-t013" "-Dsurefire.reportNameSuffix=feature006-t013-whitespace" test
+```
+
+O seletor de tag limita a execução ao novo método herdado pelos dois contextos; os testes anteriores da classe não foram executados. A leitura dos casos XML confirmou a seleção efetiva, e o console não contém observações T003–T006. Não houve repetição da validação US1, baseline, grupo HTTP completo, testes administrativos/de serviço ou suíte completa; nenhuma exclusão ou skip novo foi acrescentado aos fontes/configuração.
+
+| Relatório Surefire | Testes | Falhas | Erros | Ignorados |
+| --- | ---: | ---: | ---: | ---: |
+| PublicCatalogNameFilterIntegrationTest$ApiContext | 19 | 0 | 0 | 0 |
+| PublicCatalogNameFilterIntegrationTest$RootContext | 19 | 0 | 0 | 0 |
+| PublicCatalogNameFilterIntegrationTest (contêiner) | 0 | 0 | 0 | 0 |
+| **Total da única execução** | **38** | **0** | **0** | **0** |
+
+**BUILD SUCCESS, exit code 0**. Console, três XMLs e três TXTs confrontados, sem elementos de falha/erro/skip; somente os 38 casos do novo método. As **38 observações HTTP** (24 preenchidas e 14 sem restrição após normalização) têm os produtos/corpos/metadados exatos esperados, com transporte e guards válidos. Todos os testes passaram na primeira execução; **GREEN de comportamento já existente após US1**, sem RED funcional, RED artificial ou problema de preparação observado. Produção permaneceu intacta.
+
+Execução na raiz via `cmd.exe /d /c`, stdout/stderr em [console.log](../../target/feature006-t013-whitespace-20261019T065910/console.log). Windows/PowerShell `5.1.19041.7663`, `JAVA_HOME=C:\Program Files\Zulu\zulu-21`, Java `21.0.12.1` observado no console; Wrapper configurado para Maven `3.9.16`. Início **2026-10-19T06:59:44.2633669-03:00**, fim **07:00:57.2051654-03:00**, duração externa **72,942 s**, Maven **01:07 min**. Produção atualizada sem recompilação; **91 fontes de teste recompilados**, release 21, sem erro. Nenhum comando separado de compilação.
+
+### Preservação, evidências e limites
+
+Antes do Maven, os **280 relatórios anteriores**, incluindo RED T005–T007 e os GREENs de US1, foram copiados para [surefire-before](../../target/feature006-t013-whitespace-20261019T065910/surefire-before/), com [manifesto SHA-256](../../target/feature006-t013-whitespace-20261019T065910/surefire-before-manifest.json). Após executar, todos conservaram tamanho/hash na origem e na cópia. O sufixo atual gerou seis arquivos novos, preservados em [surefire-current](../../target/feature006-t013-whitespace-20261019T065910/surefire-current/); nenhum relatório anterior foi sobrescrito.
+
+Evidências locais adicionais: [run-start.json](../../target/feature006-t013-whitespace-20261019T065910/run-start.json), [run-result.json](../../target/feature006-t013-whitespace-20261019T065910/run-result.json), [observações HTTP](../../target/feature006-t013-whitespace-20261019T065910/http-observations.json) e [verification.json](../../target/feature006-t013-whitespace-20261019T065910/verification.json). A verificação registra seleção/casos, fontes executados e preservação dos testes/relatórios anteriores. Artefatos em `target/` são locais, ignorados e podem faltar em outro checkout.
+
+**Conclusão T013**: US2.1, US2.2 e US2.5 verificadas com oráculos de IDs e metadados para cada variante. T001–T013 `[X]`; T014–T030 abertas. Isso não encerra US2 nem a feature: distinção entre espaços internos, nome legado com extremos e NBSP interno permanece em T014; cobertura adicional do serviço e checkpoint conjunto permanecem T015/T016. Alcance atual: HTTP real nos dois contextos Windows/H2, página 0/tamanho 1, sem credenciais, nomes da fixture e janelas síncronas observadas. Não prova outros bancos, CI, todas as páginas, efeitos fora da janela, durabilidade ou ausência universal de JDBC direto. Sem impedimento remanescente; sem stage, commit, push, troca de branch ou alteração de main.
+
+Conferência final: diff dos três arquivos, dados/provider e novos artefatos locais revisados; `git diff --check` exit 0, sem problemas de whitespace, e 133 links locais dos dois documentos resolvidos. Auditoria confirmou todo o conteúdo anterior do quickstart preservado, somente T013 alterada nas tasks e nenhum arquivo novo rastreável. Git final: somente este quickstart, tasks e `PublicCatalogNameFilterIntegrationTest.java` modificados, nenhum staged ou não rastreado; raiz/branch/HEAD e main mantidos. Extensões ausentes na conferência pós-execução, sem hooks aplicáveis.
+
+## Execução da T014 — espaços internos e nomes armazenados
+
+**Contexto recebido em 2026-10-19**: raiz `C:/Users/ronal/dscommerce-speckit`, branch real `006-filtrar-catalogo-produtos`, HEAD `529aefd18b0e5afaedb6c849f88cb6541f48273c`. Git confirmou somente quickstart, tasks e `src/test/java/com/devsuperior/dscommerce/controllers/PublicCatalogNameFilterIntegrationTest.java` modificados, nenhum staged ou não rastreado. Alterações recebidas copiadas antes da edição. T001–T013 `[X]`; descrição integral de T014, dependência T013, US2.3/US2.4/US2.6 e decisões correspondentes da spec/plano/pesquisa/modelo/contrato conferidos. Escopo exclusivo de testes de T014, sem iniciar T015+.
+
+Pré-requisitos: `powershell -NoProfile -File .specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks`, com `SPECIFY_FEATURE_DIRECTORY=C:/Users/ronal/dscommerce-speckit/specs/006-filtrar-catalogo-produtos` temporário: exit 0, diretório correto e cinco documentos opcionais disponíveis. Variável e bytes do ponteiro restaurados em `finally`; SHA-256 preservado `AE411ADECBDD12D3B7495C8CC3FA5D944BD7A8214735B0FF399E68C2CB8BADE5`. Checklist somente lido, 16/16, zero abertos; ignores existentes suficientes. `.specify/extensions.yml` ausente antes/depois, sem hooks aplicáveis.
+
+### Casos, isolamento e resultados concretos
+
+Acrescentados o método parametrizado `preservesInternalSpacesAndStoredNames`, seu enum e provider em [PublicCatalogNameFilterIntegrationTest.java](../../src/test/java/com/devsuperior/dscommerce/controllers/PublicCatalogNameFilterIntegrationTest.java), com tag `feature006-t014`. São três cenários independentes herdados pelos contextos HTTP servlet reais de raiz e `/api`, sem credenciais e com filtros reais, perfil test, H2 isolado sem seeds e OSIV local desativado. Cada invocação prepara dados commitados próprios via suporte JDBC existente; não invoca nem enfraquece validação administrativa para preparar o legado.
+
+| Cenário | Fixture independente | Consultas e oráculos explícitos em cada contexto |
+| --- | --- | --- |
+| US2.3 / COMMON | Fone Azul e Fone com dois espaços internos Azul | `fone azul` seleciona somente o primeiro ID; `fone  azul` somente o segundo. Cada resposta tem totalElements 1 e totalPages 1. |
+| US2.4 / LEGACY | Somente `"  Fone  Azul  "`: dois espaços externos de cada lado e dois internos | `" fone  azul "` seleciona esse ID e devolve o nome original integral; `fone azul` não encontra produto, com conteúdo vazio e totais 0/0. |
+| US2.6 / NBSP | Fone Azul e `Fone\u00A0Azul`, com um NBSP interno | `fone azul` seleciona somente o primeiro ID; `fone\u00A0azul` somente o segundo. Cada resposta tem totais 1/1, sem conversão do NBSP em espaço comum. |
+
+As aspas delimitam o exemplo legado e não integram o nome/filtro; `\u00A0` representa um único caractere U+00A0, não seis caracteres literais. As três fixtures nunca coexistem: em particular, o legado com dois espaços internos não interfere na seleção do cenário COMMON. Banco vazio conferido antes e depois de cada invocação; cleanup por ownership concluído antes das assertions funcionais finais.
+
+São **seis casos de teste e doze requisições HTTP**, duas por cenário/contexto, todas em `page=0&size=12`. Os esperados usam IDs capturados das inserções e manifestos fixos de seleção, sem consulta de produção como oráculo. O JSON completo deve coincidir: ID exato, texto original, imagem, preço numérico, campos públicos e page/size/totais. Assim, 200 e simples igualdade entre respostas não substituem a prova de seleção. A fixture e os snapshots independentes conferem os nomes exatos, inclusive o legado e o NBSP, sem limpar ou compactar seus textos.
+
+O observador servlet passivo confirmou query/valor decodificado idênticos ao enviado, com `URLEncoder` UTF-8 e rota/contexto corretos. Após cada GET e antes da limpeza, snapshot igual ao anterior; na janela observada, somente SELECTs Hibernate em transação e nenhuma transação externa do chamador. Nenhuma contagem rígida de SELECTs. Os guards passaram também no caso de resposta vazia, cuja ausência é esperada pelo filtro com um único espaço interno sobre o legado.
+
+Comparação com as cópias recebidas confirmou somente **duas inserções** no fonte; todo o conteúdo anterior, inclusive T013 e US1, permanece intacto. Os outros **166 fontes rastreados** conservaram seus hashes, incluindo toda produção e os demais testes. Nenhum teste de serviço, normalizador ou componente produtivo foi alterado.
+
+### Seleção executada pelo Wrapper
+
+Uma única execução Maven sequencial, após conferir ausência de outro Maven/Surefire ativo e sufixo novo previamente livre:
+
+```powershell
+.\mvnw.cmd "-Dtest=PublicCatalogNameFilterIntegrationTest" "-Dgroups=feature006-t014" "-Dsurefire.reportNameSuffix=feature006-t014-internal-spaces" test
+```
+
+A tag selecionou somente o método novo nos dois contextos. Console e Surefire confirmam três cenários em cada classe aninhada; nenhum caso de T013/US1, baseline, serviço ou suíte completa foi reexecutado. O console não contém observações T003–T006 ou T013; zero skips não foi usado como substituto da conferência da seleção.
+
+| Relatório Surefire | Testes | Falhas | Erros | Ignorados |
+| --- | ---: | ---: | ---: | ---: |
+| PublicCatalogNameFilterIntegrationTest$ApiContext | 3 | 0 | 0 | 0 |
+| PublicCatalogNameFilterIntegrationTest$RootContext | 3 | 0 | 0 | 0 |
+| PublicCatalogNameFilterIntegrationTest (contêiner) | 0 | 0 | 0 | 0 |
+| **Total da única execução** | **6** | **0** | **0** | **0** |
+
+**BUILD SUCCESS, exit code 0**. Três XMLs, três TXTs e console confrontados, sem elementos de falha/erro/skip; doze observações com corpo integral igual ao esperado. **GREEN de comportamento já existente após US1**, na primeira execução, sem RED funcional ou artificial. Compilação e preparação sem falhas observadas; nenhum impedimento remanescente. As assertions foram acrescentadas antes da execução e não foram enfraquecidas; produção permaneceu intacta.
+
+Comando executado na raiz via `cmd.exe /d /c`, stdout/stderr em [console.log](../../target/feature006-t014-internal-spaces-20261019T070511/console.log). Windows/PowerShell `5.1.19041.7663`, `JAVA_HOME=C:\Program Files\Zulu\zulu-21`, Java `21.0.12.1` no console; Wrapper configurado para Maven `3.9.16`. Início **2026-10-19T07:05:27.4535807-03:00**, fim **07:06:36.6846855-03:00**, duração externa **69,231 s**, Maven **01:04 min**. Produção atualizada sem recompilação; **91 fontes de teste recompilados**, release 21, sem erro. Sem comando separado de compilação.
+
+### Preservação e limites da evidência
+
+Os **286 relatórios anteriores**, inclusive T013 e os RED/GREEN de US1, foram copiados antes do Maven para [surefire-before](../../target/feature006-t014-internal-spaces-20261019T070511/surefire-before/), com [manifesto SHA-256](../../target/feature006-t014-internal-spaces-20261019T070511/surefire-before-manifest.json). Após executar, origem e cópia conservaram todos os tamanhos/hashes. Seis relatórios novos preservados em [surefire-current](../../target/feature006-t014-internal-spaces-20261019T070511/surefire-current/); nenhum relatório anterior sobrescrito.
+
+Evidências locais: [run-start.json](../../target/feature006-t014-internal-spaces-20261019T070511/run-start.json), [run-result.json](../../target/feature006-t014-internal-spaces-20261019T070511/run-result.json), [observações HTTP](../../target/feature006-t014-internal-spaces-20261019T070511/http-observations.json) e [verification.json](../../target/feature006-t014-internal-spaces-20261019T070511/verification.json). Registram seleção efetiva, resultados exatos, hashes dos fontes executados e preservação do conteúdo recebido/relatórios. Artefatos locais ignorados em `target/`, que podem faltar em outro checkout. O histórico deste quickstart foi mantido integralmente.
+
+**Conclusão T014**: seleção distingue um/dois espaços e NBSP interno, preserva resposta textual original e snapshots, com fixtures independentes nos dois contextos. T001–T014 `[X]`; T015–T030 abertas. Cobertura adicional do serviço e checkpoint conjunto de US2 permanecem T015/T016. Alcance desta evidência: cenários US2.3/US2.4/US2.6 no Windows/H2 configurado, página 0/tamanho 12 e janelas síncronas observadas; não aprova toda US2/feature, outros bancos, CI, durabilidade, efeitos fora da janela ou ausência universal de JDBC direto. Sem stage, commit, push, troca de branch ou alteração de main.
+
+Conferência final: diff incremental contra as cópias recebidas, diff acumulado, dados/provider e novos artefatos locais revisados; `git diff --check` exit 0, sem problemas de whitespace, e 142 links locais dos dois documentos resolvidos. Auditoria confirmou histórico do quickstart e alterações T013 preservados, somente T014 alterada nas tasks recebidas e nenhum arquivo novo rastreável. Git final: somente quickstart, tasks e `PublicCatalogNameFilterIntegrationTest.java` modificados, nenhum staged ou não rastreado; raiz/branch/HEAD e main mantidos. Extensões ausentes na conferência pós-execução, sem hooks aplicáveis.
+
+## Execução da T015 — decisões do serviço para ausência e espaços
+
+**Contexto recebido em 2026-10-19**: raiz `C:/Users/ronal/dscommerce-speckit`, branch real `006-filtrar-catalogo-produtos`, HEAD `529aefd18b0e5afaedb6c849f88cb6541f48273c`. Git confirmou somente quickstart, tasks e `PublicCatalogNameFilterIntegrationTest.java` modificados, sem staged ou não rastreados. Cópias recebidas e hashes dos fontes preservados antes de editar. T001–T014 `[X]`; descrição integral de T015, dependência T014 e decisões correspondentes da spec/plano/pesquisa/modelo/contrato conferidos. Nenhuma execução de T016+.
+
+Pré-requisitos: `powershell -NoProfile -File .specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks`, com `SPECIFY_FEATURE_DIRECTORY=C:/Users/ronal/dscommerce-speckit/specs/006-filtrar-catalogo-produtos` temporário: exit 0, diretório correto e cinco documentos opcionais disponíveis. Variável e bytes do ponteiro restaurados em `finally`; SHA-256 mantido `AE411ADECBDD12D3B7495C8CC3FA5D944BD7A8214735B0FF399E68C2CB8BADE5`. Checklist somente lido, 16/16, zero abertos; ignores existentes suficientes. `.specify/extensions.yml` ausente antes/depois, sem hooks aplicáveis.
+
+### Alterações e oráculos de serviço
+
+Acrescentados dois métodos parametrizados, provider e imports em [ProductCatalogServiceTest.java](../../src/test/java/com/devsuperior/dscommerce/services/ProductCatalogServiceTest.java), com tag `feature006-t015`. Os testes instanciam o serviço real com repositório simulado pelo Mockito; chamam somente a operação pública de serviço e observam seus argumentos/resultados, sem reflexão sobre normalizador ou algoritmo copiado.
+
+| Método novo | Casos | Expectativa concreta |
+| --- | ---: | --- |
+| `listProductsShouldUseUnfilteredQueryForAbsentOrUnicodeWhitespaceName` | 5 | `null`, vazio, espaço/tab/LF, NBSP/U+2007/U+202F e U+2003/U+3000: uma chamada exata a `findAll`, PageRequest 1/2 com Sort nome/ID crescente, sem chamada filtrada ou interação extra. |
+| `listProductsShouldForwardExternallyTrimmedNameWithLiteralInterior` | 8 | Tab, NBSP e U+2003 externos isolados ou combinados removidos; um/dois espaços comuns, NBSP e tab internos preservados literalmente no argumento de `findPageByName`; PageRequest 1/2 sem Sort adicional e nenhuma interação extra. |
+
+O primeiro conjunto usa as mesmas cinco entradas de ausência/vazio/espaços do método administrativo `shouldChooseUnrestrictedQueryForAbsentEmptyOrUnicodeWhitespace`, lido em [AdminQueryServicesTest.java](../../src/test/java/com/devsuperior/dscommerce/services/AdminQueryServicesTest.java). As expectativas preenchidas mantêm a semântica do método administrativo de remoção exclusiva de extremos, com pares de entrada/saída explícitos; não calculam o esperado usando `normalize`, trim ou consulta de produção. Caixa original de `FONE` e caracteres internos são encaminhados como escritos no manifesto.
+
+Todos os casos verificam DTO e metadados concretos: ramo sem filtro preserva produto ID 7, nome `" X "`, imagem, preço `0.00` e totais 3/2; ramo preenchido preserva produto ID 42, nome original com dois espaços de cada lado, imagem, preço `123.4500` e totais 5/3. Nome e preço do objeto original permanecem iguais depois da chamada. `verifyNoMoreInteractions` restringe o acesso ao repositório à operação de leitura esperada. Esses dados são objetos de teste em memória e páginas simuladas, não produtos selecionados por uma consulta real.
+
+O diff contém somente acréscimos; todos os métodos/assertions de serviço anteriores foram mantidos. Os outros **166 fontes rastreados** conservaram seus hashes, incluindo toda produção, `AdminQueryServicesTest.java` e o grupo HTTP público completo com T013/T014/US1. Nenhuma alteração administrativa, de normalizador, DTO, segurança ou validação de escrita; nenhum teste aprovado foi enfraquecido.
+
+### Execução necessária e resultado observado
+
+Uma única execução Maven sequencial, após conferir ausência de outro Maven/Surefire ativo e sufixo novo previamente livre:
+
+```powershell
+.\mvnw.cmd "-Dtest=ProductCatalogServiceTest" "-Dgroups=feature006-t015" "-Dsurefire.reportNameSuffix=feature006-t015-service-spaces" test
+```
+
+O filtro de tag selecionou somente os dois métodos novos. O XML confirma cinco invocações do primeiro e oito do segundo; não se executaram os nove casos anteriores da classe, testes administrativos, T013/T014, validação de US1, baseline, grupo HTTP ou suíte completa. Não houve ampliação de regressão porque produção e fontes dos demais testes permaneceram intactos. O checkpoint conjunto de US2 continua reservado à T016.
+
+| Seleção Surefire | Testes | Falhas | Erros | Ignorados |
+| --- | ---: | ---: | ---: | ---: |
+| ProductCatalogServiceTest — somente os dois métodos T015 | 13 | 0 | 0 | 0 |
+
+**BUILD SUCCESS, exit code 0**, na primeira execução. Console, um XML e um TXT confrontados; seleção exata e ausência de elementos de falha/erro/skip confirmadas. **GREEN de comportamento já existente**, sem RED funcional ou artificial, sem falha de preparação observada e sem mudança produtiva. As assertions foram escritas antes da execução e não alteradas para obter aprovação.
+
+Comando na raiz via `cmd.exe /d /c`, stdout/stderr em [console.log](../../target/feature006-t015-service-spaces-20261019T071122/console.log). Windows/PowerShell `5.1.19041.7663`, `JAVA_HOME=C:\Program Files\Zulu\zulu-21`; compilação release 21 e Wrapper configurado para Maven `3.9.16`. Início **2026-10-19T07:11:44.1193553-03:00**, fim **07:12:32.3981325-03:00**, duração externa **48,279 s**, Maven **42.972 s**. Produção atualizada sem recompilação; **91 fontes de teste recompilados**, sem erro. Sem comando separado de compilação. Warnings do agente Byte Buddy/CDS no console não causaram falha e não foram tratados como RED.
+
+### Tipos de evidência, preservação e limites
+
+- **Testes atuais**: treze invocações unitárias dos dois métodos, com serviço real e persistência simulada. Provam escolha de ramo, texto encaminhado, paginação e mapeamento/conservação dos objetos de teste.
+- **HTTP atual**: zero consultas, servidores ou testes HTTP executados. T013/T014 e US1 permanecem evidências históricas preservadas; suas contagens não foram somadas ao resultado atual nem apresentadas como execução desta tarefa.
+- **Verificações documentais/estáticas**: leitura de artefatos, comparação de fontes/hashes, preservação dos relatórios, seleção XML/console, links, marcadores e whitespace. Não são testes adicionais de aplicação.
+
+Os **292 relatórios anteriores** foram copiados antes do Maven para [surefire-before](../../target/feature006-t015-service-spaces-20261019T071122/surefire-before/), com [manifesto SHA-256](../../target/feature006-t015-service-spaces-20261019T071122/surefire-before-manifest.json). Após executar, todos conservaram tamanho/hash na origem e na cópia, inclusive T013/T014 e RED/GREEN de US1. Os dois relatórios novos estão em [surefire-current](../../target/feature006-t015-service-spaces-20261019T071122/surefire-current/); nenhum anterior foi sobrescrito.
+
+Evidências locais adicionais: [run-start.json](../../target/feature006-t015-service-spaces-20261019T071122/run-start.json), [run-result.json](../../target/feature006-t015-service-spaces-20261019T071122/run-result.json) e [verification.json](../../target/feature006-t015-service-spaces-20261019T071122/verification.json). Artefatos em `target/` são ignorados e podem faltar em outro checkout. Histórico deste quickstart e casos/evidências recebidos foram preservados integralmente.
+
+**Conclusão T015**: critérios dos testes de decisão do serviço atendidos; T001–T015 `[X]`, T016–T030 abertas. Nenhum impedimento remanescente. Limites: a seleção atual não comprova filtragem SQL/HTTP, ausência de DML ou snapshot de banco, proxies/transações reais, integração pública/administrativa conjunta, CI ou suíte completa. Não encerra o checkpoint de US2 nem aprova a feature integral. Sem stage, commit, push, troca de branch ou alteração de main.
+
+Conferência final: diff do serviço e diff documental incremental revisados, provider/tag e suas referências conferidos, novos artefatos locais examinados; `git diff --check` exit 0, sem problemas de whitespace, e 151 links locais dos dois documentos resolvidos. Auditoria confirmou somente T015 alterada nas tasks recebidas, histórico do quickstart preservado e nenhum arquivo novo rastreável. Git final: quatro arquivos modificados — os três recebidos mais `ProductCatalogServiceTest.java` —, nenhum staged ou não rastreado. O grupo HTTP recebido permanece byte a byte igual; raiz/branch/HEAD e main mantidos. Extensões ausentes na conferência pós-execução, sem hooks aplicáveis.
+
+## Execução da T016 — checkpoint conjunto de US2
+
+**Contexto recebido em 2026-10-19**: raiz `C:/Users/ronal/dscommerce-speckit`, branch real `006-filtrar-catalogo-produtos`, HEAD `529aefd18b0e5afaedb6c849f88cb6541f48273c`. Git confirmou somente quickstart, tasks, `PublicCatalogNameFilterIntegrationTest.java` e `ProductCatalogServiceTest.java` modificados, nenhum staged ou não rastreado. Cópias dos quatro arquivos e hashes de todos os 167 arquivos rastreados de `src/` preservados antes da execução. T001–T015 `[X]`; lidas integralmente T016, dependência T015 e critérios, com os seis cenários US2 e decisões correspondentes conferidos. Nenhum fonte, fixture ou assertion foi editado nesta tarefa.
+
+Pré-requisitos: `powershell -NoProfile -File .specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks`, com `SPECIFY_FEATURE_DIRECTORY=C:/Users/ronal/dscommerce-speckit/specs/006-filtrar-catalogo-produtos` temporário: exit 0, diretório correto e cinco documentos opcionais disponíveis. Variável e bytes do ponteiro restaurados em `finally`; SHA-256 mantido `AE411ADECBDD12D3B7495C8CC3FA5D944BD7A8214735B0FF399E68C2CB8BADE5`. Checklist somente lido, 16/16, zero abertos; ignores existentes suficientes. `.specify/extensions.yml` ausente antes/depois, sem hooks aplicáveis.
+
+### Seleção conferida antes da execução
+
+A conferência estática encontrou as classes aninhadas compiladas `RootContext` e `ApiContext`, seus context paths, os dois métodos herdados e providers/tags de T013/T014. O [manifesto prévio de seleção](../../target/feature006-t016-us2-checkpoint-20261019T071700/selection-preflight.json) fixa **44 testes HTTP e 22 unitários**, em duas seleções complementares planejadas antes de executar. HTTP seleciona a classe externa isoladamente com as duas tags de US2; os seletores de método dos unitários ficam em outra execução. Isso evita a combinação de seleção externa HTTP com seletores de método que omitiu os aninhados na T012, sem alterar fontes ou configurações para descobrir testes.
+
+O checkpoint exige reexercitar conjuntamente os casos US2 de T013/T014, os treze casos públicos de serviço de T015 e os nove casos dos dois métodos administrativos de normalização. Essa é a necessidade concreta desta execução; não se repetiram baseline, validação de US1, grupo HTTP completo, testes de detalhe/jornadas ou suíte completa. Não foram incluídos métodos anteriores de serviço alheios ao checkpoint, nem toda a classe administrativa. Maven sempre sequencial, ausência de outro Maven/Surefire ativo conferida e sufixos novos previamente livres.
+
+**Execução 1 — HTTP público com persistência real**:
+
+```powershell
+.\mvnw.cmd "-Dtest=PublicCatalogNameFilterIntegrationTest" "-Dgroups=feature006-t013|feature006-t014" "-Dsurefire.reportNameSuffix=feature006-t016-us2-http" test
+```
+
+Console e Surefire foram conferidos antes de iniciar os unitários: **22 casos em raiz e 22 em `/api`**, cada contexto com 19 de `normalizesOnlyExternalFilterWhitespace` e três de `preservesInternalSpacesAndStoredNames`. O contêiner externo tem zero testes. Seleção completa, **44 aprovados, zero falhas/erros/ignorados; BUILD SUCCESS, exit code 0**. Nenhuma observação de T003–T006/US1 foi produzida.
+
+**Execução 2 — decisões dos serviços público e administrativo**:
+
+```powershell
+.\mvnw.cmd "-Dtest=ProductCatalogServiceTest#listProductsShouldUseUnfilteredQueryForAbsentOrUnicodeWhitespaceName+listProductsShouldForwardExternallyTrimmedNameWithLiteralInterior,AdminQueryServicesTest#shouldChooseUnrestrictedQueryForAbsentEmptyOrUnicodeWhitespace+shouldTrimOnlyRecognizedExternalCodePointsAndKeepLiteralInterior" "-Dsurefire.reportNameSuffix=feature006-t016-us2-services" test
+```
+
+O XML confirma somente os quatro métodos: cinco + oito casos públicos e cinco + quatro administrativos. **22 aprovados, zero falhas/erros/ignorados; BUILD SUCCESS, exit code 0**. Nenhuma chamada HTTP nesta seleção. Os relatórios HTTP já aprovados foram preservados antes desta segunda execução.
+
+| Execução e seleção efetiva | Testes | Falhas | Erros | Ignorados | Exit code |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 1 — PublicCatalogNameFilterIntegrationTest$ApiContext | 22 | 0 | 0 | 0 | 0 |
+| 1 — PublicCatalogNameFilterIntegrationTest$RootContext | 22 | 0 | 0 | 0 | 0 |
+| 2 — ProductCatalogServiceTest, dois métodos T015 | 13 | 0 | 0 | 0 | 0 |
+| 2 — AdminQueryServicesTest, dois métodos de normalização | 9 | 0 | 0 | 0 | 0 |
+| **Agregado de duas execuções complementares** | **66** | **0** | **0** | **0** | **0 em ambas** |
+
+**66 é o agregado das duas seleções disjuntas na mesma revisão de trabalho, não um resumo único de console Maven.** Foram examinados cinco XMLs e cinco TXTs contra os dois consoles, nomes de classe/método e casos efetivos. Nenhuma omissão, complemento corretivo, falha funcional ou problema de preparação observado. Tudo passou na primeira tentativa de cada seleção; **GREEN existente**, sem RED artificial ou correção produtiva. Todos os 167 arquivos de `src/` mantiveram seus hashes antes, entre e depois das execuções.
+
+### Cobertura e ausência de mutações: provas distintas
+
+**HTTP com H2 real**: 44 testes geraram **50 requisições** (38 de T013 e 12 de T014), 25 em cada contexto. Perfil test, filtros reais, bancos isolados sem seeds, OSIV local desativado, fixtures JDBC commitadas e nenhum chamador transacional externo. Os corpos completos coincidem com os esperados independentes: IDs capturados, nome original, imagem, preço numérico e metadados. Não se usou apenas 200 ou igualdade entre respostas para aprovar seleção.
+
+US2.1/US2.2/US2.5: os filtros preenchidos, com espaços externos comuns/tab/NBSP/U+2003 isolados ou combinados, selecionam Fone Azul com page 0/size 1/totais 1/1. Ausente/vazio/somente espaços retorna Cabo na mesma primeira página sem filtro, com totais 2/2. US2.3/US2.4/US2.6: um/dois espaços internos e NBSP selecionam somente a forma correspondente em page 0/size 12, totais 1/1; o legado `"  Fone  Azul  "` conserva todo o texto e não corresponde a `fone azul`, cujo resultado é vazio com totais 0/0.
+
+As 50 observações têm parâmetro decodificado e guards válidos, snapshot independente igual após o GET e antes do cleanup, somente SELECTs Hibernate em transação na janela observada, zero DML observado e ausência de transação externa. Fixtures independentes e cleanup por ownership passaram. Oráculos semânticos de nomes/corpos/metadados foram também confrontados com as evidências anteriores T013/T014, mantendo o esperado; somente IDs entre execuções foram desconsiderados nessa comparação auxiliar. Os próprios testes continuam exigindo os IDs capturados de cada fixture.
+
+**Unitários com mocks**: os treze casos públicos comprovam ramo, argumento normalizado, espaços internos literais, PageRequest/Sort, DTO e objetos originais preservados. Os nove administrativos usam serviço e guarda reais, mas resolução de conta e repositórios simulados; conferem normalização já existente, DTO/metadados e resolução da conta antes da consulta, sem interações extras. Incluem texto decomposto, caractere suplementar e U+200B não removível. Não constituem prova de seleção SQL, autenticação HTTP, ausência de DML real ou transação de proxy. Essas limitações não foram ocultadas pela agregação com HTTP.
+
+### Horários, relatórios e preservação
+
+Ambos os comandos executados na raiz via `cmd.exe /d /c`, stdout/stderr preservados. Windows/PowerShell `5.1.19041.7663`, `JAVA_HOME=C:\Program Files\Zulu\zulu-21`, Java `21.0.12.1` observado no console HTTP; Wrapper configurado para Maven `3.9.16`. Produção e testes atualizados em ambas as execuções, **sem recompilação nova** e sem comando separado de compilação.
+
+- HTTP: **2026-10-19T07:17:24.7032840-03:00** a **07:18:04.8081658-03:00**, duração externa **40,105 s**, Maven **34.946 s**; [console-http.log](../../target/feature006-t016-us2-checkpoint-20261019T071700/console-http.log), [run-http-start.json](../../target/feature006-t016-us2-checkpoint-20261019T071700/run-http-start.json) e [run-http-result.json](../../target/feature006-t016-us2-checkpoint-20261019T071700/run-http-result.json).
+- Serviços: **2026-10-19T07:18:39.8495450-03:00** a **07:18:57.0512302-03:00**, duração externa **17,202 s**, Maven **12.135 s**; [console-services.log](../../target/feature006-t016-us2-checkpoint-20261019T071700/console-services.log), [run-services-start.json](../../target/feature006-t016-us2-checkpoint-20261019T071700/run-services-start.json) e [run-services-result.json](../../target/feature006-t016-us2-checkpoint-20261019T071700/run-services-result.json).
+
+Antes da seleção HTTP, os **294 relatórios anteriores** foram copiados para [surefire-before-http](../../target/feature006-t016-us2-checkpoint-20261019T071700/surefire-before-http/) e conferidos pelo [manifesto SHA-256 HTTP](../../target/feature006-t016-us2-checkpoint-20261019T071700/surefire-before-http-manifest.json). Antes dos unitários, os **300 então presentes**, incluindo os seis arquivos do HTTP atual, foram preservados em [surefire-before-services](../../target/feature006-t016-us2-checkpoint-20261019T071700/surefire-before-services/) e seu [manifesto](../../target/feature006-t016-us2-checkpoint-20261019T071700/surefire-before-services-manifest.json). Após executar, origem e cópias mantiveram todos os tamanhos/hashes, inclusive RED/GREEN históricos de US1 e T013–T015. Nenhum relatório anterior sobrescrito.
+
+Os dez relatórios novos estão em [surefire-current-http](../../target/feature006-t016-us2-checkpoint-20261019T071700/surefire-current-http/) e [surefire-current-services](../../target/feature006-t016-us2-checkpoint-20261019T071700/surefire-current-services/). [http-observations.json](../../target/feature006-t016-us2-checkpoint-20261019T071700/http-observations.json) guarda as 50 observações e [verification.json](../../target/feature006-t016-us2-checkpoint-20261019T071700/verification.json) registra seleção exata, agregação, ausência de omissão, comparação com oráculos anteriores e preservação dos fontes/relatórios. Artefatos locais ignorados em `target/`, que podem faltar em outro checkout; conferências documentais/estáticas não são testes adicionais.
+
+**Conclusão T016**: checkpoint conjunto US2 GREEN nos seis cenários e regressões unitárias afetadas, com ausência de mutações observada nas janelas HTTP e nomes originais preservados. Nenhuma correção necessária; produção e assertions intactas. T001–T016 `[X]`; T017–T030 abertas, sem iniciar US3 ou encerrar a feature completa. Limites: Windows/H2 configurado, variantes/páginas dos casos US2 e janelas síncronas; sem prova de outros bancos, CI, durabilidade, efeitos fora da janela, JDBC direto universal ou suíte completa. Sem impedimento remanescente, stage, commit, push, troca de branch ou alteração de main.
+
+Conferência final: diff documental incremental contra as cópias recebidas, referências dos seletores, relatórios e novos artefatos locais revisados; `git diff --check` exit 0, sem problemas de whitespace, e 166 links locais dos dois documentos resolvidos. Auditoria confirmou somente T016 alterada nas tasks recebidas, conteúdo anterior do quickstart preservado e todos os fontes/testes recebidos idênticos. Git final: os mesmos quatro arquivos rastreados modificados, nenhum staged ou não rastreado; raiz/branch/HEAD e main mantidos. Alterações desta tarefa somente no quickstart e marcador T016; extensões ausentes na conferência pós-execução, sem hooks aplicáveis.

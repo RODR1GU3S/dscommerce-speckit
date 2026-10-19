@@ -449,6 +449,162 @@ class PublicCatalogNameFilterIntegrationTest {
             }
         }
 
+        @ParameterizedTest(name = "{0}")
+        @MethodSource("com.devsuperior.dscommerce.controllers.PublicCatalogNameFilterIntegrationTest#whitespaceScenarios")
+        @Tag("feature006-t013")
+        void normalizesOnlyExternalFilterWhitespace(WhitespaceScenario scenario) throws Exception {
+            assertNoCallerTransaction();
+            var database = new AdminProductDatabaseProbe(context.getEnvironment().getRequiredProperty("spring.datasource.url"));
+            assertEmptyDatabase(database);
+            try (var fixture = new AdminProductTestFixture(context)) {
+                var fone = fixture.createProduct("Fone Azul", "Fixture T013", "fone.jpg", new BigDecimal("10.00"));
+                var cabo = fixture.createProduct("Cabo", "Fixture T013", "cabo.jpg", new BigDecimal("20.00"));
+                var before = database.snapshot();
+                assertThat(before.products()).extracting(AdminProductDatabaseProbe.ProductRow::id)
+                        .containsExactly(fone.id(), cabo.id());
+                assertThat(before.products()).extracting(AdminProductDatabaseProbe.ProductRow::name)
+                        .containsExactly("Fone Azul", "Cabo");
+
+                // Explicit first-page manifests: unfiltered starts with Cabo; FONE starts with Fone Azul.
+                // Size 1 also distinguishes the unfiltered totals (2/2) from the filtered totals (1/1).
+                var expected = mapper.createObjectNode().put("page", 0).put("size", 1)
+                        .put("totalElements", scenario.unfiltered() ? 2 : 1)
+                        .put("totalPages", scenario.unfiltered() ? 2 : 1);
+                expected.putArray("content").add(nameItem(scenario.unfiltered() ? cabo : fone));
+                var canonicalExpected = mapper.readTree(expected.toString());
+                var query = (scenario.filter() == null ? ""
+                        : "name=" + URLEncoder.encode(scenario.filter(), StandardCharsets.UTF_8) + "&")
+                        + "page=0&size=1";
+                var uri = URI.create("http://localhost:" + port + expectedContextPath() + "/products?" + query);
+                var requestId = UUID.randomUUID().toString();
+                var headers = new HttpHeaders();
+                headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+                headers.set("X-Feature006-Name-Observation", requestId);
+                sql.clear();
+                assertNoCallerTransaction();
+                var response = http.exchange(uri, HttpMethod.GET, new HttpEntity<>(headers), String.class);
+                var decoded = nameRequests.take(requestId);
+                assertThat(decoded).as("T013 passive servlet observation").isNotNull();
+                assertThat(decoded.query()).isEqualTo(query);
+                assertThat(decoded.name()).isEqualTo(scenario.filter());
+                assertThat(decoded.contextPath()).isEqualTo(expectedContextPath());
+                assertThat(decoded.uri()).isEqualTo(expectedContextPath() + "/products");
+                assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(response.getHeaders().getContentType()).isNotNull()
+                        .satisfies(type -> assertThat(type.isCompatibleWith(MediaType.APPLICATION_JSON)).isTrue());
+                var actual = mapper.readTree(response.getBody());
+                assertThat(database.snapshot()).isEqualTo(before);
+                assertThat(sql.events()).isNotEmpty().allSatisfy(event -> {
+                    assertThat(event.sql().stripLeading().toLowerCase(Locale.ROOT)).startsWith("select ");
+                    assertThat(event.transactionActive()).isTrue();
+                });
+                assertNoCallerTransaction();
+                var observation = mapper.createObjectNode().put("context", expectedIdentity())
+                        .put("case", scenario.label()).put("filter", scenario.filter())
+                        .put("unfiltered", scenario.unfiltered()).put("rawQuery", decoded.query())
+                        .put("decodedName", decoded.name()).put("path", decoded.uri())
+                        .put("status", response.getStatusCode().value()).put("guardsPassed", true)
+                        .put("snapshotEqual", true).put("hibernateDml", 0).put("callerTransaction", false);
+                observation.set("expected", canonicalExpected);
+                observation.set("actual", actual);
+                System.out.println("T013_HTTP " + observation);
+                fixture.cleanUp();
+                assertEmptyDatabase(database);
+                assertThat(actual).as("T013 " + scenario.label() + " exact IDs, stored names and page metadata")
+                        .isEqualTo(canonicalExpected);
+            } finally {
+                nameRequests.clear();
+                sql.clear();
+            }
+        }
+
+        @ParameterizedTest(name = "{0}")
+        @MethodSource("com.devsuperior.dscommerce.controllers.PublicCatalogNameFilterIntegrationTest#internalSpaceScenarios")
+        @Tag("feature006-t014")
+        void preservesInternalSpacesAndStoredNames(InternalSpaceScenario scenario) throws Exception {
+            assertNoCallerTransaction();
+            var database = new AdminProductDatabaseProbe(context.getEnvironment().getRequiredProperty("spring.datasource.url"));
+            assertEmptyDatabase(database);
+            try (var fixture = new AdminProductTestFixture(context)) {
+                var names = switch (scenario) {
+                    case COMMON -> List.of("Fone Azul", "Fone  Azul");
+                    case LEGACY -> List.of("  Fone  Azul  ");
+                    case NBSP -> List.of("Fone Azul", "Fone\u00a0Azul");
+                };
+                var products = new ArrayList<ProductData>();
+                for (var name : names) {
+                    products.add(fixture.createProduct(name, "Fixture T014", "t014.jpg", new BigDecimal("10.00")));
+                }
+                var before = database.snapshot();
+                assertThat(before.products()).extracting(AdminProductDatabaseProbe.ProductRow::id)
+                        .containsExactlyElementsOf(products.stream().map(ProductData::id).toList());
+                assertThat(before.products()).extracting(AdminProductDatabaseProbe.ProductRow::name)
+                        .containsExactlyElementsOf(names);
+                // Separate manifests prevent the legacy padded name from changing the COMMON scenario's matches.
+                var expectations = switch (scenario) {
+                    case COMMON -> List.of(new NameExpectation("fone azul", List.of(0)),
+                            new NameExpectation("fone  azul", List.of(1)));
+                    case LEGACY -> List.of(new NameExpectation(" fone  azul ", List.of(0)),
+                            new NameExpectation("fone azul", List.of()));
+                    case NBSP -> List.of(new NameExpectation("fone azul", List.of(0)),
+                            new NameExpectation("fone\u00a0azul", List.of(1)));
+                };
+                var assertions = new ArrayList<Executable>();
+                for (var expectation : expectations) {
+                    var expectedProducts = expectation.indices().stream().map(products::get).toList();
+                    var expected = mapper.createObjectNode().put("page", 0).put("size", 12)
+                            .put("totalElements", expectedProducts.size())
+                            .put("totalPages", expectedProducts.isEmpty() ? 0 : 1);
+                    var expectedContent = expected.putArray("content");
+                    for (var product : expectedProducts) expectedContent.add(nameItem(product));
+                    var canonicalExpected = mapper.readTree(expected.toString());
+                    var query = "name=" + URLEncoder.encode(expectation.filter(), StandardCharsets.UTF_8) + "&page=0&size=12";
+                    var uri = URI.create("http://localhost:" + port + expectedContextPath() + "/products?" + query);
+                    var requestId = UUID.randomUUID().toString();
+                    var headers = new HttpHeaders();
+                    headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+                    headers.set("X-Feature006-Name-Observation", requestId);
+                    sql.clear();
+                    assertNoCallerTransaction();
+                    var response = http.exchange(uri, HttpMethod.GET, new HttpEntity<>(headers), String.class);
+                    var decoded = nameRequests.take(requestId);
+                    assertThat(decoded).as("T014 passive servlet observation").isNotNull();
+                    assertThat(decoded.query()).isEqualTo(query);
+                    assertThat(decoded.name()).isEqualTo(expectation.filter());
+                    assertThat(decoded.contextPath()).isEqualTo(expectedContextPath());
+                    assertThat(decoded.uri()).isEqualTo(expectedContextPath() + "/products");
+                    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+                    assertThat(response.getHeaders().getContentType()).isNotNull()
+                            .satisfies(type -> assertThat(type.isCompatibleWith(MediaType.APPLICATION_JSON)).isTrue());
+                    var actual = mapper.readTree(response.getBody());
+                    assertThat(database.snapshot()).isEqualTo(before);
+                    assertThat(sql.events()).isNotEmpty().allSatisfy(event -> {
+                        assertThat(event.sql().stripLeading().toLowerCase(Locale.ROOT)).startsWith("select ");
+                        assertThat(event.transactionActive()).isTrue();
+                    });
+                    assertNoCallerTransaction();
+                    var observation = mapper.createObjectNode().put("context", expectedIdentity())
+                            .put("scenario", scenario.name()).put("filter", expectation.filter())
+                            .put("rawQuery", decoded.query()).put("decodedName", decoded.name())
+                            .put("path", decoded.uri()).put("status", response.getStatusCode().value())
+                            .put("guardsPassed", true).put("snapshotEqual", true)
+                            .put("hibernateDml", 0).put("callerTransaction", false);
+                    observation.set("storedNames", mapper.valueToTree(names));
+                    observation.set("expected", canonicalExpected);
+                    observation.set("actual", actual);
+                    System.out.println("T014_HTTP " + observation);
+                    assertions.add(() -> assertThat(actual).as("T014 " + scenario + " filter=" + expectation.filter()
+                            + " exact IDs, original name and filtered metadata").isEqualTo(canonicalExpected));
+                }
+                fixture.cleanUp();
+                assertEmptyDatabase(database);
+                assertAll("T014 " + scenario, assertions);
+            } finally {
+                nameRequests.clear();
+                sql.clear();
+            }
+        }
+
         private ObjectNode nameItem(ProductData product) {
             return mapper.createObjectNode().put("id", product.id()).put("name", product.name())
                     .put("image", product.image()).put("price", product.price());
@@ -493,6 +649,36 @@ class PublicCatalogNameFilterIntegrationTest {
 
     enum LengthScenario { SHORT, LONG }
     static Stream<LengthScenario> lengthScenarios() { return Stream.of(LengthScenario.values()); }
+
+    record WhitespaceScenario(String label, String filter, boolean unfiltered) {
+        @Override public String toString() { return label; }
+    }
+
+    static Stream<WhitespaceScenario> whitespaceScenarios() {
+        return Stream.of(
+                new WhitespaceScenario("trimmed-control", "FONE", false),
+                new WhitespaceScenario("common-padding", " FONE ", false),
+                new WhitespaceScenario("tab-left", "\tFONE", false),
+                new WhitespaceScenario("tab-right", "FONE\t", false),
+                new WhitespaceScenario("tab-both", "\tFONE\t", false),
+                new WhitespaceScenario("nbsp-left", "\u00a0FONE", false),
+                new WhitespaceScenario("nbsp-right", "FONE\u00a0", false),
+                new WhitespaceScenario("nbsp-both", "\u00a0FONE\u00a0", false),
+                new WhitespaceScenario("em-left", "\u2003FONE", false),
+                new WhitespaceScenario("em-right", "FONE\u2003", false),
+                new WhitespaceScenario("em-both", "\u2003FONE\u2003", false),
+                new WhitespaceScenario("mixed-padding", "\t\u00a0\u2003 FONE \u2003\u00a0\t", false),
+                new WhitespaceScenario("omitted", null, true),
+                new WhitespaceScenario("empty", "", true),
+                new WhitespaceScenario("common-only", "   ", true),
+                new WhitespaceScenario("tab-only", "\t", true),
+                new WhitespaceScenario("nbsp-only", "\u00a0", true),
+                new WhitespaceScenario("em-only", "\u2003", true),
+                new WhitespaceScenario("mixed-only", " \t\u00a0\u2003\t ", true));
+    }
+
+    enum InternalSpaceScenario { COMMON, LEGACY, NBSP }
+    static Stream<InternalSpaceScenario> internalSpaceScenarios() { return Stream.of(InternalSpaceScenario.values()); }
 
     record NameRequest(String query, String name, String uri, String contextPath) { }
 

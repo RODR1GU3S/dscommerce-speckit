@@ -3,6 +3,8 @@ package com.devsuperior.dscommerce.controllers;
 import com.devsuperior.dscommerce.config.OwnOrderQueryWebMvcConfig;
 import com.devsuperior.dscommerce.controllers.handlers.GlobalExceptionHandler;
 import com.devsuperior.dscommerce.controllers.handlers.OwnOrderQueryExceptionHandler;
+import com.devsuperior.dscommerce.dto.OwnOrderDetailDTO;
+import com.devsuperior.dscommerce.dto.OwnOrderItemDTO;
 import com.devsuperior.dscommerce.dto.OwnOrderPageRequestDTO;
 import com.devsuperior.dscommerce.dto.OwnOrderSummaryDTO;
 import com.devsuperior.dscommerce.dto.PageResponseDTO;
@@ -11,6 +13,7 @@ import com.devsuperior.dscommerce.security.AuthenticatedAccountPrincipal;
 import com.devsuperior.dscommerce.services.OrderService;
 import com.devsuperior.dscommerce.services.OwnOrderQueryService;
 import com.devsuperior.dscommerce.services.exceptions.OrderAccountResolutionException;
+import com.devsuperior.dscommerce.services.exceptions.OwnOrderNotFoundException;
 import com.devsuperior.dscommerce.services.exceptions.ProductNotFoundException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.ConstraintViolationException;
@@ -59,6 +62,7 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -245,6 +249,112 @@ class OwnOrderQueryControllerTest {
                 .content("{\"items\":[{\"productId\":1,\"quantity\":1}]}")), 500, "Order registration could not be completed", "/orders");
         assertError(perform(get("/t015/public-product")), 404, "Product not found", "/t015/public-product");
         verifyNoInteractions(service);
+    }
+
+    @ParameterizedTest
+    @CsvSource({"ROOT,9", "API,9223372036854775807"})
+    void detailDelegatesPositiveLongAndSameAuthenticationAndSerializesOnlyTheDetail(String path, long id)
+            throws Exception {
+        var response = detailResponse(id);
+        when(service.detail(id, authentication)).thenReturn(response);
+        var result = perform(detailRoute(HttpMethod.GET, path, Long.toString(id))
+                .param("accountId", "99").param("buyerId", "99").param("page", "-1"));
+        assertThat(result.getResponse().getStatus()).isEqualTo(200);
+        assertThat(result.getResponse().getContentType()).startsWith("application/json");
+        assertThat(mapper.readTree(result.getResponse().getContentAsByteArray())).isEqualTo(mapper.readTree("""
+                {"id":%d,"createdAt":"2026-10-19T12:00:00.123Z","status":"WAITING_PAYMENT","total":"42.50",
+                 "items":[{"productId":8,"productName":"Produto B","quantity":2,"unitPrice":"10.00","subtotal":"20.00"},
+                          {"productId":3,"productName":" Produto A ","quantity":3,"unitPrice":"7.50","subtotal":"22.50"}]}
+                """.formatted(id)));
+        verify(service).detail(id, authentication);
+        verifyNoMoreInteractions(service);
+        verifyNoInteractions(registration);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"0", "-1", "not-an-id", "1.5", "9223372036854775808", "-9223372036854775809"})
+    void detailRejectsInvalidIdAtMvcBoundaryBeforeTheService(String id) throws Exception {
+        var result = perform(detailRoute(HttpMethod.GET, "API", id).queryParam("private", "must-not-appear"));
+        assertError(result, 400, "Invalid order query data", "/api/orders/" + id);
+        assertThat(result.getResponse().getContentType()).startsWith("application/json");
+        verifyNoInteractions(service, registration);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"ROOT", "API"})
+    void detailNotFoundHasTheSameSafeEnvelopeForBothServiceAbsenceResults(String path) throws Exception {
+        when(service.detail(anyLong(), any())).thenThrow(new OwnOrderNotFoundException());
+        var prefix = path.equals("API") ? "/api" : "";
+        for (var id : List.of("9", "11")) {
+            var result = perform(detailRoute(HttpMethod.GET, path, id).queryParam("private", "must-not-appear"));
+            assertError(result, 404, "Order not found", prefix + "/orders/" + id);
+            assertThat(result.getResponse().getContentType()).startsWith("application/json");
+        }
+        verify(service).detail(9, authentication);
+        verify(service).detail(11, authentication);
+        verifyNoMoreInteractions(service);
+        verifyNoInteractions(registration);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"ROOT", "API"})
+    void detailHeadKeepsSuccessAndNotFoundStatusesWithNoBody(String path) throws Exception {
+        when(service.detail(9, authentication)).thenReturn(detailResponse(9));
+        var success = perform(detailRoute(HttpMethod.HEAD, path, "9"));
+        assertThat(success.getResponse().getStatus()).isEqualTo(200);
+        assertThat(success.getResponse().getContentType()).startsWith("application/json");
+        assertThat(success.getResponse().getContentAsByteArray()).isEmpty();
+        doThrow(new OwnOrderNotFoundException()).when(service).detail(9, authentication);
+        var missing = perform(detailRoute(HttpMethod.HEAD, path, "9"));
+        assertThat(missing.getResponse().getStatus()).isEqualTo(404);
+        assertThat(missing.getResponse().getContentType()).startsWith("application/json");
+        assertThat(missing.getResponse().getContentAsByteArray()).isEmpty();
+        verify(service, times(2)).detail(9, authentication);
+        verifyNoMoreInteractions(service);
+        verifyNoInteractions(registration);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"read", "invariant", "mapping", "transaction"})
+    void detailInternalFailuresHaveOnlyTheFixedSafe500Envelope(String stage) throws Exception {
+        RuntimeException failure = switch (stage) {
+            case "read" -> new DataAccessResourceFailureException("controlled private detail");
+            case "invariant" -> new IllegalStateException("controlled private detail");
+            case "mapping" -> new HttpMessageNotWritableException("controlled private detail");
+            case "transaction" -> new TransactionSystemException("controlled private detail");
+            default -> throw new AssertionError("Unknown detail failure stage");
+        };
+        when(service.detail(9, authentication)).thenThrow(failure);
+        assertError(perform(detailRoute(HttpMethod.GET, "API", "9")), 500,
+                "Order query could not be completed", "/api/orders/9");
+        verify(service).detail(9, authentication);
+        verifyNoInteractions(registration);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"authentication", "permission"})
+    void detailPreservesTheExistingServiceGuardErrorMappings(String kind) throws Exception {
+        RuntimeException failure = kind.equals("authentication") ? new BadCredentialsException("controlled private detail")
+                : new AccessDeniedException("controlled private detail");
+        when(service.detail(9, authentication)).thenThrow(failure);
+        var result = perform(detailRoute(HttpMethod.GET, "ROOT", "9"));
+        assertError(result, kind.equals("authentication") ? 401 : 403,
+                kind.equals("authentication") ? "Authentication required or invalid" : "Order query not permitted", "/orders/9");
+        if (kind.equals("authentication")) { assertThat(result.getResponse().getHeader("WWW-Authenticate")).isEqualTo("Bearer"); }
+        verify(service).detail(9, authentication);
+        verifyNoInteractions(registration);
+    }
+
+    private static OwnOrderDetailDTO detailResponse(long id) {
+        return new OwnOrderDetailDTO(id, Instant.parse("2026-10-19T12:00:00.123Z"), OrderStatus.WAITING_PAYMENT,
+                "42.50", List.of(new OwnOrderItemDTO(8L, "Produto B", 2, "10.00", "20.00"),
+                        new OwnOrderItemDTO(3L, " Produto A ", 3, "7.50", "22.50")));
+    }
+
+    private MockHttpServletRequestBuilder detailRoute(HttpMethod method, String path, String id) {
+        var prefix = path.equals("API") ? "/api" : "";
+        return request(method, prefix + "/orders/" + id).contextPath(prefix).principal(authentication)
+                .accept(MediaType.APPLICATION_JSON);
     }
 
     private static org.springframework.http.HttpHeaders failureHeaders(Exception failure) {

@@ -2,6 +2,7 @@ package com.devsuperior.dscommerce.controllers.handlers;
 
 import com.devsuperior.dscommerce.controllers.OwnOrderQueryController;
 import com.devsuperior.dscommerce.dto.ErrorResponseDTO;
+import com.devsuperior.dscommerce.services.exceptions.OwnOrderNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
@@ -17,13 +18,15 @@ import org.springframework.web.bind.ServletRequestBindingException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 /** Query-only errors; registration and other controllers retain their existing advice. */
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @RestControllerAdvice(assignableTypes = OwnOrderQueryController.class)
 public class OwnOrderQueryExceptionHandler {
 
-    @ExceptionHandler({MethodArgumentNotValidException.class, ServletRequestBindingException.class})
+    @ExceptionHandler({MethodArgumentNotValidException.class, ServletRequestBindingException.class,
+            MethodArgumentTypeMismatchException.class})
     public ResponseEntity<ErrorResponseDTO> input(Exception exception, HttpServletRequest request) {
         return error(HttpStatus.BAD_REQUEST, "Invalid order query data", request);
     }
@@ -44,6 +47,11 @@ public class OwnOrderQueryExceptionHandler {
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorResponseDTO> permission(AccessDeniedException exception, HttpServletRequest request) {
         return error(HttpStatus.FORBIDDEN, "Order query not permitted", request);
+    }
+
+    @ExceptionHandler(OwnOrderNotFoundException.class)
+    public ResponseEntity<ErrorResponseDTO> notFound(OwnOrderNotFoundException exception, HttpServletRequest request) {
+        return error(HttpStatus.NOT_FOUND, "Order not found", request);
     }
 
     @ExceptionHandler(Exception.class)

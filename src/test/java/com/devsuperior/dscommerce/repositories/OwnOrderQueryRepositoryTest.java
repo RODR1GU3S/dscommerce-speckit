@@ -8,6 +8,8 @@ import com.devsuperior.dscommerce.fixtures.AdminProductDatabaseProbe.SqlObservat
 import com.devsuperior.dscommerce.fixtures.OwnOrderQueryDatabaseProbe;
 import com.devsuperior.dscommerce.fixtures.OwnOrderQueryDatabaseProbe.Observation;
 import com.devsuperior.dscommerce.fixtures.OwnOrderQueryTestFixture;
+import com.devsuperior.dscommerce.fixtures.OwnOrderQueryTestFixture.ItemInput;
+import com.devsuperior.dscommerce.fixtures.OwnOrderQueryTestFixture.ItemManifest;
 import com.devsuperior.dscommerce.fixtures.OwnOrderQueryTestFixture.OrderManifest;
 import com.devsuperior.dscommerce.fixtures.OwnOrderQueryTestFixture.Scenario;
 import jakarta.persistence.EntityManagerFactory;
@@ -35,10 +37,14 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.context.WebApplicationContext;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
 
 import static com.devsuperior.dscommerce.fixtures.OwnOrderQueryTestFixture.FIRST_INSTANT;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -69,6 +75,7 @@ class OwnOrderQueryRepositoryTest {
     private int reads;
     private int pages;
     private int batches;
+    private int detailQueries;
 
     @BeforeAll
     void verifyTheDedicatedStableSeedFreeDatabase() {
@@ -194,6 +201,214 @@ class OwnOrderQueryRepositoryTest {
         assertThat(factory.getPersistenceUnitUtil().isLoaded(root, "items")).isTrue();
         assertThat(root.getItems()).isEmpty();
         assertThat(sql.events()).containsExactlyElementsOf(observation.events());
+    }
+
+    @AfterAll
+    void reportDetailQueryCount() {
+        System.out.println("T020_COUNTS detailQueries=" + detailQueries
+                + " mockMvcDispatches=0 realHttpRequests=0 databaseContexts=1");
+    }
+
+    @Test
+    void detailLoadsOnlyRequestedOwnRootWithCompleteRecordedBAItems() {
+        var expected = scenario.expectedClientOrders().getLast();
+        assertThat(expected.items().get(0).productId()).isGreaterThan(expected.items().get(1).productId());
+        var observation = detail(clientId(), expected.id());
+        var root = assertDetailOrder(observation, expected);
+        assertThat(root.getItems()).hasSize(2);
+        assertThat(root.getItems().get(0).getProduct().getPrice()).isEqualByComparingTo("12.00");
+        assertThat(root.getItems().get(1).getProduct().getPrice()).isEqualByComparingTo("99.00");
+        assertThat(sql.events()).containsExactlyElementsOf(observation.events());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"client", "other", "admin", "both"})
+    void detailFiltersTheSameOrderByEachSuppliedOwnerWithoutAGlobalProbe(String identity) {
+        var owner = ownerId(identity);
+        var expected = owned(identity).getFirst();
+        assertDetailOrder(detail(owner, expected.id()), expected);
+        for (var foreignOwner : List.of(clientId(), scenario.otherBuyer().id(),
+                scenario.accounts().admin().id(), scenario.accounts().both().id())) {
+            if (foreignOwner != owner) {
+                assertThat(detail(foreignOwner, expected.id()).result()).isEmpty();
+            }
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"missing-order", "empty-owner", "absent-owner"})
+    void detailReturnsEmptyForAbsentOrderOrNonOwningAccount(String kind) {
+        var owner = switch (kind) {
+            case "empty-owner" -> scenario.emptyBuyer().id();
+            case "absent-owner" -> Long.MAX_VALUE;
+            default -> clientId();
+        };
+        var id = kind.equals("missing-order") ? Long.MAX_VALUE : scenario.expectedClientOrders().getLast().id();
+        assertThat(detail(owner, id).result()).isEmpty();
+    }
+
+    @Test
+    void detailLeftFetchKeepsARootWithoutItemsForTheLaterServiceToDiagnose() {
+        var expected = scenario.expectedClientOrders().getLast();
+        committedSetup(() -> assertThat(jdbc.update("delete from tb_order_item where order_id = ?", expected.id()))
+                .isEqualTo(expected.items().size()));
+        var observation = detail(clientId(), expected.id());
+        var root = observation.result().orElseThrow();
+        assertThat(root.getId()).isEqualTo(expected.id());
+        assertThat(root.getBuyer().getId()).isEqualTo(expected.buyerId());
+        assertThat(root.getCreatedAt()).isEqualTo(expected.createdAt());
+        assertThat(root.getStatus().name()).isEqualTo(expected.status());
+        assertThat(factory.getPersistenceUnitUtil().isLoaded(root, "items")).isTrue();
+        assertThat(root.getItems()).isEmpty();
+        assertThat(sql.events()).containsExactlyElementsOf(observation.events());
+    }
+
+    @Test
+    void detailReadsRenamedCurrentProductsWithoutReplacingHistoricalValues() {
+        var expected = scenario.expectedClientOrders().getLast();
+        assertDetailOrder(detail(clientId(), expected.id()), expected);
+        changeCurrentProduct(scenario.productB().id(), " Nome atual B ", "37.00");
+        changeCurrentProduct(scenario.productA().id(), " Nome atual A ", "0.00");
+        var current = withCurrentNames(expected, Map.of(scenario.productB().id(), " Nome atual B ",
+                scenario.productA().id(), " Nome atual A "));
+        var observation = detail(clientId(), expected.id());
+        var root = assertDetailOrder(observation, current);
+        assertThat(root.getItems().get(0).getProduct().getPrice()).isEqualByComparingTo("37.00");
+        assertThat(root.getItems().get(1).getProduct().getPrice()).isEqualByComparingTo("0.00");
+        assertThat(sql.events()).containsExactlyElementsOf(observation.events());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"short", "long"})
+    void detailReadsEqualLegacyNamesZeroCurrentPricesAndNoCategoriesWithoutReordering(String kind) {
+        var name = kind.equals("short") ? "Á" : " " + "Café ".repeat(17) + " ";
+        var expected = scenario.expectedClientOrders().getLast();
+        changeCurrentProduct(scenario.productA().id(), name, "0.00");
+        changeCurrentProduct(scenario.productB().id(), name, "0.00");
+        committedSetup(() -> assertThat(jdbc.update(
+                "delete from tb_product_category where product_id in (?, ?)",
+                scenario.productA().id(), scenario.productB().id())).isEqualTo(2));
+        assertThat(jdbc.queryForObject("select count(*) from tb_product_category", Long.class)).isZero();
+        var current = withCurrentNames(expected, Map.of(scenario.productA().id(), name, scenario.productB().id(), name));
+        var observation = detail(clientId(), expected.id());
+        var root = assertDetailOrder(observation, current);
+        assertThat(root.getItems()).hasSize(2);
+        assertThat(root.getItems().get(0).getProduct().getId()).isGreaterThan(root.getItems().get(1).getProduct().getId());
+        assertThat(root.getItems()).allSatisfy(item ->
+                assertThat(item.getProduct().getPrice()).isEqualByComparingTo("0.00"));
+        assertThat(sql.events()).containsExactlyElementsOf(observation.events());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"0.01", "9007199254740993.01"})
+    void detailPreservesSmallAndLargeHistoricalAmountsInTheLoadedAggregate(String amount) {
+        var expected = scenario.expectedClientOrders().stream().filter(order -> order.total().equals(amount))
+                .findFirst().orElseThrow();
+        assertDetailOrder(detail(clientId(), expected.id()), expected);
+    }
+
+    @Test
+    void detailKeepsDifferentPurchaseHistoriesForTheSameCurrentProduct() {
+        var first = scenario.expectedClientOrders().getLast();
+        var second = scenario.expectedClientOrders().getFirst();
+        assertThat(first.id()).isNotEqualTo(second.id());
+        assertThat(first.items().get(0).productId()).isEqualTo(second.items().getFirst().productId());
+        var firstRoot = assertDetailOrder(detail(clientId(), first.id()), first);
+        assertThat(firstRoot.getItems().get(0).getQuantity()).isEqualTo(2);
+        assertThat(firstRoot.getItems().get(0).getUnitPrice()).isEqualByComparingTo("10.00");
+        var secondObservation = detail(clientId(), second.id());
+        var secondRoot = assertDetailOrder(secondObservation, second);
+        assertThat(secondRoot.getItems().getFirst().getQuantity()).isEqualTo(1);
+        assertThat(secondRoot.getItems().getFirst().getUnitPrice()).isEqualByComparingTo("15.25");
+        assertThat(firstRoot.getTotal()).isEqualByComparingTo("42.50");
+        assertThat(secondRoot.getTotal()).isEqualByComparingTo("15.25");
+        assertThat(sql.events()).containsExactlyElementsOf(secondObservation.events());
+    }
+
+    @Test
+    void detailFetchesAllItemsWithoutBorrowingTheListPageLimit() {
+        var inputs = new ArrayList<ItemInput>();
+        for (int index = 0; index < 51; index++) {
+            var product = fixture.createProduct("Item de detalhe " + index, new BigDecimal("99.00"));
+            inputs.add(new ItemInput(product.id(), 1, "0.01", "0.01"));
+        }
+        var expected = fixture.createOrder(scenario.accounts().client(), FIRST_INSTANT.plusSeconds(120), inputs, "0.51");
+        var root = assertDetailOrder(detail(clientId(), expected.id()), expected);
+        assertThat(root.getItems()).hasSize(51);
+    }
+
+    @Test
+    void detailOrdersByRecordedPositionEvenWhenItemIdentifiersHaveTheOppositeOrder() {
+        var original = scenario.expectedClientOrders().getLast();
+        var b = original.items().get(0);
+        var a = original.items().get(1);
+        assertThat(b.id()).isLessThan(a.id());
+        // Explicit committed preparation only: avoid the existing unique(order_id, position) constraint.
+        committedSetup(() -> {
+            assertThat(jdbc.update("update tb_order_item set position = ? where id = ? and order_id = ?",
+                    2, b.id(), original.id())).isEqualTo(1);
+            assertThat(jdbc.update("update tb_order_item set position = ? where id = ? and order_id = ?",
+                    0, a.id(), original.id())).isEqualTo(1);
+            assertThat(jdbc.update("update tb_order_item set position = ? where id = ? and order_id = ?",
+                    1, b.id(), original.id())).isEqualTo(1);
+        });
+        var expected = new OrderManifest(original.id(), original.buyerId(), original.createdAt(), original.status(),
+                original.total(), List.of(
+                        new ItemManifest(a.id(), a.productId(), a.productName(), 0, a.quantity(), a.unitPrice(), a.subtotal()),
+                        new ItemManifest(b.id(), b.productId(), b.productName(), 1, b.quantity(), b.unitPrice(), b.subtotal())));
+        var root = assertDetailOrder(detail(clientId(), original.id()), expected);
+        assertThat(root.getItems()).extracting(item -> item.getId()).containsExactly(a.id(), b.id());
+    }
+
+    private Observation<Optional<Order>> detail(long ownerId, long id) {
+        detailQueries++;
+        var observation = read("detail", () -> repository.findOwnOrderWithItemsById(ownerId, id));
+        assertThat(observation.events()).hasSize(1); // No global lookup, count or lazy follow-up.
+        var statement = normalized(observation.events().getFirst().sql());
+        assertThat(statement).contains("select distinct", "left join tb_order_item", "left join tb_product")
+                .containsPattern("order by \\w+\\.position(?: asc)?$")
+                .doesNotContain("offset", "fetch first", " limit ", "count(", "exists", " in (",
+                        "tb_category", "tb_product_category", "tb_user_account");
+        var alias = Pattern.compile("\\bfrom tb_order (\\w+)\\b").matcher(statement);
+        assertThat(alias.find()).isTrue();
+        var root = Pattern.quote(alias.group(1));
+        var where = statement.substring(statement.indexOf(" where "));
+        assertThat(where).containsPattern(root + "\\.id\\s*=\\s*\\?")
+                .containsPattern(root + "\\.buyer_id\\s*=\\s*\\?");
+        return observation;
+    }
+
+    private Order assertDetailOrder(Observation<Optional<Order>> observation, OrderManifest expected) {
+        var root = observation.result().orElseThrow();
+        assertThat(root.getId()).isEqualTo(expected.id());
+        assertThat(factory.getPersistenceUnitUtil().isLoaded(root, "buyer")).isFalse();
+        assertThat(root.getBuyer().getId()).isEqualTo(expected.buyerId());
+        assertLoadedOrder(root, expected);
+        assertThat(root.getTotal()).isEqualByComparingTo(expected.total());
+        for (int index = 0; index < expected.items().size(); index++) {
+            assertThat(root.getItems().get(index).getSubtotal()).isEqualByComparingTo(expected.items().get(index).subtotal());
+        }
+        assertThat(sql.events()).containsExactlyElementsOf(observation.events());
+        return root;
+    }
+
+    private void changeCurrentProduct(long id, String name, String price) {
+        committedSetup(() -> assertThat(jdbc.update("update tb_product set name = ?, price = ? where id = ?",
+                name, new BigDecimal(price), id)).isEqualTo(1));
+    }
+
+    private void committedSetup(Runnable preparation) {
+        noCallerTransaction();
+        var setup = new TransactionTemplate(transactionManager);
+        setup.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        setup.executeWithoutResult(status -> preparation.run());
+    }
+
+    private static OrderManifest withCurrentNames(OrderManifest original, Map<Long, String> names) {
+        return new OrderManifest(original.id(), original.buyerId(), original.createdAt(), original.status(),
+                original.total(), original.items().stream().map(item -> new ItemManifest(item.id(), item.productId(),
+                        names.getOrDefault(item.productId(), item.productName()), item.position(), item.quantity(),
+                        item.unitPrice(), item.subtotal())).toList());
     }
 
     private Page<Long> page(long ownerId, int number, int size, List<Long> expected, long total, int totalPages,

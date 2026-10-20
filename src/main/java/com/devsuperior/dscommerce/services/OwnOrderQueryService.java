@@ -1,10 +1,13 @@
 package com.devsuperior.dscommerce.services;
 
+import com.devsuperior.dscommerce.dto.OwnOrderDetailDTO;
+import com.devsuperior.dscommerce.dto.OwnOrderItemDTO;
 import com.devsuperior.dscommerce.dto.OwnOrderPageRequestDTO;
 import com.devsuperior.dscommerce.dto.OwnOrderSummaryDTO;
 import com.devsuperior.dscommerce.dto.PageResponseDTO;
 import com.devsuperior.dscommerce.entities.Order;
 import com.devsuperior.dscommerce.repositories.OrderRepository;
+import com.devsuperior.dscommerce.services.exceptions.OwnOrderNotFoundException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
@@ -61,7 +64,32 @@ public class OwnOrderQueryService {
         return new PageResponseDTO<>(content, page, size, total, totalPages);
     }
 
+    /** The positive ID has already passed MVC validation; the current owner always comes from the guard. */
+    @Transactional(readOnly = true)
+    public OwnOrderDetailDTO detail(long id, Authentication authentication) {
+        long ownerId = access.requireAccountId(authentication);
+        var order = orders.findOwnOrderWithItemsById(ownerId, id).orElseThrow(OwnOrderNotFoundException::new);
+        if (!Long.valueOf(id).equals(order.getId()) || order.getBuyer() == null
+                || !Long.valueOf(ownerId).equals(order.getBuyer().getId())) {
+            throw inconsistentRead();
+        }
+        var total = validatedTotal(order);
+        var products = new HashSet<Long>();
+        var items = order.getItems().stream().map(item -> {
+            var product = item.getProduct();
+            if (product.getName() == null || !products.add(product.getId())) { throw inconsistentRead(); }
+            return new OwnOrderItemDTO(product.getId(), product.getName(), item.getQuantity(),
+                    exactMoney(item.getUnitPrice()).toPlainString(), exactMoney(item.getSubtotal()).toPlainString());
+        }).toList();
+        return new OwnOrderDetailDTO(order.getId(), order.getCreatedAt(), order.getStatus(), total.toPlainString(), items);
+    }
+
     private static OwnOrderSummaryDTO summary(Order order) {
+        return new OwnOrderSummaryDTO(order.getId(), order.getCreatedAt(), order.getStatus(),
+                validatedTotal(order).toPlainString());
+    }
+
+    private static BigDecimal validatedTotal(Order order) {
         if (order.getCreatedAt() == null || order.getStatus() == null || order.getItems().isEmpty()) {
             throw inconsistentRead();
         }
@@ -78,8 +106,7 @@ public class OwnOrderQueryService {
             exactMoney(item.getUnitPrice());
             exactMoney(item.getSubtotal());
         }
-        return new OwnOrderSummaryDTO(order.getId(), order.getCreatedAt(), order.getStatus(),
-                exactMoney(order.getTotal()).toPlainString());
+        return exactMoney(order.getTotal());
     }
 
     private static BigDecimal exactMoney(BigDecimal value) {

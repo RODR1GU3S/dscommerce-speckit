@@ -3,6 +3,8 @@ package com.devsuperior.dscommerce.services;
 import com.devsuperior.dscommerce.DscommerceApplication;
 import com.devsuperior.dscommerce.config.AdminProductTestConfig;
 import com.devsuperior.dscommerce.config.OwnOrderQueryTestObservationConfig;
+import com.devsuperior.dscommerce.dto.OwnOrderDetailDTO;
+import com.devsuperior.dscommerce.dto.OwnOrderItemDTO;
 import com.devsuperior.dscommerce.dto.OwnOrderPageRequestDTO;
 import com.devsuperior.dscommerce.dto.OwnOrderSummaryDTO;
 import com.devsuperior.dscommerce.dto.PageResponseDTO;
@@ -17,6 +19,7 @@ import com.devsuperior.dscommerce.fixtures.OwnOrderQueryTestFixture.OrderManifes
 import com.devsuperior.dscommerce.repositories.OrderRepository;
 import com.devsuperior.dscommerce.security.AuthenticatedAccountPrincipal;
 import com.devsuperior.dscommerce.services.exceptions.OrderAccountResolutionException;
+import com.devsuperior.dscommerce.services.exceptions.OwnOrderNotFoundException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
@@ -46,15 +49,19 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.AnnotationTransactionAttributeSource;
 import org.springframework.transaction.interceptor.TransactionInterceptor;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.context.WebApplicationContext;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -78,6 +85,8 @@ class OwnOrderQueryServiceTest {
     @Autowired private PlatformTransactionManager transactions;
     private String stableUrl;
     private int realReads;
+    private int detailReads;
+    private int detailRejectedReads;
 
     @BeforeAll
     void verifyIsolatedContext() {
@@ -298,6 +307,301 @@ class OwnOrderQueryServiceTest {
         assertThatThrownBy(() -> new OwnOrderQueryService(access, orders).list(request(0, 12), authentication(42)))
                 .isSameAs(cause);
         if (stage.equals("guard")) { verifyNoInteractions(orders); }
+    }
+
+    @AfterAll
+    void reportDetailReads() {
+        System.out.println("T021_COUNTS detailSuccessWindows=" + detailReads + " detailRejectedWindows="
+                + detailRejectedReads + " mockMvcDispatches=0 realHttpRequests=0 databaseContexts=1");
+    }
+
+    @Test
+    void detailRealMapsEachOwnersCompleteHistoricalOrderAndSerializesAfterReturn() throws Exception {
+        try (var fixture = new OwnOrderQueryTestFixture(context)) {
+            var scenario = fixture.preparePaginationScenario();
+            for (var expected : scenario.insertedOrders()) {
+                assertDetailDto(realDetail(expected.buyerId(), expected.id()), expected,
+                        expected.items().stream().map(item -> item.productName()).toList());
+            }
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"renamed", "short", "long"})
+    void detailRealPreservesCurrentNamesAndHistoricalMoneyAfterCatalogChanges(String kind) throws Exception {
+        try (var fixture = new OwnOrderQueryTestFixture(context)) {
+            var scenario = fixture.preparePaginationScenario();
+            var expected = scenario.expectedClientOrders().getLast();
+            var before = realDetail(expected.buyerId(), expected.id());
+            var oldNames = expected.items().stream().map(item -> item.productName()).toList();
+            assertDetailDto(before, expected, oldNames);
+            var name = kind.equals("short") ? "Á" : kind.equals("long") ? " " + "Café ".repeat(17) + " " : " Nome atual B ";
+            var names = List.of(name, kind.equals("renamed") ? " Nome atual A " : name);
+            var setup = new TransactionTemplate(transactions);
+            setup.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+            setup.executeWithoutResult(status -> {
+                assertThat(jdbc.update("update tb_product set name = ?, price = ? where id = ?",
+                        names.get(0), new BigDecimal("37.00"), scenario.productB().id())).isEqualTo(1);
+                assertThat(jdbc.update("update tb_product set name = ?, price = ? where id = ?",
+                        names.get(1), BigDecimal.ZERO, scenario.productA().id())).isEqualTo(1);
+                assertThat(jdbc.update("delete from tb_product_category where product_id in (?, ?)",
+                        scenario.productA().id(), scenario.productB().id())).isEqualTo(2);
+            });
+            assertDetailDto(realDetail(expected.buyerId(), expected.id()), expected, names);
+            assertDetailDto(before, expected, oldNames);
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"client", "admin"})
+    void detailRealAbsentAndForeignOrdersHaveTheSameBusinessFailureIncludingAdmin(String identity) {
+        try (var fixture = new OwnOrderQueryTestFixture(context)) {
+            var s = fixture.preparePaginationScenario();
+            var owner = identity.equals("client") ? s.accounts().client().id() : s.accounts().admin().id();
+            var foreign = identity.equals("client") ? s.insertedOrders().get(1) : s.expectedClientOrders().getLast();
+            detailRealFailure(foreign.id(), authentication(owner), OwnOrderNotFoundException.class, true);
+            detailRealFailure(Long.MAX_VALUE, authentication(owner), OwnOrderNotFoundException.class, true);
+        }
+    }
+
+    @Test
+    void detailRealGuardRechecksCurrentRolesBeforeReadingAnyOrder() {
+        try (var fixture = new OwnOrderQueryTestFixture(context)) {
+            var s = fixture.preparePaginationScenario();
+            var owner = s.accounts().client().id();
+            var id = s.expectedClientOrders().getLast().id();
+            assertThat(jdbc.update("delete from tb_user_account_role where user_account_id = ?", owner)).isEqualTo(1);
+            detailRealFailure(id, authentication(owner), AccessDeniedException.class, false);
+            detailRealFailure(id, authentication(Long.MAX_VALUE), BadCredentialsException.class, false);
+            detailRealFailure(id, null, BadCredentialsException.class, false);
+        }
+    }
+
+    @Test
+    void detailRealRootWithoutItemsIsAnInternalFailureWithoutRepair() {
+        try (var fixture = new OwnOrderQueryTestFixture(context)) {
+            var s = fixture.preparePaginationScenario();
+            var expected = s.expectedClientOrders().getLast();
+            assertThat(jdbc.update("delete from tb_order_item where order_id = ?", expected.id())).isEqualTo(2);
+            detailRealFailure(expected.id(), authentication(expected.buyerId()), IllegalStateException.class, true);
+        }
+    }
+
+    @Test
+    void detailCompletesGuardFetchCalculationAndNameMappingInsideReadOnlyTransaction() {
+        var access = mock(OwnOrderQueryAccessService.class);
+        var orders = mock(OrderRepository.class);
+        var auth = authentication(42);
+        var root = spy(order(8, 42, 2, "10.00"));
+        var product = spy(root.getItems().getFirst().getProduct());
+        ReflectionTestUtils.setField(root.getItems().getFirst(), "product", product);
+        when(access.requireAccountId(auth)).thenAnswer(call -> { readOnlyTransaction(); return 42L; });
+        when(orders.findOwnOrderWithItemsById(42, 8)).thenAnswer(call -> {
+            readOnlyTransaction(); return Optional.of(root);
+        });
+        doAnswer(call -> { readOnlyTransaction(); return call.callRealMethod(); }).when(root).getTotal();
+        doAnswer(call -> { readOnlyTransaction(); return call.callRealMethod(); }).when(product).getName();
+        doThrow(new AssertionError("Current catalog price is not historical money")).when(product).getPrice();
+        doThrow(new AssertionError("Current categories are not query validation")).when(product).getCategories();
+        var proxy = new ProxyFactory(new OwnOrderQueryService(access, orders));
+        proxy.addAdvice(new TransactionInterceptor(transactions, new AnnotationTransactionAttributeSource()));
+        noTransaction();
+        var result = ((OwnOrderQueryService) proxy.getProxy()).detail(8, auth);
+        noTransaction();
+        assertThat(result.total()).isEqualTo("20.00");
+        assertThat(result.items()).containsExactly(new OwnOrderItemDTO(7L, "x", 2, "10.00", "20.00"));
+        var sequence = inOrder(access, orders);
+        sequence.verify(access).requireAccountId(auth);
+        sequence.verify(orders).findOwnOrderWithItemsById(42, 8);
+        verifyNoMoreInteractions(access, orders);
+        verify(product, never()).getPrice();
+        verify(product, never()).getCategories();
+    }
+
+    @Test
+    void detailAbsentResultUsesOnlyTheGuardAndOneOwnerRestrictedLookup() {
+        var access = mock(OwnOrderQueryAccessService.class);
+        var orders = mock(OrderRepository.class);
+        var auth = authentication(42);
+        when(access.requireAccountId(auth)).thenReturn(42L);
+        when(orders.findOwnOrderWithItemsById(42, 8)).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> new OwnOrderQueryService(access, orders).detail(8, auth))
+                .isInstanceOf(OwnOrderNotFoundException.class).hasMessage("Order not found");
+        var sequence = inOrder(access, orders);
+        sequence.verify(access).requireAccountId(auth);
+        sequence.verify(orders).findOwnOrderWithItemsById(42, 8);
+        verifyNoMoreInteractions(access, orders);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"wrongId", "foreign", "nullBuyer", "nullId", "emptyItems", "nullDate", "nullStatus",
+            "nullProductName", "duplicateProduct", "nullItem", "nullProduct", "nullQuantity", "nullPrice",
+            "wrongPosition", "foreignLineOrder"})
+    void detailCorruptRootsFailInternallyInsteadOfNotFoundOrPartialContent(String corruption) {
+        var root = order(8, 42, 1, "10.00");
+        var item = root.getItems().getFirst();
+        switch (corruption) {
+            case "wrongId" -> ReflectionTestUtils.setField(root, "id", 9L);
+            case "foreign" -> ReflectionTestUtils.setField(root, "buyer", new UserAccount(99L, "test-only", "unused"));
+            case "nullBuyer" -> ReflectionTestUtils.setField(root, "buyer", null);
+            case "nullId" -> ReflectionTestUtils.setField(root, "id", null);
+            case "emptyItems" -> ReflectionTestUtils.setField(root, "items", new ArrayList<>());
+            case "nullDate" -> ReflectionTestUtils.setField(root, "createdAt", null);
+            case "nullStatus" -> ReflectionTestUtils.setField(root, "status", null);
+            case "nullProductName" -> ReflectionTestUtils.setField(item.getProduct(), "name", null);
+            case "duplicateProduct" -> {
+                var duplicate = new OrderItem(item.getProduct(), 1, new BigDecimal("10.00"));
+                ReflectionTestUtils.setField(duplicate, "order", root);
+                ReflectionTestUtils.setField(duplicate, "position", 1);
+                ReflectionTestUtils.setField(root, "items", new ArrayList<>(List.of(item, duplicate)));
+            }
+            case "nullItem" -> {
+                var items = new ArrayList<OrderItem>(); items.add(null);
+                ReflectionTestUtils.setField(root, "items", items);
+            }
+            case "nullProduct" -> ReflectionTestUtils.setField(item, "product", null);
+            case "nullQuantity" -> ReflectionTestUtils.setField(item, "quantity", null);
+            case "nullPrice" -> ReflectionTestUtils.setField(item, "unitPrice", null);
+            case "wrongPosition" -> ReflectionTestUtils.setField(item, "position", 1);
+            case "foreignLineOrder" -> ReflectionTestUtils.setField(item, "order", order(9, 42, 1, "1.00"));
+            default -> throw new AssertionError("Unknown corruption case");
+        }
+        assertThatThrownBy(() -> mockDetail(root)).isInstanceOf(IllegalStateException.class);
+    }
+
+    @ParameterizedTest
+    @CsvSource({"1,0.01,0.01,0.01", "1,9007199254740993.01,9007199254740993.01,9007199254740993.01",
+            "1,99999999999999999.99,99999999999999999.99,99999999999999999.99",
+            "2,1E+1,10.00,20.00", "3,7.500,7.50,22.50"})
+    void detailUsesTheSharedHistoricalCalculationAndExactMoneyWithoutCatalogRepricing(
+            int quantity, String price, String unitPrice, String total) {
+        var root = order(8, 42, quantity, price);
+        var result = mockDetail(root);
+        assertThat(result.total()).isEqualTo(total);
+        assertThat(result.items().getFirst().unitPrice()).isEqualTo(unitPrice);
+        assertThat(result.items().getFirst().subtotal()).isEqualTo(total);
+        assertThat(result.total()).isEqualTo(mockList(root).content().getFirst().total());
+    }
+
+    @ParameterizedTest
+    @CsvSource({"1,0", "1,-1.00", "1,0.001", "1,100000000000000000.00", "0,1.00",
+            "-1,-1.00", "2,99999999999999999.99"})
+    void detailRejectsInvalidHistoricalMoneyAndQuantitiesWithoutRounding(int quantity, String price) {
+        assertThatThrownBy(() -> mockDetail(order(8, 42, quantity, price))).isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void detailRejectsTotalBeyondCapacityEvenWhenEachLineFits() {
+        var root = order(8, 42, 1, "50000000000000000.00");
+        var other = new OrderItem(new Product(9L, "x", "image", BigDecimal.ZERO), 1,
+                new BigDecimal("50000000000000000.00"));
+        ReflectionTestUtils.setField(other, "order", root);
+        ReflectionTestUtils.setField(other, "position", 1);
+        ReflectionTestUtils.setField(root, "items", new ArrayList<>(List.of(root.getItems().getFirst(), other)));
+        assertThatThrownBy(() -> mockDetail(root)).isInstanceOf(IllegalStateException.class);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"guard", "fetch", "calculation", "mapping"})
+    void detailReadFailuresPropagateWithoutNotFoundOrAuthenticationSubstitution(String stage) {
+        var access = mock(OwnOrderQueryAccessService.class);
+        var orders = mock(OrderRepository.class);
+        var cause = stage.equals("guard")
+                ? new OrderAccountResolutionException("Account resolution could not be completed", new IllegalStateException())
+                : new DataAccessResourceFailureException("controlled detail failure");
+        if (stage.equals("guard")) { when(access.requireAccountId(any())).thenThrow(cause); }
+        else {
+            when(access.requireAccountId(any())).thenReturn(42L);
+            if (stage.equals("fetch")) { when(orders.findOwnOrderWithItemsById(42, 8)).thenThrow(cause); }
+            else {
+                var root = spy(order(8, 42, 1, "10.00"));
+                if (stage.equals("calculation")) { doThrow(cause).when(root).getTotal(); }
+                else {
+                    var product = spy(root.getItems().getFirst().getProduct());
+                    ReflectionTestUtils.setField(root.getItems().getFirst(), "product", product);
+                    doThrow(cause).when(product).getName();
+                }
+                when(orders.findOwnOrderWithItemsById(42, 8)).thenReturn(Optional.of(root));
+            }
+        }
+        assertThatThrownBy(() -> new OwnOrderQueryService(access, orders).detail(8, authentication(42))).isSameAs(cause);
+        if (stage.equals("guard")) { verifyNoInteractions(orders); }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"authentication", "permission"})
+    void detailGuardRejectionsStopBeforeTheRepository(String kind) {
+        var access = mock(OwnOrderQueryAccessService.class);
+        var orders = mock(OrderRepository.class);
+        RuntimeException cause = kind.equals("authentication") ? new BadCredentialsException("controlled auth")
+                : new AccessDeniedException("controlled permission");
+        when(access.requireAccountId(any())).thenThrow(cause);
+        assertThatThrownBy(() -> new OwnOrderQueryService(access, orders).detail(8, authentication(42))).isSameAs(cause);
+        verifyNoInteractions(orders);
+    }
+
+    private OwnOrderDetailDTO realDetail(long owner, long id) throws Exception {
+        noTransaction();
+        var observation = database.observeRead(sql, () -> service.detail(id, authentication(owner)));
+        noTransaction();
+        observation.assertNoWrites();
+        assertThat(observation.events()).isNotEmpty().allSatisfy(event -> assertThat(event.transactionActive()).isTrue());
+        assertThat(observation.events().getFirst().sql()).contains("tb_user_account");
+        var fetches = observation.events().stream().filter(event -> event.sql().contains("from tb_order ")).toList();
+        assertThat(fetches).hasSize(1).allSatisfy(event -> assertThat(event.sql())
+                .contains("buyer_id", "left join tb_order_item", "left join tb_product")
+                .doesNotContain("offset", "fetch first", "tb_category"));
+        var beforeSerialization = sql.events();
+        var json = mapper.readTree(mapper.writeValueAsBytes(observation.result()));
+        assertThat(json.get("items").size()).isEqualTo(observation.result().items().size());
+        assertThat(sql.events()).containsExactlyElementsOf(beforeSerialization);
+        detailReads++;
+        System.out.println("T021_DETAIL_READ statements=" + observation.events().size()
+                + " orderFetches=1 snapshotEqual=true callerTransaction=false serializedAfterReturn=true");
+        return observation.result();
+    }
+
+    private void detailRealFailure(long id, Authentication auth, Class<? extends Throwable> type, boolean orderRead) {
+        noTransaction();
+        var before = database.snapshot(); sql.clear();
+        var failure = catchThrowable(() -> service.detail(id, auth));
+        assertThat(failure).isInstanceOf(type);
+        if (type == OwnOrderNotFoundException.class) { assertThat(failure).hasMessage("Order not found"); }
+        noTransaction();
+        OwnOrderQueryDatabaseProbe.assertUnchanged(before, database.snapshot());
+        assertThat(sql.events()).allSatisfy(event -> {
+            assertThat(event.sql()).startsWith("select");
+            assertThat(event.transactionActive()).isTrue();
+        });
+        assertThat(sql.events().stream().filter(event -> event.sql().contains("from tb_order ")).toList())
+                .hasSize(orderRead ? 1 : 0);
+        detailRejectedReads++;
+        System.out.println("T021_DETAIL_REJECT statements=" + sql.events().size() + " orderFetches="
+                + (orderRead ? 1 : 0) + " snapshotEqual=true callerTransaction=false failure=" + type.getSimpleName());
+    }
+
+    private static void assertDetailDto(OwnOrderDetailDTO actual, OrderManifest expected, List<String> names) {
+        assertThat(actual.id()).isEqualTo(expected.id());
+        assertThat(actual.createdAt()).isEqualTo(expected.createdAt());
+        assertThat(actual.status().name()).isEqualTo(expected.status());
+        assertThat(actual.total()).isEqualTo(expected.total());
+        var items = new ArrayList<OwnOrderItemDTO>();
+        for (int index = 0; index < expected.items().size(); index++) {
+            var line = expected.items().get(index);
+            items.add(new OwnOrderItemDTO(line.productId(), names.get(index), line.quantity(), line.unitPrice(), line.subtotal()));
+        }
+        assertThat(actual.items()).containsExactlyElementsOf(items);
+    }
+
+    private static OwnOrderDetailDTO mockDetail(Order root) {
+        var access = mock(OwnOrderQueryAccessService.class);
+        var orders = mock(OrderRepository.class);
+        when(access.requireAccountId(any())).thenReturn(42L);
+        when(orders.findOwnOrderWithItemsById(42, 8)).thenReturn(Optional.of(root));
+        var result = new OwnOrderQueryService(access, orders).detail(8, authentication(42));
+        verify(orders).findOwnOrderWithItemsById(42, 8);
+        verifyNoMoreInteractions(orders);
+        return result;
     }
 
     private PageResponseDTO<OwnOrderSummaryDTO> realList(long owner, int page, int size) throws Exception {

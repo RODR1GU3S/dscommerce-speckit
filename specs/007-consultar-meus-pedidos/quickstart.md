@@ -618,3 +618,491 @@ Auditoria executada na raiz por `& 'target/feature007-validation/t008-f0-green-2
 Revisados diff documental, comandos, matrizes, referências e54 links locais. Os15 Java não rastreados recebidos foram conferidos quanto à preservação/hashes e whitespace; nenhum Java foi criado ou alterado nesta tarefa. `git diff --check`: exit0; `git diff --cached --exit-code`: exit0, índice vazio. Conferência individual dos15 por `git -c core.autocrlf=false diff --no-index --check -- /dev/null <arquivo>`: sem diagnóstico de whitespace, exit1 pela diferença de arquivo não rastreado; opção restrita ao comando, sem alteração da configuração Git. Prefixo recebido do quickstart de86709 bytes preservado; tasks recebida difere somente por T008. Mantidos os263 outros rastreados, incluindo SecurityConfig recebido, os15 Java e1197 arquivos de evidência anteriores. Hooks posteriores ausentes (`.specify/extensions.yml` não existe).
 
 Estado: **T001–T008 concluídas;26 tarefas abertas, T009–T034**. A T008 alterou somente quickstart e tasks; no Git permanecem três rastreados modificados (incluindo SecurityConfig recebido) e15 Java não rastreados recebidos, nada staged. Branch/HEAD/main e seleção007 preservados; sem commit, push ou CI. Checkpoint comum F0-GREEN/C1 atendido, sem impedimento ou correção necessária. Lista/detalhe e demais provas funcionais permanecem nas tarefas posteriores, sem aprovação presumida da US3/feature ou ação automática de commit.
+
+## T009 — Escrita dos testes HTTP de lista — 2026-10-20
+
+**Escopo executado**: exclusivamente T009. Conferência inicial: raiz `C:/Users/ronal/dscommerce-speckit`, branch real `007-consultar-meus-pedidos`, HEAD `1210b803c54faa3b7c4f529e1947af3a50f8d41f`, Git limpo e seleção local Feature007. Esse HEAD registra o checkpoint T003–T008, `feat: secure own order queries`; a fundação anterior permanece íntegra. Main mantida em `b092a6849177a7d72c40c67f896f0b70a56e0f10`. Nenhum arquivo de produção ou teste recebido foi alterado.
+
+Criados somente [OwnOrderQueryListHttpIntegrationTest](../../src/test/java/com/devsuperior/dscommerce/controllers/OwnOrderQueryListHttpIntegrationTest.java) e [OwnOrderQueryListApiHttpIntegrationTest](../../src/test/java/com/devsuperior/dscommerce/controllers/OwnOrderQueryListApiHttpIntegrationTest.java). O primeiro arquivo contém a classe concreta raiz e o suporte abstrato compartilhado `OwnOrderQueryListHttpTestSupport`; a classe API herda os mesmos cenários. Não herdam `OwnOrderQueryHttpTestSupport`, evitando repetir seus `authenticationGate*` no seletor da lista. Não há `@Nested` ou duplicação das asserções entre os contextos. Respostas são inspecionadas como JSON e confrontadas com manifestos independentes; não há referência a DTO/controller/serviço de consulta ainda ausentes. `TokenResponseDTO`, já existente, é usado somente no procedimento de login.
+
+### Cobertura escrita, ainda não executada
+
+| Cenário/caso | Método compartilhado | Expectativa escrita |
+| --- | --- | --- |
+| US1.1 | `listUs11ReturnsOnlyThreeOwnSummariesWithExactFieldsAndOrderCount` | Par separado com três próprios/dois de outra conta, incluindo pedido com dois itens; somente os três resumos e totalElements3, não número de itens. As compras da fixture compartilhada são controles estrangeiros adicionais. |
+| US1.2 | `listUs12TraversesTwoTwoOneWithoutLossDuplicationOrForeignCount` | Páginas0/1/2 de size2, conteúdo2/2/1, totais5/3, união exata dos cinco IDs sem duplicação. |
+| US1.3 | `listUs13KeepsDescendingIdTieAcrossPageBoundary` | Três instantes iguais atravessam o corte; IDs decrescentes e ordem completa por manifesto, sem depender de consulta/comparador produtivo. |
+| US1.4 | `listUs14KeepsEmptyOwnerAndRequestedPosition` | Titular sem compras, páginas0 e3 com size2, vazio e totais0/0, posição preservada apesar de compras de terceiros. |
+| US1.5 | `listUs15KeepsTotalsAndPositionBeyondOwnLastPage` | Page3/size2 vazia, totais5/3 e posição3, sem clamp. |
+| US1.6 | `listUs16RejectsInvalidEmptyRepeatedOrOverflowingPagination` |28 queries inválidas: negativos, size0/51, texto/fracionário/expoente/vazio/espaço, overflow, repetição inclusive valores iguais/vazios e offset excedido;400 exato. |
+| US1.7 | `listUs17DoesNotRetainOwnerBetweenSuccessiveIdentities` | Na mesma aplicação: CLIENT, outro CLIENT, ADMIN isolado, ambos e CLIENT novamente; conteúdo/count próprios5/2/1/1/5. |
+| Padrões/limites | `listDefaultsAndLimitsPreserveExactMetadata` | Nove casos: omissões separadas/conjuntas, defaults explícitos, size1/50, página int32 máxima com size1 e últimos offsets válidos para size2/50, sem clamp. |
+| P2, ignorar aliases | `listP2IgnoresAliasesBeforeBindingWithDefaultsAndExplicitValues` |50 combinações: quatro aliases separados e conjunto dos quatro, cinco formas de valor e defaults0/12 ou page1/size2 explícitos. |
+| P2, manter rejeição exata | `listP2NeverLetsIgnoredAliasesRepairInvalidExactParameters` |20 combinações: page negativa/repetida e size vazia/repetida continuam400 junto aos cinco conjuntos de aliases. |
+| Titular/ordem/nome exato | `listIgnoresOwnerSelectorsAndRequestedSort` | accountId/buyerId de outras contas, sort ascendente/repetido e valores desconhecidos inválidos/repetidos não mudam conteúdo/count/ordem; Page/Size não são page/size. |
+
+P2 usa `_page`, `_size`, `size[]` e `!page`, cada um separado e todos combinados, com inteiro, vazio, texto, fração e repetição contendo vazio/texto/inteiro. Os nomes são codificados na URI com `URLEncoder`, para que o servlet receba os nomes decodificados originais. Asserções exigem200 e os mesmos metadados/conteúdo esperados tanto com defaults quanto com page1/size2; aliases não podem causar400 ou alterar valores. Parâmetros exatos inválidos/repetidos continuam exigindo400, mesmo junto dos aliases. Não foram enfraquecidas as expectativas para aceitar405/404 na lista nova.
+
+Cada resposta200 deve conter exatamente `content/page/size/totalElements/totalPages`; cada resumo, somente `id/createdAt/status/total`. IDs/metadados são números integrais, instante é texto UTC com milissegundos, status coincide com o armazenado e total é texto exato do manifesto, incluindo `42.50`, `0.01` e `9007199254740993.01`, sem obter esperado de `getTotal()` ou mapper produtivo. Página não pode revelar total/conteúdo alheio ou duplicar raízes por quantidade de itens. O400 exige envelope exato `{status,error,message,path}`, `Bad Request`/`Invalid order query data` e URI com contexto sem query, com diagnóstico fixo de asserção sem imprimir um eventual corpo sensível.
+
+Revisão estática dos providers: seis métodos `@Test` e cinco parametrizados; previsão de115 invocações em cada classe concreta,230 no total. **São casos escritos/previstos, não contagem JUnit executada, descoberta pelo Surefire ou aprovação.** Alguns métodos contêm várias requisições sequenciais e podem parar na primeira asserção falha;230 também não é total observado de requisições HTTP. T010 deverá conferir a seleção real e as invocações, sem contar novamente suporte abstrato ou tipos auxiliares internos.
+
+### Preparação e transporte previstos nos fontes
+
+Os dois testes configuram aplicação completa com `RANDOM_PORT`, OSIV false, H2 console false, perfil test, inicializador `AdminProductTestConfig` e import explícito da observação T004. Diferem em context path raiz/API e propriedade `feature007.own-order-list-test-context=root/api`, também distinta da usada na fundação. Setup verifica contexto, seed vazio, create-drop e URL H2 exclusiva/estável via ambiente e conexão. Não há substituição de decoder, cadeia de segurança ou bean produtivo.
+
+O procedimento escrito prepara uma vez por classe a fixture T003: seis contas, nove pedidos/dez itens, manifestos, instantes e empates controlados. Faz cinco logins HTTP reais das contas autorizadas, conferindo identidade pelo decoder real e perfis persistidos via snapshot. US1.1 usa outra instância da mesma fixture para seu par de contas e pedidos3/2, com login próprio e limpeza local. Preparação dos pedidos é JDBC commitado, necessária aos instantes controlados; não é jornada de registro POST/orders. Essa fixture local não remove os dados da compartilhada. Setup/login precedem cada janela de leitura; limpezas são posteriores e restritas às próprias linhas, itens/pedidos antes do catálogo/contas.
+
+As chamadas previstas de login e GET usam `java.net.http.HttpClient`, porta aleatória, sem redirects e sem transação externa. Todos os GET passam pelo `observeRead` recebido, snapshot completo e observação SQL, conservando os limites da T004: duas transações de snapshot, sem fotografia global atômica concorrente; inspector não observa JDBC direto e igualdade antes/depois não detecta escrita transitória restaurada. Não há mocks novos nem uso do login MockMvc da fixture; seu construtor somente monta o suporte herdado. A instrumentação escrita registra `T009_CONTEXT`, `T009_HTTP` e `T009_COUNTS`, com status/tamanho/contadores e sem tokens, senhas ou hashes.
+
+Esses são **procedimentos preparados para execução posterior**. Nesta T009: zero inicializações da aplicação/H2, zero persistência, zero logins, zero requisições HTTP e zero dispatches MockMvc efetivamente executados.
+
+### Verificações atuais e fronteira T010
+
+Skill `speckit-implement` limitada à T009: tarefa, dependência T008 e artefatos pertinentes lidos; `check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks`: exit0, feature007. Checklist somente lida:16/16, PASS documental. Ignores Java existentes suficientes; `.specify/extensions.yml` ausente. Raiz/branch/HEAD/status, links, fontes novos e whitespace revisados. Produção e todos os testes recebidos estão preservados; lista e detalhe continuam sem controller/serviço produtivo de consulta.
+
+**Nenhum Maven ou compilador executado na T009.** Ela exige escrever os testes; a linha F1-RED da tabela de seleções pertence expressamente à T010. Não foi executada nem antecipada essa tarefa. Comando aprovado para T010, registrado apenas como procedimento futuro:
+
+```powershell
+.\mvnw.cmd '-Dtest=OwnOrderQueryList*' test
+```
+
+Não há console/exit code Maven, seleção Surefire nova, RED funcional ou GREEN destes testes. Compilação e preparação ainda precisam ser verificadas na T010; eventual erro nessas etapas não demonstrará comportamento ausente. A ausência atual da rota GET também não é reprodução específica do problema P2 de binder. Preservados, sem repetição ou reclassificação, F0-RED T005, erro de compilação T003, erro Mockito T006, suas aprovações distintas e F0-GREEN T008 com431 casos aprovados. Esse GREEN histórico não aprova os fontes novos da T009.
+
+### Preservação e revisão
+
+Evidência própria em `target/feature007-validation/t009-list-tests-20261020/`: `session-start.json`, manifestos de280 rastreados/1257 arquivos de evidências anteriores/16 relatórios Surefire, documentos recebidos e cópias/SHA-256 dos dois fontes novos. Como não houve Maven, **nenhum relatório foi movido ou sobrescrito**; os16 recebidos de F0-GREEN permanecem íntegros em `target/surefire-reports/` e em suas áreas históricas.
+
+Revisão executada da raiz por `& 'target/feature007-validation/t009-list-tests-20261020/review.ps1'`: exit0 de conferência estática/preservação, `StaticAndPreservationReviewPassed=true`, `CompilationExecuted=false`, `JUnitTestsExecuted=0`, `ApplicationTestsApproved=false` e `FunctionalRedObserved=false`. Confirmados280 rastreados e1257 evidências anteriores intactos antes do fechamento documental,16 relatórios inalterados e dois fontes revisados. Não é execução ou aprovação de testes da aplicação.
+
+### Fechamento da T009
+
+Diff documental, dois fontes novos, referências e56 links locais revisados. `git diff --check`: exit0; `git diff --cached --exit-code`: exit0, índice vazio. Whitespace dos dois Java não rastreados conferido individualmente por `git -c core.autocrlf=false diff --no-index --check -- /dev/null <arquivo>`: sem diagnóstico, exit1 pela diferença esperada de arquivo novo; opção restrita ao comando. Prefixo histórico recebido do quickstart de102958 bytes preservado e tasks difere somente pelo marcador T009;278 outros rastreados,1257 evidências anteriores e16 relatórios Surefire mantidos. Hooks posteriores ausentes (`.specify/extensions.yml` não existe).
+
+Estado: **T001–T009 concluídas;25 tarefas abertas, T010–T034**. T009 concluída quanto à escrita/revisão dos cenários; compilação, descoberta JUnit, preparação e F1-RED ainda não verificados, sem alegação de RED/GREEN ou entrega funcional. Git: somente quickstart/tasks modificados e os dois Java novos não rastreados, nada staged; HEAD `1210b803c54faa3b7c4f529e1947af3a50f8d41f`, branch, main e seleção007 preservados. Sem Maven, stage, commit, push, CI ou implementação T010+. Não há impedimento para a escrita solicitada; as verificações executáveis continuam pendentes da tarefa própria.
+
+## T010 — F1-RED da listagem — 2026-10-20
+
+**Escopo executado**: exclusivamente T010, dependente dos testes escritos na T009. Conferidos inicialmente: raiz `C:/Users/ronal/dscommerce-speckit`, branch real `007-consultar-meus-pedidos`, HEAD `1210b803c54faa3b7c4f529e1947af3a50f8d41f` e seleção local Feature007. Somente quickstart/tasks modificados, somente `OwnOrderQueryListHttpIntegrationTest.java` e `OwnOrderQueryListApiHttpIntegrationTest.java` não rastreados, nada staged. Main mantida em `b092a6849177a7d72c40c67f896f0b70a56e0f10`. Nenhum Java recebido ou arquivo produtivo foi alterado; as asserções da T009 permaneceram idênticas.
+
+Skill `speckit-implement` limitada à tarefa solicitada, com T009/T010, protocolo F1-RED e artefatos pertinentes lidos. `check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks`: exit0, Feature007. Checklist somente lida:16/16, PASS documental. Ignores Java existentes suficientes; `.specify/extensions.yml` ausente, sem hooks aplicáveis. Nenhum Java/Maven ativo ou execução anterior da T010 encontrado antes de iniciar.
+
+### Comando, ambiente e preservação
+
+Uma única execução Maven nesta tarefa, sequencial, da raiz, com Java21.0.12.1 Azul Zulu e Wrapper Maven3.9.16:
+
+```powershell
+.\mvnw.cmd '-Dtest=OwnOrderQueryList*' test
+```
+
+Executada por `& 'target/feature007-validation/t010-f1-red-20261020/run.ps1'`, entre `2026-10-20T05:05:36.1284345-03:00` e `2026-10-20T05:07:23.9770842-03:00`. **BUILD FAILURE, exit code1**, por falhas de asserção dos testes. O seletor é exatamente o F1-RED aprovado, sem grupos anteriores, baseline, F0-GREEN ou suíte completa. Não foi usado clean.
+
+Evidência própria e inédita: `target/feature007-validation/t010-f1-red-20261020/`, contendo `session-start.json`, `result.json`, `console.log`, `working.diff`, documentos recebidos, manifestos SHA-256 e cópias dos sete fontes relevantes. Os16 relatórios Surefire recebidos foram movidos de `target/surefire-reports/` para `received-surefire-reports/` antes do Maven. Caminhos absolutos resolvidos dentro de target e sem sobreposição conferidos; hashes/tamanhos/caminhos após a movimentação coincidem. Nenhum relatório antigo foi sobrescrito. A nova execução gerou somente quatro arquivos, dois XML e dois TXT, copiados integralmente para `reports/` e mantidos também na área Surefire atual.
+
+### Seleção efetiva e resultado funcional observado
+
+Console e XMLs confirmam somente as duas classes concretas esperadas, cada uma com115 invocações,115 falhas,0 erros e0 ignorados:
+
+| Classe concreta | Contexto | JUnit | Falhas | Erros | Ignorados |
+| --- | --- | ---: | ---: | ---: | ---: |
+| `OwnOrderQueryListHttpIntegrationTest` | raiz |115|115|0|0|
+| `OwnOrderQueryListApiHttpIntegrationTest` | `/api` |115|115|0|0|
+| Total | dois contextos |230|230|0|0|
+
+Conferidos os nomes de todos os métodos e índices das invocações parametrizadas em cada XML, sem omissões ou duplicatas:
+
+| Método compartilhado | Invocações por classe | Total |
+| --- | ---: | ---: |
+| `listUs11ReturnsOnlyThreeOwnSummariesWithExactFieldsAndOrderCount` |1|2|
+| `listUs12TraversesTwoTwoOneWithoutLossDuplicationOrForeignCount` |1|2|
+| `listUs13KeepsDescendingIdTieAcrossPageBoundary` |1|2|
+| `listUs14KeepsEmptyOwnerAndRequestedPosition` |2|4|
+| `listUs15KeepsTotalsAndPositionBeyondOwnLastPage` |1|2|
+| `listUs16RejectsInvalidEmptyRepeatedOrOverflowingPagination` |28|56|
+| `listUs17DoesNotRetainOwnerBetweenSuccessiveIdentities` |1|2|
+| `listDefaultsAndLimitsPreserveExactMetadata` |9|18|
+| `listP2IgnoresAliasesBeforeBindingWithDefaultsAndExplicitValues` |50|100|
+| `listP2NeverLetsIgnoredAliasesRepairInvalidExactParameters` |20|40|
+| `listIgnoresOwnerSelectorsAndRequestedSort` |1|2|
+
+Não há classes de teste `@Nested` neste recorte: `AliasCase` e `PageCase` são records auxiliares, sem testes; o suporte abstrato compartilha os11 métodos, mas não representa uma terceira suíte. As duas classes concretas executaram os seis métodos simples e as109 invocações parametrizadas cada, somando115. Nenhum `authenticationGate*` ou teste de regressão antigo foi repetido.
+
+**As230 falhas são funcionais**, todas em `get`, na mesma asserção `own order list HTTP status`:134 esperavam200 e96 esperavam400; todas receberam405. Em cada contexto foram67 expectativas200 e48 expectativas400. Console registra230 ocorrências de `HttpRequestMethodNotSupportedException`; o controller existente oferece somente POST/orders e ainda não há rota GET de listagem. Não foram observados401/403/500, falha de compilação, preparação, transporte, contexto, limpeza ou infraestrutura. A compilação de testes concluiu e ambos os contextos chegaram às requisições reais. Nenhuma correção de suporte, teste ou produção foi necessária.
+
+**Controles aprovados como casos JUnit:0.** Todos os230 casos selecionados exigem o contrato novo de lista/entrada e falharam no status; não se apresentam as etapas de preparação como testes aprovados. As verificações anteriores a essa asserção concluíram: H2 isolado/vazio/estável, perfis persistidos, logins e identidade JWT reais, ausência de transação do chamador e snapshot/observação de cada janela sem escrita detectada. Esses controles de preparação/observação permitem atribuir as falhas à operação ausente; não aprovam conteúdo, paginação ou validação. Os24 controles aprovados da T005 e o F0-GREEN da T008 continuam somente evidências históricas preservadas, sem repetição ou reclassificação.
+
+O405 da rota ausente **não reproduz especificamente P2 do binder**: aliases, defaults, limites, repetição e entradas inválidas ainda não alcançam um resolver/controller de listagem. Não há prova atual de400 contratual,200 funcional, conteúdo/count próprios, ordenação, dinheiro ou materialização com OSIV false. As asserções de JSON e as requisições posteriores dos métodos de travessia/identidades param na primeira falha de status e continuam pendentes. Não se fabricou RED para comportamento já entregue nem se alteraram expectativas para aceitar405.
+
+### Preparação, persistência e transporte efetivamente usados
+
+Dois servidores reais em portas aleatórias: raiz51765, API51759. URLs H2 distintas, conferidas pelo ambiente e metadados JDBC: raiz `jdbc:h2:mem:admin-product-test-7cfbe87a-a7a2-40d2-8db7-21b3036ac83e`; API `jdbc:h2:mem:admin-product-test-c8dc0c75-15e5-4337-b9df-a3b47190b8ee`. Ambos com perfil test, create-drop, seeds/import desabilitados e OSIV false somente nesses contextos. Nenhum ajuste global de banco/cache/ordem foi feito.
+
+A fixture compartilhada e o cenário local de US1.1 prepararam dados JDBC reais e commitados, com manifestos independentes e limpeza das próprias linhas. Isso é preparação de persistência, não uma jornada POST/orders. O transporte foi `java.net.http.HttpClient` contra os servidores, com filtros/decoder/autorização reais e sem mocks. Os marcadores `T009_CONTEXT`, `T009_HTTP` e `T009_COUNTS` existentes nos fontes escritos pela T009 foram reconciliados no console desta execução da T010, sem tokens/senhas/hashes nos diagnósticos.
+
+Contagem observada: **230 GET/orders e12 POST/login HTTP reais,242 requisições ao todo;0 dispatches MockMvc**. Por contexto:115 GET e6 logins, cinco no setup compartilhado e um em US1.1. Não são242 testes JUnit; o total JUnit permanece230. O suporte herdado monta MockMvc, mas seu helper de login não foi chamado. A falha no primeiro GET de cada invocação impediu requisições posteriores escritas em alguns métodos, portanto a jornada futura completa demandará outra contagem observada.
+
+Em cada GET, `observeRead`/`assertNoWrites` concluíram antes da falha de status. Mantêm-se os limites da T004: snapshot composto por duas transações, sem fotografia global atômica concorrente; StatementInspector não observa JDBC direto e igualdade antes/depois não detecta escrita transitória restaurada. O resultado é restrito às janelas de405 observadas, sem aprovação transversal de US4 nem de leituras bem-sucedidas ainda ausentes.
+
+### Auditoria e fechamento da T010
+
+Auditoria da evidência executada por `& 'target/feature007-validation/t010-f1-red-20261020/audit.ps1'`: exit0 da conferência; `ExpectedFunctionalRedConfirmed=true`, `ApplicationTestsApproved=false`, Mavenexit1. `case-audit.json` identifica230 casos, `http-audit.json` registra contextos/contadores/queries e `audit.json` reconcilia seleção, resultados e preservação. Confirmados280 rastreados intactos antes do fechamento documental, sete fontes idênticos,1271 arquivos de evidências anteriores preservados,16 relatórios arquivados íntegros e quatro relatórios novos. A conferência inicial desse script local de auditoria teve exit1 por enumeração de array JSON no PowerShell5.1; corrigida somente a enumeração do auditor, com registro em `audit-preparation.json` e cópia `audit-initial.ps1`. Isso ocorreu depois do Maven e não é erro de preparação JUnit, nova execução Maven ou RED funcional adicional.
+
+Revisados diff, os dois Java recebidos não rastreados, referências, links locais e whitespace. `git diff --check` e `git diff --cached --exit-code`: exit0. Whitespace dos Java conferido individualmente por `git -c core.autocrlf=false diff --no-index --check -- /dev/null <arquivo>`: sem diagnóstico; exit1 corresponde somente à diferença esperada de arquivo novo. Prefixo integral do quickstart recebido preservado; tasks recebida alterada somente no marcador T010. Os278 demais rastreados, os dois Java da T009, a seleção local e todas as evidências anteriores permanecem idênticos.
+
+**T010 concluída quanto à observação e documentação do F1-RED exigido. T001–T010 marcadas; T011–T034 abertas,24 pendências.** Lista/detalhe e comprovação funcional continuam pendentes das tarefas próprias; a Feature007 não está concluída. Não houve implementação T011+, repetição de baseline/F0-GREEN/suíte completa, stage, commit, push, alteração de main ou CI. Git final: somente quickstart/tasks modificados e os dois Java recebidos não rastreados, nada staged; branch/HEAD/main/seleção007 preservados. Não há impedimento de preparação remanescente para o checkpoint RED solicitado.
+
+## T011 — Entrada de paginação e resolver MVC — 2026-10-20
+
+**Escopo executado**: exclusivamente T011. Conferidos inicialmente: raiz `C:/Users/ronal/dscommerce-speckit`, branch real `007-consultar-meus-pedidos`, HEAD `1210b803c54faa3b7c4f529e1947af3a50f8d41f`, seleção local Feature007, somente quickstart/tasks modificados, somente os dois Java HTTP de lista recebidos não rastreados e nada staged. Main preservada em `b092a6849177a7d72c40c67f896f0b70a56e0f10`. T010 é a dependência atendida: seu F1-RED registrou230 falhas funcionais por405 da rota ausente, sem erro de preparação; **não isolou o comportamento P2 do binder**. Essa evidência e todo o histórico T001–T010 permanecem preservados.
+
+Criados somente os quatro arquivos previstos pela tarefa:
+
+- [OwnOrderPageRequestDTO](../../src/main/java/com/devsuperior/dscommerce/dto/OwnOrderPageRequestDTO.java): construtor sem argumentos, Integer page/size com padrões0/12, NotNull/Min e Max50 para size. AssertTrue puro calcula o offset em long e exige valor<=2147483647; tolera nulos/limites básicos inválidos para as constraints de campo diagnosticá-los. O helper é ignorado no JSON, sem propriedade extra de resposta ou chamada a serviço/repositório.
+- [OwnOrderPageArgumentResolver](../../src/main/java/com/devsuperior/dscommerce/controllers/OwnOrderPageArgumentResolver.java): atende somente `@Valid OwnOrderPageRequestDTO`, sem `@ModelAttribute`. Lê uma vez o mapa já decodificado pelo servlet, seleciona somente nomes exatos/case-sensitive page/size e copia os arrays. Repetições, inclusive valores iguais/vazios, são rejeitadas antes de criar DTO/binder ou converter. Todos os demais nomes são descartados antes de qualquer adaptação de prefixos/colchetes. Cria DTO com padrões, usa binder configurado pelo Spring limitado a page/size e fornece somente MutablePropertyValues filtrados; não chama bind da requisição original. Conversão e Bean Validation terminam antes de retornar o argumento ao handler.
+- [OwnOrderQueryWebMvcConfig](../../src/main/java/com/devsuperior/dscommerce/config/OwnOrderQueryWebMvcConfig.java): registra somente esse resolver, antes do fallback MVC de ModelAttribute, sem binder/validator global ou mudança nas políticas das demais entradas.
+- [OwnOrderQueryPageArgumentResolverTest](../../src/test/java/com/devsuperior/dscommerce/controllers/OwnOrderQueryPageArgumentResolverTest.java): provas diretas das constraints/ordem/cópia/escopo e integração MVC com a configuração produtiva do resolver, conversion service e validator reais. Controller exclusivo de teste em `/t011/page` e `/t011/legacy`, protegido por perfil próprio contra descoberta nos demais contextos; não cria GET/orders produtivo.
+
+Vazios/inválidos/overflow não recebem silenciosamente os padrões. Erros de conversão/constraints geram MethodArgumentNotValidException; multiplicidade gera ServletRequestBindingException com mensagem fixa. O status400 foi observado no MVC de teste; **o advice e envelope exato da consulta pertencem à T015**, sem adaptação do GlobalExceptionHandler nesta tarefa. Controller/serviço/repositório de listagem, DTO de resumo e componentes T012+ não foram criados. SecurityConfig, handlers de segurança, POST/orders, catálogo, login e administração permanecem idênticos aos recebidos.
+
+### Procedimento e execução focal
+
+Skill `speckit-implement` aplicada somente à T011, com leitura da tarefa/dependências e artefatos pertinentes. `check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks`: exit0, Feature007. Checklist somente lida:16/16, PASS documental. Ignores Java existentes suficientes; `.specify/extensions.yml` ausente antes/depois, sem hooks aplicáveis. Java/Maven não estavam ativos e não havia execução anterior da T011. Java21.0.12.1 Azul Zulu, Wrapper Maven3.9.16.
+
+Uma única execução, da raiz, sem clean, concorrência ou repetição de outros grupos:
+
+```powershell
+.\mvnw.cmd '-Dtest=OwnOrderQueryPageArgumentResolverTest' test
+```
+
+Executada por `& 'target/feature007-validation/t011-page-resolver-20261020/run.ps1'`, de `2026-10-20T05:18:15.1728997-03:00` a `2026-10-20T05:19:35.1332565-03:00`. **BUILD SUCCESS, exit code0;254 testes,0 falhas,0 erros,0 ignorados**. Testes escritos para os critérios desta tarefa; nenhuma compilação falha ou ausência de classe foi apresentada como RED, e nenhum defeito artificial foi introduzido. F1-RED, baseline, F0-GREEN e suíte completa não foram repetidos.
+
+Evidência própria em `target/feature007-validation/t011-page-resolver-20261020/`: comando/horários/ambiente/HEAD/status em `session-start.json` e `result.json`, console integral em `console.log`, diff recebido, documentos recebidos, manifestos SHA-256 e11 fontes copiados. Antes do Maven, os quatro relatórios recebidos da T010 foram movidos de `target/surefire-reports/` para `received-surefire-reports/`, depois de conferir caminhos absolutos dentro de target, ausência de sobreposição/destino preexistente e hashes após movimentação. Os dois relatórios novos, um XML e um TXT, permanecem na área Surefire e em `reports/`; nenhum relatório antigo foi sobrescrito.
+
+### Seleção Surefire reconciliada
+
+Console e XML confirmam somente `com.devsuperior.dscommerce.controllers.OwnOrderQueryPageArgumentResolverTest`. Conferidos13 métodos, índices de todas as invocações parametrizadas e254 identidades únicas, sem omissões/duplicatas. Não há `@Nested`; classes internas são configuração/controller/assinaturas/DTO auxiliares, sem casos JUnit próprios.
+
+| Método | Invocações |
+| --- | ---: |
+| `beanValidationAcceptsDefaultsBoundsAndLargestValidOffsets` |9|
+| `beanValidationRejectsInvalidFieldsWithPureIndependentConstraints` |10|
+| `supportsOnlyTheDedicatedValidInputWithoutAutomaticModelAttribute` |5|
+| `rejectsMultiplicityBeforeBinderCreationOrConversion` |10|
+| `filtersAndCopiesOriginalNamesBeforeBinderCreationAndNeverRereadsTheRequest` |1|
+| `configurationRegistersTheResolverBeforeTheAutomaticModelAttributeFallback` |1|
+| `mvcConvertsOnlyPresentParametersAndValidatesBeforeCallingTheHandler` |18|
+| `mvcRejectsInvalidExactQueriesBeforeCallingTheHandler` |56|
+| `mvcIgnoresEveryAliasVariantWithDefaultsAndExplicitValues` |100|
+| `mvcAliasesCannotRepairInvalidOrRepeatedExactParameters` |40|
+| `mvcIgnoresOwnerSelectorsSortCaseVariantsAndNestedPropertyNames` |1|
+| `mvcPreservesTheDefaultBinderForOtherInputTypes` |2|
+| `helperConstraintDoesNotBecomeAnInputOrJsonResponseField` |1|
+
+Os217 casos MVC realizam um dispatch cada:18 entradas válidas,56 inválidas exatas,100 variantes de aliases,40 inválidas com aliases, um conjunto de nomes desconhecidos e dois controles do binder de outro tipo. `_page`, `_size`, `size[]` e `!page` são exercitados separados/combinados, com inteiro/vazio/texto/fração/repetidos, tanto com defaults quanto page1/size2 explícitos. Nomes decodificados são fornecidos ao mock servlet, incluindo repetições preservadas. Queries exatas inválidas continuam400 e o handler não é chamado; aliases não alteram valores válidos nem causam400. Os controles de outro DTO conservam o tratamento nativo de `!page`, sem aplicar a filtragem007 indiscriminadamente.
+
+Os37 casos restantes verificam constraints diretamente, suporte de assinatura, registro MVC, JSON e a fronteira de preparação do binder. Mockito é usado somente para NativeWebRequest/WebDataBinderFactory nos11 casos de ordem/multiplicidade, com bind/validação reais no caso de cópia. Provada uma única leitura do mapa e nenhuma interação com a fábrica em multiplicidade inválida; a mutação do mapa original durante a criação do binder não muda os valores já copiados. Não há mock de serviço, repositório, segurança ou banco substituindo prova HTTP de negócio.
+
+### Alcance e limites
+
+**254 testes JUnit,217 dispatches MockMvc,0 requisições HTTP reais e0 contextos de banco**. É um único contexto MVC mínimo com URLs simuladas raiz e `/api`, sem servidor/porta, filtros JWT, persistência, fixtures ou login. A preparação só inicializa MVC/validator/controller de teste. Nenhum H2 foi aberto ou compartilhado e nenhum perfil/seed/OSIV global foi alterado.
+
+Este GREEN comprova o componente de binding/Bean Validation e seu registro MVC. Não aprova a listagem, ownership/count/dinheiro, proteção HTTP, envelope contratual nem P2 por HTTP real no endpoint produtivo ainda ausente. Não se reclassifica o405 da T010 como reprodução isolada de P2. Os cenários HTTP recebidos da T009 e suas asserções permanecem idênticos, para integração posterior em T015/T016; lista/detalhe e Feature007 continuam incompletos.
+
+Auditoria executada por `& 'target/feature007-validation/t011-page-resolver-20261020/audit.ps1'`: exit0 de conferência, `FocalComponentTestsApproved=true`, `OwnOrderListingApproved=false`, `P2RealHttpApproved=false`. `case-audit.json` identifica as254 invocações. Confirmados280 rastreados intactos antes do fechamento documental,11 fontes testados idênticos, dois Java recebidos preservados,1321 arquivos de evidências anteriores íntegros, quatro relatórios recebidos arquivados e dois novos conferidos. Não foi necessária correção após o Maven nem segunda execução.
+
+### Fechamento da T011
+
+Diff e seis Java não rastreados revisados, incluindo os dois recebidos; referências/links locais e whitespace conferidos. `git diff --check` e `git diff --cached --exit-code`: exit0. Conferência individual dos não rastreados por `git -c core.autocrlf=false diff --no-index --check -- /dev/null <arquivo>`: sem diagnóstico de whitespace, exit1 esperado por arquivo novo. Prefixo integral do quickstart recebido preservado; tasks recebida difere somente pelo marcador T011. Os278 demais rastreados, os dois Java HTTP recebidos, relatórios e evidências anteriores, main, branch, HEAD e seleção007 permanecem íntegros.
+
+**Somente T011 marcada nesta execução: T001–T011 concluídas, T012–T034 abertas,23 tarefas pendentes.** Git final: quickstart/tasks modificados, seis Java não rastreados (dois recebidos e quatro criados), nada staged. Sem impedimento remanescente no escopo solicitado, stage, commit, push, CI ou alteração de main. Nenhuma implementação T012+ realizada.
+
+## T012 — Contrato JSON do resumo próprio — 2026-10-20
+
+**Escopo executado**: exclusivamente T012, dependente de T010. Conferidos inicialmente: raiz `C:/Users/ronal/dscommerce-speckit`, branch real `007-consultar-meus-pedidos`, HEAD `1210b803c54faa3b7c4f529e1947af3a50f8d41f`, seleção local Feature007, somente quickstart/tasks modificados e nada staged. Conferidos antes de alterar e registrados com caminho completo/SHA-256 em `received-java.json` os seis Java recebidos: OwnOrderQueryWebMvcConfig, OwnOrderPageArgumentResolver, OwnOrderPageRequestDTO, OwnOrderQueryListHttpIntegrationTest, OwnOrderQueryListApiHttpIntegrationTest e OwnOrderQueryPageArgumentResolverTest. Todos foram preservados, incluindo asserções e proteção recebidas. Main mantida em `b092a6849177a7d72c40c67f896f0b70a56e0f10`.
+
+Criados somente [OwnOrderSummaryDTO](../../src/main/java/com/devsuperior/dscommerce/dto/OwnOrderSummaryDTO.java) e [OwnOrderQueryDtoContractTest](../../src/test/java/com/devsuperior/dscommerce/dto/OwnOrderQueryDtoContractTest.java). O DTO é um record de valores escalares imutáveis, com exatamente id/createdAt/status/total, sem entidade de pedido/comprador, accountId, items ou outros dados sensíveis. Reutiliza o enum OrderStatus existente e a formatação UTC com milissegundos de OrderResponseDTO. O construtor reutiliza diretamente `OrderItemResponseDTO.requireMoney(total)`, sem copiar/mudar o verificador monetário, normalizar/arredondar valores ou calcular total. A obtenção dos dados e o cálculo histórico permanecem na tarefa do serviço. PageResponseDTO, entidades/enum, DTOs anteriores, resolver e segurança não foram alterados. Nenhum componente T013+ foi criado.
+
+### Procedimento e execução focal
+
+Skill `speckit-implement` limitada à T012, com leitura integral da tarefa, dependência T010 e fontes pertinentes de requisitos, planejamento, modelo, contrato e evidências. `check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks`: exit0, Feature007. Checklist somente lida:16/16, PASS documental. Ignores Java existentes suficientes; `.specify/extensions.yml` ausente antes/depois, sem hooks aplicáveis. Não havia Java/Maven ativo nem execução anterior da T012. Java21.0.12.1 Azul Zulu, Wrapper Maven3.9.16.
+
+Uma única execução, da raiz, sem clean e sem grupos anteriores:
+
+```powershell
+.\mvnw.cmd '-Dtest=OwnOrderQueryDtoContractTest' test
+```
+
+Executada por `& 'target/feature007-validation/t012-summary-dto-20261020/run.ps1'`, entre `2026-10-20T05:26:15.8974226-03:00` e `2026-10-20T05:27:49.8496587-03:00`. **BUILD SUCCESS, exit code0:37 testes,0 falhas,0 erros,0 ignorados**. Testes escritos para o DTO novo antes da sua validação; nenhuma compilação falha foi apresentada como RED nem se exigiu RED artificial do verificador/formatos já existentes. Maven compilou os fontes necessários ao build, mas o Surefire executou somente o seletor focal; não houve repetição de F1-RED, resolver T011, baseline, F0-GREEN, testes DTO antigos ou suíte completa.
+
+Evidência inédita em `target/feature007-validation/t012-summary-dto-20261020/`: `session-start.json`, `result.json`, `console.log`, diff/documentos recebidos, manifesto dos seis Java recebidos e cópias/SHA-256 dos13 fontes capturados. Os dois relatórios Surefire recebidos da T011 foram movidos antes do Maven para `received-surefire-reports/`, após conferir caminhos absolutos dentro de target, sem sobreposição e com destino inédito; hashes/tamanhos/caminhos depois da movimentação coincidem. Os dois relatórios novos, um XML e um TXT, permanecem em `target/surefire-reports/` e em `reports/`. Relatórios anteriores não foram sobrescritos.
+
+### Seleção e resultados reconciliados
+
+Console e XML confirmam somente `com.devsuperior.dscommerce.dto.OwnOrderQueryDtoContractTest`, sem classes aninhadas de teste. Conferidos sete métodos, todos os índices parametrizados e37 identidades únicas, sem omissões/duplicatas:
+
+| Método | Invocações | Prova focal |
+| --- | ---: | --- |
+| `summarySerializesExactlyFourFieldsWithIntegralIdAndStoredStatus` |1| Campos exatos, id numérico integral até Long.MAX_VALUE, instante textual, estado WAITING_PAYMENT e total textual. |
+| `summaryFormatsUtcMillisecondsWithoutChangingTheSuppliedInstant` |4| Milissegundos explícitos/zero, offset +03:00 convertido a UTC e nanos exibidos com três casas; Instant fornecido permanece idêntico no DTO. |
+| `summaryPreservesExactMoneyTextFromOneCentToDecimalCapacity` |9|0.01 a99999999999999999.99, inclusive9007199254740993.01, sem perda numérica ou alteração textual. |
+| `summaryRejectsNonContractMoneyWithoutRoundingOrReformatting` |19| Nulo, vazio, zero/negativo, escala ausente/incorreta, expoente, zeros iniciais, vírgula, overflow decimal19,2, espaços, sinal positivo, NaN e Infinity. |
+| `summaryFitsTheUnchangedPageContractWithoutAddingBuyerOrItemData` |1| Cinco campos da página existente, metadados numéricos e dois resumos exatos na sequência fornecida. |
+| `summaryPageSerializesSuppliedEmptyContentAndMetadata` |2| Content vazio e metadados fornecidos para primeira/página posterior; sem calcular ou ajustar a posição. |
+| `summaryRoundTripPreservesExactScalarValuesAtMillisecondPrecision` |1| Escrita/leitura pelo mapper do slice preserva Long.MAX_VALUE, instante em milissegundos, estado e dinheiro grande textual. |
+
+Teste usa `@JsonTest` e ObjectMapper configurado pelo Spring Boot com suporte temporal. **37 testes JUnit;0 mocks definidos,0 dispatches MockMvc,0 requisições HTTP reais e0 contextos de banco**. A preparação é somente do slice JSON; cada caso confere ausência dos beans de datasource, adapter MVC e filtros de segurança. Não há fixture, JDBC/JPA, servidor/porta ou login, nem alteração de H2/seed/OSIV/perfis globais. A exibição de nanos com três casas prova o formato de serialização, não precisão/normalização dos instantes persistidos. Página/conteúdo/count são valores fornecidos diretamente ao DTO, sem comprovar consulta, ordenação ou cálculo de metadados pelo serviço.
+
+### Preservação, limites e fechamento
+
+Auditoria executada por `& 'target/feature007-validation/t012-summary-dto-20261020/audit.ps1'`: exit0 de conferência, `DtoJsonContractApproved=true`, `OwnOrderListingApproved=false`, `P2RealHttpApproved=false`. `case-audit.json` identifica as37 invocações. Confirmados280 rastreados intactos antes do fechamento documental,13 fontes testados idênticos, seis Java recebidos preservados,1360 arquivos de evidências anteriores íntegros, dois relatórios recebidos arquivados e dois novos conferidos. Nenhuma correção após o Maven ou segunda execução foi necessária.
+
+Evidências mantidas distintas: **T010 é RED por ausência da listagem, sem isolamento de P2; T011 é GREEN do resolver com217 dispatches MockMvc, sem HTTP real/banco; T012 é GREEN de representação JSON**. Nenhum desses resultados aprova por si a integração completa da consulta. Endpoint, serviço, consultas por titular, cálculo histórico, materialização, segurança em leituras bem-sucedidas e prova HTTP de P2 continuam pendentes das tarefas posteriores.
+
+Revisados diff, oito Java não rastreados (seis recebidos e dois novos), referências/links locais e whitespace. `git diff --check` e `git diff --cached --exit-code`: exit0. Conferência individual dos não rastreados por `git -c core.autocrlf=false diff --no-index --check -- /dev/null <arquivo>`: sem diagnóstico; exit1 esperado por arquivo novo. Prefixo integral do quickstart recebido preservado; tasks recebida alterada somente no marcador T012. Os278 outros rastreados, incluindo PageResponseDTO/verificador monetário/segurança, os seis Java recebidos, relatórios anteriores, branch/HEAD/main e seleção007 permanecem íntegros.
+
+**Somente T012 marcada nesta execução: T001–T012 concluídas, T013–T034 abertas,22 tarefas pendentes.** Git final: quickstart/tasks modificados, oito Java não rastreados, nada staged. Sem impedimento remanescente no escopo, execução T013+, stage, commit, push, CI ou alteração de main. Lista/detalhe e Feature007 continuam incompletos.
+
+## T013 — Página de IDs e fetch do lote por titular — 2026-10-20
+
+**Escopo executado**: exclusivamente T013, dependente de T010. Estado inicial confirmado: raiz `C:/Users/ronal/dscommerce-speckit`, branch real `007-consultar-meus-pedidos`, HEAD `1210b803c54faa3b7c4f529e1947af3a50f8d41f`, seleção local Feature007, somente quickstart/tasks modificados, oito Java recebidos não rastreados e nada staged. Caminhos completos e SHA-256 dos oito conferidos antes das alterações em `t013-list-repository-20261020/received-java.json`: OwnOrderQueryWebMvcConfig, OwnOrderPageArgumentResolver, OwnOrderPageRequestDTO, OwnOrderSummaryDTO, OwnOrderQueryListHttpIntegrationTest, OwnOrderQueryListApiHttpIntegrationTest, OwnOrderQueryPageArgumentResolverTest e OwnOrderQueryDtoContractTest. Preservados esses fontes, suas asserções e todas as evidências anteriores. Main mantida em `b092a6849177a7d72c40c67f896f0b70a56e0f10`.
+
+Alterado somente [OrderRepository](../../src/main/java/com/devsuperior/dscommerce/repositories/OrderRepository.java) em produção: `findOwnOrderIds(ownerId, pageable)` seleciona apenas IDs, com buyer.id obrigatório, ordem createdAt DESC/id DESC e countQuery do mesmo titular sem joins; `findOwnOrdersWithItemsByIds(ownerId, ids)` repete o titular e aplica IN aos IDs selecionados, com DISTINCT e LEFT JOIN FETCH somente de items/product, sem Pageable. Ambas as consultas declaram readOnly. Métodos herdados de escrita permanecem disponíveis e inalterados. Criado [OwnOrderQueryRepositoryTest](../../src/test/java/com/devsuperior/dscommerce/repositories/OwnOrderQueryRepositoryTest.java), exclusivamente com métodos de teste `list*`. Nenhum serviço, controller, advice, consulta de detalhe ou componente T014+ foi implementado. Segurança, paginação, DTO aprovado, PageResponseDTO, entidades, schema e suporte recebido não foram alterados.
+
+### Preparação e duas execuções focais identificadas
+
+Skill `speckit-implement` limitada à T013; tarefa/dependência e artefatos pertinentes de requisitos, desenho JPA, modelo, contrato e procedimentos lidos. `check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks`: exit0, Feature007. Checklist somente lida:16/16, PASS documental. Ignores Java existentes suficientes; `.specify/extensions.yml` ausente antes/depois, sem hooks aplicáveis. Não havia Java/Maven ativo nem execução anterior da T013 antes de iniciar. Java21.0.12.1 Azul Zulu, Wrapper Maven3.9.16.
+
+Comando único de seleção, usado sequencialmente nas duas execuções abaixo, da raiz e sem clean:
+
+```powershell
+.\mvnw.cmd '-Dtest=OwnOrderQueryRepositoryTest#list*' test
+```
+
+| Execução / diretório sob target/feature007-validation | Início/fim (-03:00) | Resultado observado |
+| --- | --- | --- |
+| `t013-list-repository-20261020/` |05:37:31.2120887 /05:39:16.3648398|16 testes,7 falhas,9 aprovados,0 erros/ignorados; BUILD FAILURE, exit1. |
+| `t013-list-repository-20261020-retry/` |05:40:09.3154650 /05:41:52.4963648|Os mesmos16 testes,0 falhas/erros/ignorados; BUILD SUCCESS, exit0. |
+
+A primeira execução falhou somente na nova asserção de formato SQL que exigia OFFSET também para a página zero. Os sete casos chegaram à comparação SQL depois de aprovar conteúdo/metadados; Hibernate gera legitimamente `FETCH FIRST` sem OFFSET quando o deslocamento é zero. Causas e identidades dos sete casos reconciliadas em `diagnosis.json`, sem erro de compilação, preparação ou infraestrutura. **Não é RED funcional da consulta nem reprodução de P2.** Alguns métodos interromperam requisições subsequentes ao repositório nessa primeira asserção falha; seus18 read windows/11 páginas/7 lotes não são a jornada completa da repetição.
+
+Corrigido somente o teste novo: mantém exigência de FETCH FIRST em toda página de IDs e exige OFFSET para páginas posteriores, verificando sua ausência na primeira página conforme o SQL do provider utilizado. Conteúdo/count, ordem, titular, limites no banco, fetch, snapshots e todas as asserções funcionais permaneceram intactos. Nenhum ajuste produtivo foi feito para obter aprovação. A repetição focal foi necessária por essa correção concreta; console, fontes e relatórios da execução falha foram preservados. Não houve repetição de seleções anteriores, baseline, F0-GREEN, F1-RED ou suíte completa.
+
+Cada diretório contém seu `run.ps1`, `session-start.json`, `result.json`, `console.log`, diff/documentos recebidos, manifestos SHA-256 e15 fontes copiados. Antes de cada Maven, os dois relatórios recebidos de `target/surefire-reports/` foram movidos para `received-surefire-reports/` do destino inédito daquela execução, depois de conferir caminhos absolutos dentro de target, ausência de sobreposição e hashes após a movimentação. A primeira arquivou os relatórios T012; a repetição arquivou os da primeira T013. Cada execução gerou um XML e um TXT próprios em `reports/`; os relatórios correntes são somente os dois da repetição. Nenhum resultado anterior foi sobrescrito ou contado como novo.
+
+### Contexto isolado e seleção efetiva
+
+Um contexto completo de componentes por execução, SpringBootTest MOCK, perfil test, OSIV false e H2 exclusivo/estável pelo AdminProductTestConfig recebido. URLs conferidas pelo ambiente e metadados JDBC: primeira `jdbc:h2:mem:admin-product-test-86fc166d-2948-46b2-9ee7-24ac5f102cda`; repetição `jdbc:h2:mem:admin-product-test-32a9965f-deb7-4dd1-ac9e-21ae60253df6`. Create-drop e inicialização SQL/import desabilitada somente nesses contextos. Propriedade própria `feature007.own-order-repository-test-context=list`; fail_on_pagination_over_collection_fetch=true somente no teste para impedir paginação de coleção em memória, sem mudança global.
+
+Cada invocação prepara com a fixture recebida seis contas/nove pedidos/dez itens, por JDBC commitado, com manifestos independentes e terceiros intercalados. Limpeza remove somente linhas próprias, itens/pedidos antes do catálogo/contas; banco vazio e URL estável conferidos antes/depois. O caso de raiz incoerente remove apenas os itens de seu próprio pedido em preparação JDBC commitada fora da janela de leitura, sem desligar FK/constraints ou alterar entidades. A consulta deve conservar essa raiz sem itens; diagnóstico500 é responsabilidade futura do serviço, não aprovação produzida aqui.
+
+Console/Surefire de ambas as execuções confirmam somente `com.devsuperior.dscommerce.repositories.OwnOrderQueryRepositoryTest`. Sete métodos,16 invocações idênticas antes/depois, índices parametrizados conferidos, sem omissões/duplicatas ou classes @Nested:
+
+| Método | Invocações |
+| --- | ---: |
+| `listPagesTwoTwoOneWithStableTimestampIdOrderAndOwnCount` |1|
+| `listPageContentAndCountUseTheSameOwner` |4|
+| `listEmptyAndBeyondPagesKeepTheRequestedPositionAndOwnTotals` |4|
+| `listPagesOrderIdsBeforeFetchingAllItemsWithoutACollectionLimit` |1|
+| `listBatchFiltersMixedIdsByOwnerWithoutDuplicateRoots` |4|
+| `listBatchRejectsForeignAndAbsentIdsEvenWhenExplicitlyRequested` |1|
+| `listLeftFetchKeepsAnIncoherentRootWithoutItemsForTheLaterServiceToDiagnose` |1|
+
+Na repetição aprovada: **16 testes de persistência JPA/H2 real,20 janelas de leitura,13 páginas de IDs e7 fetches de lote**. Observados30 SELECTs:13 de IDs,10 counts e7 lotes. SQL confirma predicado buyer_id em conteúdo/count/fetch, projeção de IDs sem coleção, paginação no banco, ordem fixa e fetch sem OFFSET/FETCH FIRST/categorias/contas. Count é exigido nos casos preparados para executá-lo; a otimização legítima do Spring Data em outras páginas é preservada. Esses números descrevem a execução focal, não orçamento global de consultas HTTP.
+
+Asserções aprovadas: páginas2/2/1 com cinco próprios, empates por id DESC atravessando corte, conteúdo/count por quatro titulares de fixture distintos, vazio/página posterior, contagem de pedidos em vez de itens, lote com IDs mistos filtrado pelo titular e sem raízes duplicadas, ausência/alheios e raiz sem itens conservada por left fetch. Itens completos/posição/preços registrados e produtos estão acessíveis após retornar das transações do repositório, com categorias não inicializadas e sem SELECT tardio. A sequência do IN não é usada como ordenação da página; remontagem e cálculo/DTO transacional continuam na T014.
+
+Cada leitura ocorre sem transação externa do chamador; os SELECTs observados estão em transações JPA. Snapshots JDBC completos antes/depois e observação SQL confirmam ausência de escrita detectada nessas20 janelas. Preservados os limites da T004: snapshot composto por duas transações, sem fotografia global atômica concorrente; StatementInspector não vê JDBC direto e igualdade antes/depois não detecta escrita transitória restaurada. Preparação e limpeza ficam fora das janelas.
+
+**0 mocks definidos,0 dispatches MockMvc e0 requisições HTTP reais**, em ambas as execuções. O contexto MOCK fornece o ambiente servlet necessário ao suporte recebido; a fixture apenas monta MockMvc, sem chamar login. Não há servidor/porta, autenticação HTTP ou jornada POST/orders. São testes de persistência, não testes unitários com repositório mockado nem aprovação da integração completa.
+
+### Auditoria, limites e fechamento
+
+Auditoria executada por `& 'target/feature007-validation/t013-list-repository-20261020-retry/audit.ps1'`: exit0 da conferência, `RepositoryComponentApproved=true`, `OwnOrderListingApproved=false`, `P2RealHttpApproved=false`. Confirmadas seleção idêntica das16 invocações, produção idêntica entre as execuções,20 janelas/30 SELECTs,15 fontes testados inalterados, oito Java recebidos preservados,1438 arquivos de evidências anteriores íntegros (incluindo a primeira T013) e relatórios arquivados/novos conferidos. `case-audit.json` identifica as invocações; os280 rastreados correspondiam à revisão testada antes do fechamento documental.
+
+Evidências continuam distintas: T010 é RED pela rota ausente, sem isolar P2; T011 valida resolver com MockMvc, sem HTTP real/banco; T012 valida representação JSON; T013 valida consultas/carregamento JPA isolados. Endpoint, guarda/orquestração do serviço, remontagem, cálculo/mapeamento final e comprovação HTTP da lista/P2 permanecem nas tarefas posteriores. Não se declara integração completa, US1 entregue ou Feature007 concluída.
+
+Revisados diff, repositório e nove Java não rastreados, referências/links locais e whitespace. `git diff --check` e `git diff --cached --exit-code`: exit0. Whitespace dos não rastreados conferido individualmente por `git -c core.autocrlf=false diff --no-index --check -- /dev/null <arquivo>`: sem diagnóstico, exit1 esperado pela diferença de arquivo novo. Prefixo integral do quickstart recebido preservado; tasks recebida alterada somente no marcador T013. Os277 demais rastreados e oito Java recebidos, incluindo proteção/paginação/DTO/PageResponseDTO e suas asserções, permanecem idênticos ao início da T013.
+
+**Somente T013 marcada nesta execução: T001–T013 concluídas, T014–T034 abertas,21 tarefas pendentes.** Git final: OrderRepository, quickstart e tasks modificados; nove Java não rastreados (oito recebidos e um criado); nada staged. Branch/HEAD/main/seleção007 preservados. Sem impedimento remanescente para a T013, execução T014+, stage, commit, push ou CI.
+
+## T014 — Serviço de listagem própria e mapeamento transacional — 2026-10-20
+
+**Escopo executado**: exclusivamente T014, dependente de T006 e T012–T013. Confirmados inicialmente raiz `C:/Users/ronal/dscommerce-speckit`, branch real `007-consultar-meus-pedidos`, HEAD `1210b803c54faa3b7c4f529e1947af3a50f8d41f`, seleção local Feature007, somente OrderRepository/quickstart/tasks rastreados modificados e nada staged. Os nove Java recebidos foram conferidos por caminho e SHA-256 em `target/feature007-validation/t014-list-service-20261020/received-java.json`: OwnOrderQueryWebMvcConfig, OwnOrderPageArgumentResolver, OwnOrderPageRequestDTO, OwnOrderSummaryDTO, OwnOrderQueryListHttpIntegrationTest, OwnOrderQueryListApiHttpIntegrationTest, OwnOrderQueryPageArgumentResolverTest, OwnOrderQueryDtoContractTest e OwnOrderQueryRepositoryTest. Todos permanecem intactos, assim como o repositório recebido, proteção, paginação, DTOs, entidades e asserções anteriores. Main mantida em `b092a6849177a7d72c40c67f896f0b70a56e0f10`.
+
+Criados somente [OwnOrderQueryService](../../src/main/java/com/devsuperior/dscommerce/services/OwnOrderQueryService.java) e [OwnOrderQueryServiceTest](../../src/test/java/com/devsuperior/dscommerce/services/OwnOrderQueryServiceTest.java). O serviço `list(request, authentication)` executa a guarda escalar atual antes de ler pedidos e usa exclusivamente o ID devolvido pela guarda a partir do principal, em ambas as consultas existentes. Guarda, página/count, lote, cálculos e montagem dos DTOs terminam dentro de `@Transactional(readOnly=true)`. O lote é indexado por ID, conferido integralmente e remontado pela sequência da página, sem depender da ordem do IN; ID repetido, raiz extra/duplicada/alheia, lote incompleto e agregado incoerente falham internamente, sem sucesso parcial.
+
+A leitura valida a coerência dos itens registrados e reutiliza `OrderItem.getSubtotal()` e `Order.getTotal()` com BigDecimal. Preço unitário, subtotal e total devem caber na capacidade positiva decimal19,2; normalização usa escala2/UNNECESSARY e a saída usa toPlainString. O DTO recebido continua aplicando seu verificador monetário existente. Nenhuma conversão float/double, arredondamento, reprecificação ou validação administrativa do produto. Página vazia dispensa fetch/IN; page/size/totais próprios são preservados, inclusive posição posterior. totalPages usa divisão/resto em long sem soma sujeita a overflow, faixa int32 conferida e conversão exata, sem usar a saturação de Page.getTotalPages(). Não há save, flush, clear, reparação, entidade retornada, dependência de OSIV ou componente T015+.
+
+### Preparação e execução focal única
+
+Skill `speckit-implement` limitada à T014; tarefa integral, dependências e fontes pertinentes lidas. `check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks`: exit0, Feature007. Checklist somente lida:16/16, PASS documental. Ignores Java existentes suficientes; `.specify/extensions.yml` ausente antes/depois, sem hooks aplicáveis. Java21.0.12.1 Azul Zulu conferido por `java -version`; Wrapper existente seleciona Maven3.9.16. Nenhum Java/Maven ativo antes da execução.
+
+Testes complementares escritos antes do serviço, compilados e executados após disponibilizar sua interface. O F1-RED HTTP da T010 permanece evidência histórica de rota ausente; não se executou ausência de classe como RED nem se fabricou falha de cálculo já existente. Uma única execução sequencial na raiz, sem clean:
+
+```powershell
+.\mvnw.cmd '-Dtest=OwnOrderQueryServiceTest#list*' test
+```
+
+Executada por `& 'target/feature007-validation/t014-list-service-20261020/run.ps1'`, de `2026-10-20T14:28:56.9625850-03:00` a `2026-10-20T14:31:30.7098150-03:00`. **BUILD SUCCESS, exit0;39 testes,0 falhas,0 erros,0 ignorados**. Duração externa153,747s; duração Maven02:12. Não houve repetição de seleções anteriores, baseline, F0/F1-RED, T011–T013 ou suíte completa, nem mudança de cache/ordem/seed/configuração global.
+
+Evidência própria em `target/feature007-validation/t014-list-service-20261020/`: comando/horários/ambiente/HEAD/status, diff recebido, documentos recebidos, manifestos, cópias de17 fontes, console e result.json. Antes do Maven, os dois relatórios recebidos da repetição aprovada da T013 foram movidos de `target/surefire-reports/` para `received-surefire-reports/` no diretório inédito da T014. Origem/destino absolutos conferidos dentro de target, sem sobreposição/sobrescrita; tamanhos/caminhos/SHA-256 conferidos após mover (`archive-preservation.json`:2, HashesMatch=true). Um XML e um TXT novos permanecem em `target/surefire-reports/` e na cópia `reports/` da T014. As duas execuções da T013, inclusive a primeira falha da expectativa SQL e sua justificativa/correção para OFFSET na página zero, permanecem preservadas como evidências distintas.
+
+### Seleção efetiva e alcance das provas
+
+Console/XML/TXT confirmam somente `com.devsuperior.dscommerce.services.OwnOrderQueryServiceTest`,13 métodos `list*`,39 invocações únicas, sem falhas/erros/ignorados, duplicatas, contêineres agregadores ou classes @Nested. As sete parametrizações têm todos os índices1..N conferidos em `invocation-index-audit.json`; nomes completos em `case-audit.json` e contagens em `methods.json`.
+
+| Método | Invocações | Prova |
+| --- | ---: | --- |
+| `listRealPagesMapHistoricalTotalsAndKeepTimestampIdOrderAfterReturn` |1| JPA real, páginas2/2/1, empates entre páginas, manifesto independente e totais históricos42.50/20.00/0.01/9007199254740993.01/15.25. |
+| `listRealSuccessivePrincipalsIncludeAdminAloneAndBothWithoutSharingOwner` |1| JPA real, cinco consultas sucessivas por CLIENT/outro/ADMIN/ambos/CLIENT, conteúdo e count próprios. |
+| `listRealEmptyPagesKeepRequestedMetadataAndSkipBatch` |4| JPA real, vazio inicial/posterior, página além dos resultados e offset máximo válido; metadados preservados, sem IN. |
+| `listRealGuardRechecksCurrentScalarRolesBeforeOrderQueries` |1| JPA real, revogação commitada apesar de authority ADMIN no token de teste, conta ausente e autenticação ausente; exceções de acesso distintas, sem consulta de pedidos. |
+| `listRealRootWithoutItemsFailsWithoutRepairOrPartialSuccess` |1| JPA real, raiz mantida pelo left fetch após preparação JDBC sem itens; falha interna, sem reparação/escrita. |
+| `listReordersShuffledBatchAndCompletesMappingInsideReadOnlySpringTransaction` |1| Guarda/repositório simulados, proxy Spring e transação JPA/H2 reais; guarda/consultas/getTotal dentro de readOnly, ordem dos IDs restaurada e nenhuma operação adicional no repositório. |
+| `listComputesLongMetadataWithoutUsingSaturatingPageTotalPages` |4| Mocks, ceil em long, zero/página posterior, totalElements acima de int32 e totalPages no limite; sem getTotalPages/fetch vazio. |
+| `listUnrepresentableTotalPagesFailsBeforeBatchWithoutLongOverflow` |2| Mocks, totalPages fora de int32, inclusive totalElements Long.MAX_VALUE; falha interna antes do lote. |
+| `listInconsistentBatchFailsAsInternalErrorInsteadOfPartialContent` |8| Mocks/entidades em memória, lote incompleto/extra/duplicado/alheio, raiz sem itens/data/estado e IDs repetidos; sem conteúdo parcial. |
+| `listUsesExactRegisteredBigDecimalMoneyWithoutCatalogRepricing` |5| Mocks/entidades em memória, centavo, valor acima da precisão binária, capacidade máxima e escalas exatas normalizáveis; produto atual com preço0. |
+| `listRejectsIncoherentMoneyAndQuantityWithoutRounding` |7| Mocks/entidades em memória, preço zero/negativo/subcentavo/overflow, quantidade zero/negativa e subtotal acima da capacidade. |
+| `listRejectsTotalBeyondCapacityEvenWhenEachItemAndSubtotalFits` |1| Mocks, soma não representável apesar de linhas individualmente representáveis. |
+| `listReadFailuresPropagateWithoutEmptyOrAuthenticationSubstitution` |3| Mocks, falhas da guarda/página/lote propagam sem conversão em vazio/ausência/credencial inválida; guarda falha antes de qualquer leitura de pedidos. |
+
+**Oito invocações de serviço com persistência JPA/H2 real e31 com mocks locais de guarda/repositório**; a do proxy usa transação real para inspecionar readOnly, com entidades em memória. Nenhum bean produtivo é substituído no ApplicationContext compartilhado. Os dados persistidos são preparados pela fixture recebida, em JDBC commitado fora da leitura; expectedTotal vem do manifesto, sem chamar o cálculo produtivo para produzir o esperado. Limpeza somente dos dados próprios após cada cenário. Um contexto completo SpringBootTest MOCK, perfil test, URL exclusiva/estável `jdbc:h2:mem:admin-product-test-37af2b81-4906-4807-ab14-2411a5c3636a`, create-drop e inicialização SQL/import desabilitada somente nesse contexto, OSIV false e coleção paginada configurada para falhar no teste.
+
+Nas leituras bem-sucedidas,12 janelas incluem guarda/página/count quando executado/lote: há um fetch de lote para conteúdo não vazio e nenhum para vazio, com titular nos SQLs de pedidos e sem paginação de coleção. Serialização do DTO após retorno transacional não provoca SELECT tardio. As outras quatro chamadas reais rejeitadas (três de guarda e uma de agregado sem itens) também conferem snapshots antes/depois e somente SELECTs observados. Não há orçamento global rígido de SELECTs nem exigência de count onde Spring Data legitimamente o otimiza. Mantidos os limites do probe T004: snapshots em duas transações não são fotografia global atômica; StatementInspector não vê JDBC direto e igualdade antes/depois não detecta escrita transitória restaurada.
+
+**0 dispatches MockMvc,0 logins e0 requisições HTTP reais.** A fixture monta MockMvc, mas não o despacha; autenticações fornecidas diretamente ao serviço não são JWTs decodificados/filtros HTTP. A revogação aqui verifica a guarda real antes da leitura, sem substituir a prova específica de coleção gerenciada obsoleta da T023. Mocks de falhas não comprovam count SQL falho, commit falho ou envelope HTTP500. Exceções internas de incoerência são destinadas ao500 do advice futuro; status/mensagens/headers HTTP, validação MVC integrada e P2 HTTP permanecem nas T015/T016 e fases posteriores.
+
+### Auditoria, preservação e fechamento
+
+`& 'target/feature007-validation/t014-list-service-20261020/audit.ps1'`: exit0, Pass=true, ServiceComponentApproved=true, OwnOrderListingHttpApproved=false e P2RealHttpApproved=false. Conferidos290 arquivos iniciais (280 rastreados, nove Java recebidos e ponteiro local),17 fontes testados,1481 arquivos de evidência prévia e os relatórios recebidos/novos por SHA-256. A primeira tentativa do auxiliar terminou exit1 por enumeração de array JSON no PowerShell5.1; corrigida somente a leitura do auxiliar e repetida a auditoria, sem alterar fontes/testes ou repetir Maven. `audit-preparation-note.txt` registra a causa; isso não é RED nem falha do Maven.
+
+Revisados serviço/teste novos, diff, nove Java recebidos, referências/links locais e whitespace. Fechamento documental altera somente este acréscimo e o marcador T014 em tasks; prefixo integral do quickstart recebido preservado byte a byte, incluindo as duas T013 e a justificativa SQL. `git diff --check` e `git diff --cached --exit-code`: exit0. Whitespace dos11 Java não rastreados conferido individualmente por `git -c core.autocrlf=false -c core.safecrlf=false diff --no-index --check -- /dev/null <arquivo>`, sem diagnóstico (exit1 admissível pela diferença de arquivo novo). `final-review.ps1` registra a revisão em `final-review.json`; fontes executados, demais rastreados, branch/HEAD/main e seleção007 preservados.
+
+**Somente T014 marcada nesta execução: T001–T014 concluídas, T015–T034 abertas,20 tarefas pendentes.** Git final: os mesmos três rastreados recebidos modificados (OrderRepository/quickstart/tasks),11 Java não rastreados (nove recebidos e os dois novos), nada staged. Sem impedimento remanescente da T014, componente T015+, stage, commit, push, CI ou alteração de main. Serviço validado no seu escopo; integração HTTP da lista, US1 e Feature007 continuam incompletas. A Feature005 mantém EXCEÇÃO DOCUMENTADA, sem PASS estrito no Gate IV.
+## T015 — Fronteira MVC da lista e advice exclusivo — 2026-10-20
+
+**Escopo executado**: somente T015, dependente de T011/T014. Estado inicial confirmado: raiz `C:/Users/ronal/dscommerce-speckit`, branch real `007-consultar-meus-pedidos`, HEAD `1210b803c54faa3b7c4f529e1947af3a50f8d41f`, seleção local Feature007, somente OrderRepository/quickstart/tasks rastreados modificados e nada staged. Conferidos os onze Java recebidos por caminho/SHA-256 em `target/feature007-validation/t015-query-controller-20261020/received-java.json`: OwnOrderQueryWebMvcConfig, OwnOrderPageArgumentResolver, OwnOrderPageRequestDTO, OwnOrderSummaryDTO, OwnOrderQueryService, OwnOrderQueryListHttpIntegrationTest, OwnOrderQueryListApiHttpIntegrationTest, OwnOrderQueryPageArgumentResolverTest, OwnOrderQueryDtoContractTest, OwnOrderQueryRepositoryTest e OwnOrderQueryServiceTest. Esses fontes e o repositório recebido foram preservados, assim como proteção, consultas por titular, paginação, DTO, serviço e evidências anteriores. Main mantida em `b092a6849177a7d72c40c67f896f0b70a56e0f10`.
+
+Criados [OwnOrderQueryController](../../src/main/java/com/devsuperior/dscommerce/controllers/OwnOrderQueryController.java), [OwnOrderQueryExceptionHandler](../../src/main/java/com/devsuperior/dscommerce/controllers/handlers/OwnOrderQueryExceptionHandler.java) e [OwnOrderQueryControllerTest](../../src/test/java/com/devsuperior/dscommerce/controllers/OwnOrderQueryControllerTest.java). GET/orders usa `@Valid OwnOrderPageRequestDTO` sem `@ModelAttribute`, pelo resolver recebido, e delega ao serviço com a mesma Authentication. O controller não calcula, consulta banco, escolhe titular ou trata regras de negócio. HEAD passa pela mesma entrada/serviço; a resposta suprime explicitamente o corpo e mantém application/json. Não há rota de detalhe nova.
+
+O advice tem prioridade máxima e `assignableTypes=OwnOrderQueryController.class`. Rejeições de binding/conversão/Bean Validation da entrada recebem400 fixo; BadCredentials401 com Bearer challenge; AccessDenied403; lookup, persistência, cálculos, validação interna/de retorno, mapeamento e conclusão transacional recebem500 seguro. Não percorre causas de validação para reclassificar falha interna como erro de acesso. Corpo com somente status/error/message/path, mensagens contratuais e requestURI sem query, inclusive context path; HEAD sem corpo. Erros MVC nativos de método/negociação conservam status/headers, sem forçar corpo incompatível. GlobalExceptionHandler, OrderController/POST, segurança e demais componentes/contratos001–006 não foram alterados.
+
+### Preparação e duas execuções focais
+
+Skill `speckit-implement` restrita à T015, com leitura da tarefa integral, dependências, requisitos e artefatos pertinentes. `check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks`: exit0, Feature007. Checklist somente lida:16/16, PASS documental. Ignores Java existentes suficientes; `.specify/extensions.yml` ausente antes/depois, sem hooks aplicáveis. Java21.0.12.1 Azul Zulu conferido por `java -version`; Wrapper seleciona Maven3.9.16. Nenhum Java/Maven ativo antes de cada execução. Teste focal escrito antes dos componentes novos, sem executar ausência de classe como RED; o F1-RED histórico da T010 permanece preservado.
+
+Comando idêntico nas duas execuções sequenciais, na raiz, sem clean:
+
+```powershell
+.\mvnw.cmd '-Dtest=OwnOrderQueryControllerTest' test
+```
+
+| Diretório sob target/feature007-validation | Início/fim (-03:00) | Resultado |
+| --- | --- | --- |
+| `t015-query-controller-20261020/` |14:41:39.1718489 /14:42:43.1046836|31 testes,2 falhas,1 erro,28 aprovados,0 ignorados; BUILD FAILURE, exit1. |
+| `t015-query-controller-20261020-retry/` |14:43:40.3131492 /14:44:40.4089472|Os mesmos31 testes,0 falhas/erros/ignorados; BUILD SUCCESS, exit0. |
+
+Primeira execução diagnosticada em `diagnosis.json`, sem erro de compilação ou contexto: (1) `headFollowsTheListAndHasNoBodyIncludingFailures[1]` observou corpo no HEAD de sucesso no slice MockMvc; o controller passou a suprimi-lo explicitamente depois da mesma chamada ao serviço. Controller/advice também passaram a declarar application/json no HEAD. Isso não é reprodução por HTTP real. (2) O teste nativo exigia HEAD no Allow do405, mas o Spring informa os mappings explícitos GET/POST; corrigida a expectativa para conferir exatamente os métodos suportados e todos os valores dos headers fornecidos pela exceção nativa, sem alterar a resposta do framework nem asserções funcionais de status. HEAD implícito continua testado separadamente. (3) A segunda chamada `when(registration.register(...))` disparava o stub anterior ao preparar a próxima falha; substituída por doThrow().when(), sem mudar expectativas de403/500. Trata-se de erro de preparação Mockito, não falha produtiva do POST. Os casos nativo e de escopo interromperam dispatches posteriores:32 na primeira execução,35 na repetição completa. O construtor não obsoleto do resultado de validação de retorno foi usado na correção do teste.
+
+A repetição foi necessária pelas correções concretas nos três arquivos novos; produção recebida, testes anteriores e suas asserções ficaram intactos. `execution-comparison.json` confirma os mesmos31 IDs de caso e17 outros fontes capturados idênticos entre as execuções. São31 casos distintos e62 invocações somadas, não62 casos diferentes. Nenhum RED artificial, seleção antiga, baseline, F1-GREEN/T016, suíte completa ou componente de detalhe foi executado. Cache, ordem, seeds e configuração global permaneceram inalterados.
+
+Cada execução tem run.ps1, session-start.json, result.json, console integral, diff recebido, documentos e manifestos/cópias de20 fontes. Antes de cada Maven, os dois relatórios recebidos de `target/surefire-reports/` foram movidos para `received-surefire-reports/` do destino inédito correspondente, após conferir caminhos absolutos dentro de target, ausência de sobreposição/sobrescrita e hashes/tamanhos após mover. A primeira arquivou os relatórios T014; a repetição arquivou os da primeira T015. Cada execução tem seu XML/TXT em reports; os correntes pertencem somente à repetição. Toda a evidência anterior, inclusive as duas T013, sua justificativa SQL e a T014, permanece preservada.
+
+### Seleção efetiva e limites
+
+Console/XML/TXT confirmam somente `com.devsuperior.dscommerce.controllers.OwnOrderQueryControllerTest`, oito métodos e31 invocações únicas, mesmas identidades antes/depois. Conferidos todos os índices das seis parametrizações, sem duplicatas/omissões, contêineres agregadores ou testes @Nested. As classes internas são configuração/controller de controle, sem testes JUnit próprios. Nomes e índices em case-audit.json, methods.json e invocation-index-audit.json da repetição.
+
+| Método | Invocações | Prova focal |
+| --- | ---: | --- |
+| `listDelegatesTheValidatedInputAndSameAuthenticationAndSerializesOnlyThePage` |2| Controller real, entrada default/explícita e Authentication idêntica; JSON exato da página fornecida pelo mock. |
+| `listRejectsBindingAndBeanValidationErrorsBeforeCallingTheService` |8| Conversão/constraints/multiplicidade,400 exato sem chamada aos serviços, path sem query. |
+| `listUsesTheDedicatedResolverWithoutBindingAliasesAgain` |2| Integração do resolver recebido com o controller real, aliases descartados sem rebinding; não é a matriz P2 HTTP completa. |
+| `listTranslatesServiceFailuresWithSafeExactEnvelopeAndBearerChallenge` |10| Exceções simuladas de acesso/lookup/leitura/transação/finanças/validação/retorno/mapeamento;401/403/500 exatos e challenge só no401. |
+| `headFollowsTheListAndHasNoBodyIncludingFailures` |5|200/400/401/403/500 sem corpo, application/json e challenge pertinente; serviço não chamado no400. |
+| `nativeMethodAndNegotiationFailuresKeepStatusesAndHeadersWithoutServiceCalls` |1| PUT405 com headers nativos exatos e Accept incompatível406, sem serviço. |
+| `nativeErrorsRaisedWithinTheSelectedHandlerAreNotChangedIntoInternalFailures` |2| Exceções MVC nativas simuladas dentro do handler selecionado preservam405/406 e headers. |
+| `scopedAdviceLeavesRegistrationAndPublicErrorsToTheExistingGlobalAdvice` |1| Dispatches POST no MVC com serviço simulado mantém400/403/500 do registro; controller público de controle mantém404 do advice antigo. |
+
+**35 dispatches MockMvc,0 logins,0 requisições HTTP reais e0 contextos de persistência na execução aprovada**. Uma AnnotationConfigWebApplicationContext somente MVC, resolver/validator/conversion service/controllers/advices/conversores Jackson reais e dois serviços Mockito (consulta e registro). Não há datasource, JPA/H2, servidor/porta, filtros de segurança, decoder ou JWT real. Requisições ROOT/API diferem pelo contextPath informado ao MockMvc, dentro desse único contexto; não são os dois servidores reais de aceitação. O controller público de controle tem perfil exclusivo de teste para impedir descoberta nos contextos completos.
+
+Página, dinheiro e metadados de sucesso vêm diretamente do mock: não aprovam cálculo, titularidade, count ou consultas. Exceções de persistência, commit e escrita da resposta são injetadas na chamada simulada ao serviço; não representam falha real de SQL, conclusão transacional ou serialização parcial. O resultado de validação de retorno é montado no teste para exercitar sua classificação, sem alegação de novo contrato de retorno validado. Ausência de chamadas ao serviço no400 é prova da fronteira MVC; segurança de infraestrutura pode consultar conta antes do MVC em execução completa. Escopo do advice foi exercitado com POST e um controle público, sem reexecutar/aprovar todas as jornadas001–006. O checkpoint conjunto F1-GREEN, segurança/persistência integradas, materialização e P2 por HTTP real permanecem na T016 e fases posteriores.
+
+### Auditoria e fechamento
+
+`& 'target/feature007-validation/t015-query-controller-20261020-retry/audit.ps1'`: exit0, Pass=true, MvcBoundaryApproved=true, OwnOrderListingHttpApproved=false e P2RealHttpApproved=false. Conferidos292 arquivos iniciais (280 rastreados, onze Java recebidos e seleção local),20 fontes da revisão aprovada,1567 arquivos de evidência prévia, dois relatórios recebidos e dois novos por SHA-256. Nenhuma mudança de fonte após o GREEN; a primeira execução falha permanece identificada como tal.
+
+Revisados diff, três Java novos e onze recebidos, caminhos/links e whitespace. Fechamento documental acrescenta somente esta seção e marca T015; prefixo integral recebido do quickstart preservado byte a byte. `git diff --check` e `git diff --cached --exit-code`: exit0. Whitespace dos14 Java não rastreados conferido individualmente com `git -c core.autocrlf=false -c core.safecrlf=false diff --no-index --check -- /dev/null <arquivo>`, sem diagnóstico (exit1 admissível por arquivo novo). A revisão final fica em final-review.json, gerada por final-review.ps1 da repetição; demais fontes, contratos, branch/HEAD/main e seleção007 preservados.
+
+**Somente T015 marcada nesta execução: T001–T015 concluídas, T016–T034 abertas,19 tarefas pendentes.** Git final: os mesmos três rastreados recebidos modificados (OrderRepository/quickstart/tasks),14 Java não rastreados (onze recebidos e três novos), nada staged. Sem impedimento remanescente da T015, stage, commit, push, CI, detalhe de pedido ou alteração de main. A fronteira MVC está validada no recorte executado; não se declara US1, integração completa ou Feature007 concluída. Feature005 continua EXCEÇÃO DOCUMENTADA, sem PASS estrito no Gate IV.
+## T016 — Checkpoint conjunto F1-GREEN da US1 — 2026-10-20
+
+**Escopo executado**: exclusivamente T016, após T011–T015. Confirmados inicialmente raiz `C:/Users/ronal/dscommerce-speckit`, branch real `007-consultar-meus-pedidos`, HEAD `1210b803c54faa3b7c4f529e1947af3a50f8d41f`, seleção local Feature007, somente OrderRepository/quickstart/tasks rastreados modificados e nada staged. Conferidos os quatorze caminhos Java não rastreados recebidos, com SHA-256 em `target/feature007-validation/t016-f1-green-20261020/received-java.json`: OwnOrderQueryWebMvcConfig, OwnOrderPageArgumentResolver, OwnOrderQueryController, OwnOrderQueryExceptionHandler, OwnOrderPageRequestDTO, OwnOrderSummaryDTO, OwnOrderQueryService, OwnOrderQueryControllerTest, OwnOrderQueryListHttpIntegrationTest, OwnOrderQueryListApiHttpIntegrationTest, OwnOrderQueryPageArgumentResolverTest, OwnOrderQueryDtoContractTest, OwnOrderQueryRepositoryTest e OwnOrderQueryServiceTest. Todos os fontes recebidos, contratos e asserções permaneceram intactos. Main preservada em `b092a6849177a7d72c40c67f896f0b70a56e0f10`.
+
+### Conferência da T015 e do RED recebido
+
+Relidos os registros e diagnósticos das duas falhas/um erro iniciais da T015 e comparadas as cópias antes/depois do teste: a asserção HEAD sem corpo/status/challenge foi mantida, com application/json acrescentado; o controller passou a suprimir explicitamente o corpo de sucesso depois da mesma chamada ao serviço. A expectativa incorreta de HEAD no Allow do405 foi substituída por comparação exata dos mappings GET/POST e de todos os headers nativos, sem alterar status ou resposta do framework; HEAD implícito continua coberto pelo método específico. O segundo stubbing Mockito passou a doThrow().when(), preservando as expectativas403/500 do POST. A adaptação da reflexão e do construtor do resultado de validação de retorno não mudou o500 esperado. Nenhum relaxamento contratual ou enfraquecimento funcional foi identificado. `t015-reviewed.json` confirma que controller/advice/teste atuais correspondem por hash às cópias da repetição aprovada. Essa revisão é estática/histórica; o focal31 da T015 não foi repetido na T016.
+
+Os dois arquivos HTTP da listagem são byte a byte idênticos aos executados na T010, conforme `http-tests-vs-t010.json`. Preservado o F1-RED histórico:230 testes,230 falhas pelo GET ausente/405, zero erros/ignorados; aquele405 não comprovava validação, conteúdo nem P2. Na execução atual, as mesmas230 identidades de caso alcançaram as asserções completas de JSON/paginação; métodos com múltiplas consultas completaram também suas requisições posteriores antes interrompidas. Nenhum teste ou produção foi corrigido nesta T016.
+
+### Execução única aprovada
+
+Skill `speckit-implement` limitada à T016; tarefa integral, dependências, protocolo e fontes pertinentes lidos. `check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks`: exit0, Feature007. Checklist somente lida:16/16, PASS documental. Ignores Java existentes suficientes; `.specify/extensions.yml` ausente antes/depois, sem hooks. `java -version`:21.0.12.1 Azul Zulu; Wrapper existente seleciona Maven3.9.16. Nenhum Java/Maven ativo ao preparar a execução. Sem clean, concorrência Maven, alteração de cache/ordem/seed ou configuração global.
+
+Exatamente o seletor F1-GREEN de tasks.md, executado da raiz:
+
+```powershell
+.\mvnw.cmd '-Dtest=OwnOrderQueryList*,OwnOrderQueryPageArgumentResolverTest,OwnOrderQueryDtoContractTest,OwnOrderQueryRepositoryTest,OwnOrderQueryServiceTest#list*' test
+```
+
+Chamado por `& 'target/feature007-validation/t016-f1-green-20261020/run.ps1'`. Início `2026-10-20T14:52:14.2375410-03:00`, fim `2026-10-20T14:53:44.0134535-03:00`; duração externa89,776s e Maven01:24. **BUILD SUCCESS, exit code0;576 testes,0 falhas,0 erros,0 ignorados.** Uma única execução, sem repetição adicional, baseline, suíte completa, focal da T015, segurança F0/F3, detalhe ou tarefa T017+.
+
+Antes do Wrapper, os dois relatórios recebidos da repetição da T015 foram movidos de `target/surefire-reports/` para `received-surefire-reports/` no diretório inédito da T016. Conferidos caminhos absolutos resolvidos dentro de target, ausência de sobreposição/sobrescrita e hashes/tamanhos após mover (`archive-preservation.json`:2, HashesMatch=true). Os12 relatórios novos (seis XML/seis TXT) estão em `target/surefire-reports/` e na cópia própria `reports/`. Console, exit code, comando, horários, ambiente, HEAD/status/diff, documentos recebidos, manifestos e cópias de20 fontes ficam no diretório da execução. Nenhum resultado antigo foi contado como novo.
+
+### Seleção Surefire e transporte reconciliados
+
+Console/XML/TXT conferem as seis classes concretas abaixo. São62 métodos por classe concreta,576 invocações únicas e todos os índices parametrizados esperados. As identidades foram confrontadas com as seleções históricas correspondentes e os testes selecionados conservam seus hashes. Não há testes @Nested neste seletor: suportes abstratos, records, configurações e controllers internos não são suítes adicionais nem casos omitidos. Nenhum método fora de list* do serviço foi incluído.
+
+| Classe concreta | Invocações | Natureza da execução |
+| --- | ---: | --- |
+| `OwnOrderQueryListHttpIntegrationTest` |115| HTTP real/JWT/filtros/JPA, servidor raiz. |
+| `OwnOrderQueryListApiHttpIntegrationTest` |115| HTTP real/JWT/filtros/JPA, servidor /api. |
+| `OwnOrderQueryPageArgumentResolverTest` |254| Componente MVC/validação e provas diretas com mocks de infraestrutura do resolver. |
+| `OwnOrderQueryDtoContractTest` |37| Slice JSON, sem banco/MVC/HTTP. |
+| `OwnOrderQueryRepositoryTest` |16| JPA/H2 real, sem HTTP ou mocks do repositório. |
+| `OwnOrderQueryServiceTest#list*` |39| Oito invocações com serviço/JPA reais;31 com mocks locais, incluindo proxy com transação real e dados em memória. |
+
+**258 requisições HTTP reais:246 GET/orders e12 POST/login.** Em cada contexto:123 GET (75 respostas200 e48 respostas400) e seis logins. São230 casos JUnit HTTP, não258 testes; métodos de travessia/identidades fazem múltiplos GET. Os217 dispatches MockMvc pertencem somente ao teste do resolver; as fixtures JPA/HTTP montam MockMvc, mas não o despacham nem fazem login por ele. Não há mocks nos dois testes HTTP; os mocks de serviço e de infraestrutura são provas complementares separadas.
+
+Contextos HTTP completos com porta aleatória, OSIV false, perfil test e bancos H2 exclusivos/estáveis pelo inicializador recebido: raiz porta61520, `jdbc:h2:mem:admin-product-test-5a943448-733b-40a2-aab3-87656eb4ec9c`; /api porta61468, `jdbc:h2:mem:admin-product-test-1beeb80b-9547-4e83-b231-fce66c65e83d`. Componentes usam outros dois H2: repositório `admin-product-test-acba21ef-537d-4bfc-b520-edf4dc899c54` e serviço `admin-product-test-69350d59-65e5-4088-8003-c55dd0a8eed0`. Create-drop e inicialização SQL/import desabilitada somente nos contextos isolados; seeds/perfis globais preservados. Dados são preparados por JDBC commitado com manifesto independente e limpeza própria; login é HTTP real. Não há jornada POST/orders nova nesta seleção.
+
+### US1 e P2 comprovados na execução atual
+
+Nos contextos raiz e /api, aprovados US1.1–US1.7: somente os próprios três pedidos no cenário3/2; navegação2/2/1 sobre cinco próprios com alheios intercalados; empates por createdAt resolvidos por id DESC atravessando páginas; vazios com totais0/0 e página posterior com totais5/3 sem clamp; entradas exatas inválidas rejeitadas; contas sucessivas CLIENT/outro/ADMIN isolado/ambos/CLIENT conservando conteúdo e contagens próprios. accountId/buyerId/sort e variantes desconhecidas não mudam dono ou ordem. JSON confere campos exatos da página/resumo, IDs/metadados integrais, instante UTC com milissegundos, estado armazenado e dinheiro textual do manifesto, inclusive42.50,20.00,0.01 e9007199254740993.01. O preço atual diferente do catálogo não substitui o histórico.
+
+| Grupo HTTP, em cada contexto | Casos | Resultado específico atual |
+| --- | ---: | --- |
+| `listP2IgnoresAliasesBeforeBindingWithDefaultsAndExplicitValues` |50| Todos200; `_page`, `_size`, `size[]`, `!page`, separados e combinados, variantes inteiro/vazio/texto/fracionário/repetido: page0/size12 por omissão ou page1/size2 explícitos, conteúdo/totais esperados intactos. |
+| `listP2NeverLetsIgnoredAliasesRepairInvalidExactParameters` |20| Todos400; quatro entradas exatas inválidas/repetidas combinadas com as cinco variantes de aliases, envelope seguro e path sem query. |
+| `listUs16RejectsInvalidEmptyRepeatedOrOverflowingPagination` |28| Todos400; inválidos exatos, vazios, repetidos, limites/overflow preservados. |
+| `listDefaultsAndLimitsPreserveExactMetadata` |9| Todos200; defaults, size1/50 e maiores offsets válidos, inclusive vazios sem clamp. |
+
+`audit-p2.ps1`: exit0;140 variantes P2 (100 positivas e40 negativas) confrontadas individualmente por classe/caso/índice/query/status em XML e console, com nomes originais decodificados e todas as combinações previstas. Detalhes em `p2-variant-coverage.json` e `p2-results.json`; o page/size/conteúdo de cada resultado vem das asserções JUnit aprovadas, não é inferido só do status200. Os400 e a integração do resolver com Bean Validation são complementados pelos testes MVC da entrada, que verificam rejeição antes do handler; a ausência de chamada ao serviço no controller400 foi comprovada pelo focal histórico da T015, preservado sem nova execução. Segurança de infraestrutura pode consultar conta antes do MVC.
+
+### SQL, materialização e ausência de escrita
+
+Revisados [repositório](../../src/main/java/com/devsuperior/dscommerce/repositories/OrderRepository.java), serviço e asserções/logs dos componentes executados. Na prova JPA do repositório:20 janelas,13 páginas de IDs,10 counts efetivamente necessários e sete lotes,30 SELECTs observados. SQL mantém buyer_id em página/count/lote, ordenação createdAt DESC/id DESC, projeção de IDs sem coleção e offset/limite no banco. Fetch usa left joins somente de items/product, sem Pageable/limite/categorias, com raízes e itens completos, posições e valores históricos, sem duplicação ou SELECT tardio. A expectativa SQL corrigida na T013 (página zero legitimamente sem OFFSET) permaneceu intacta.
+
+No serviço real:12 janelas bem-sucedidas,37 instruções observadas e oito lotes; conteúdo não vazio usa um lote e vazio nenhum, sem IN vazio. Guarda vem primeiro e consultas de pedidos têm titular obrigatório. DTOs serializados depois do retorno transacional com OSIV false não provocam SELECT adicional. As quatro chamadas reais rejeitadas do serviço (três de guarda e uma raiz sem itens) mantêm snapshots e SELECTs apenas. O teste complementar com mocks confirma guarda/consultas/cálculo dentro de readOnly e remontagem de lote embaralhado. Esses números descrevem as janelas de componentes, não um orçamento rígido de consultas HTTP. O plano de carregamento e as provas de materialização não dependem de impor count em páginas nas quais Spring Data o otimiza legitimamente. Detalhes em `repository-sql.json` e `query-materialization-audit.json`.
+
+Cada GET HTTP foi envolvido por snapshot JDBC independente antes/depois e verificação de SELECTs somente na janela, excluindo setup/login/limpeza. As mesmas proteções passaram nas leituras de componentes selecionadas. Nenhuma mutação detectada em produtos/categorias/associações/contas completas/perfis/pedidos/itens; readOnly não é usado como prova isolada. Permanecem os limites do probe: snapshot composto em duas transações, sem fotografia global atômica concorrente; StatementInspector não vê JDBC direto e igualdade antes/depois não detecta escrita transitória restaurada. Não se conclui US4 inteira por essas janelas.
+
+A seleção atual prova acesso bem-sucedido próprio com JWT/filtros reais e três combinações permitidas de perfis, mais a guarda real do serviço nas rejeições selecionadas. Não reexecuta authenticationGate, rejeições JWT/HEAD por HTTP, detalhe/404 alheio, coleção gerenciada obsoleta, falhas HTTP500 injetadas, jornadas completas001–006 ou suíte completa. As evidências F0/T015 continuam históricas para seus respectivos recortes; consolidação US3/US4 e FINAL permanecem futuras. Navegação exata considera conjunto estável; não há promessa de snapshot entre requisições concorrentes.
+
+### Auditoria e fechamento da T016
+
+`& 'target/feature007-validation/t016-f1-green-20261020/audit.ps1'`: exit0, Pass=true, F1GreenApproved=true, P2RealHttpApproved=true e Feature007Complete=false. Conferidos295 arquivos iniciais (280 rastreados, quatorze Java recebidos e ponteiro),20 fontes capturados,1614 arquivos de evidência prévia, dois relatórios recebidos e12 novos por SHA-256. `case-audit.json`, `methods.json`, `suites.json`, `invocation-index-audit.json`, `http-case-results.json` e `http-contexts.json` identificam seleção, resultados e contextos. Nenhuma correção, segunda execução Maven ou fonte nova foi necessária.
+
+Revisados diff, quatorze Java recebidos não rastreados, referências/links e whitespace. Alterados nesta tarefa somente este acréscimo e o marcador T016 em tasks. Prefixo integral do quickstart recebido, incluindo T010 e as duas execuções de T013/T015, preservado byte a byte. `git diff --check` e `git diff --cached --exit-code`: exit0. Whitespace dos14 Java não rastreados conferido individualmente por `git -c core.autocrlf=false -c core.safecrlf=false diff --no-index --check -- /dev/null <arquivo>`, sem diagnóstico (exit1 admissível por arquivo novo). `final-review.ps1` registra o fechamento em final-review.json; demais arquivos e fontes executados permanecem íntegros.
+
+**Somente T016 marcada nesta execução: T001–T016 concluídas, T017–T034 abertas,18 tarefas pendentes.** Checkpoint C2/US1 aprovado no recorte definido; US2–US4 e fechamento continuam obrigatórios para concluir a feature. Git final: os mesmos três rastreados recebidos modificados (OrderRepository/quickstart/tasks), os mesmos14 Java não rastreados, nada staged. Branch/HEAD/main/seleção007 preservados. Sem impedimento da T016, stage, commit, push, CI, detalhe ou execução T017+. Feature005 permanece EXCEÇÃO DOCUMENTADA, sem PASS estrito no Gate IV.

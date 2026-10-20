@@ -79,7 +79,7 @@ class AdminQueryServicesTest {
     @ValueSource(strings = {"FONE  Café%_/d'agua", "Cafe\u0301", "\ud83d\ude00 Fone", "\u200bFone\u200b"})
     void shouldTrimOnlyRecognizedExternalCodePointsAndKeepLiteralInterior(String expected) {
         var request = PageRequest.of(3, 2);
-        when(products.findAdminPageByName(expected, request)).thenReturn(new PageImpl<>(List.of(), request, 5));
+        when(products.findPageByName(expected, request)).thenReturn(new PageImpl<>(List.of(), request, 5));
 
         var result = productService.listProducts("\u00a0\u2003\t" + expected + "\n\u2007\u3000", 3, 2, ADMIN);
 
@@ -90,7 +90,7 @@ class AdminQueryServicesTest {
         assertThat(result.totalPages()).isEqualTo(3);
         var ordered = inOrder(accounts, products, categories);
         ordered.verify(accounts).resolve(ADMIN.accountId());
-        ordered.verify(products).findAdminPageByName(expected, request);
+        ordered.verify(products).findPageByName(expected, request);
         ordered.verifyNoMoreInteractions();
     }
 

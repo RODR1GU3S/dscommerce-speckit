@@ -87,7 +87,7 @@ class ProductRepositoryAdminQueryComponentTest {
         var first = product("Fone azul");
         product("Fone azul");
 
-        var result = read(() -> repository.findAdminPageByName("FONE", PageRequest.of(0, 1)), 2);
+        var result = read(() -> repository.findPageByName("FONE", PageRequest.of(0, 1)), 2);
 
         assertThat(result.getContent()).extracting(Product::getId).containsExactly(first.id());
         assertThat(result.getTotalElements()).isEqualTo(3);
@@ -100,14 +100,14 @@ class ProductRepositoryAdminQueryComponentTest {
         product("Fone");
         product("Cabo");
 
-        var beyond = read(() -> repository.findAdminPageByName("fone", PageRequest.of(3, 1)), 2);
+        var beyond = read(() -> repository.findPageByName("fone", PageRequest.of(3, 1)), 2);
         assertThat(beyond.getContent()).isEmpty();
         assertThat(beyond.getTotalElements()).isEqualTo(1);
         assertThat(beyond.getTotalPages()).isEqualTo(1);
         assertPageSql(true);
         assertThat(sql.events().get(0).sql().toLowerCase(Locale.ROOT)).contains("offset");
 
-        var absent = read(() -> repository.findAdminPageByName("inexistente", PageRequest.of(0, 1)), 1);
+        var absent = read(() -> repository.findPageByName("inexistente", PageRequest.of(0, 1)), 1);
         assertThat(absent.getContent()).isEmpty();
         assertThat(absent.getTotalElements()).isZero();
         assertThat(absent.getTotalPages()).isZero();
@@ -127,7 +127,7 @@ class ProductRepositoryAdminQueryComponentTest {
         var expected = product(matching);
         product(other);
 
-        var result = read(() -> repository.findAdminPageByName(filter, PageRequest.of(0, 1)), 2);
+        var result = read(() -> repository.findPageByName(filter, PageRequest.of(0, 1)), 2);
 
         assertThat(result.getContent()).extracting(Product::getId).containsExactly(expected.id());
         assertThat(result.getTotalElements()).isEqualTo(1);

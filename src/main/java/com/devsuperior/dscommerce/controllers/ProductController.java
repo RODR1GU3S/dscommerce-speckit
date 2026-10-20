@@ -32,6 +32,7 @@ public class ProductController {
 
     @GetMapping
     public ResponseEntity<PageResponseDTO<ProductCatalogItemDTO>> listProducts(
+            @RequestParam(name = "name", required = false) String name,
             @RequestParam(defaultValue = "0")
             @Min(value = 0, message = "page must be greater than or equal to 0")
             int page,
@@ -40,6 +41,6 @@ public class ProductController {
             @Max(value = 50, message = "size must be between 1 and 50")
             int size
     ) {
-        return ResponseEntity.ok(productCatalogService.listProducts(page, size));
+        return ResponseEntity.ok(productCatalogService.listProducts(name, page, size));
     }
 }

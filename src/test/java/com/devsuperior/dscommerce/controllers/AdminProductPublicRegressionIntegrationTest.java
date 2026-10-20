@@ -149,9 +149,9 @@ class AdminProductPublicRegressionIntegrationTest {
         proof("public-errors", invalid ? "INVALID_IRRELEVANT" : "ANONYMOUS");
     }
 
-    @ParameterizedTest(name = "admin filter remains scoped, irrelevant invalid public token={0}")
+    @ParameterizedTest(name = "public name filter/category representations, irrelevant invalid token={0}")
     @ValueSource(booleans = {false, true})
-    void adminFilterAndCategoryIdentifiersDoNotChangePublicContract(boolean invalid) throws Exception {
+    void publicNameFilterPreservesCategoryRepresentationsAndAdministrativeIsolation(boolean invalid) throws Exception {
         var alpha = product("Alpha", "10.00");
         var beta = product("Beta", "12.00");
         var c1 = fixture.createCategory("Same name");
@@ -173,9 +173,14 @@ class AdminProductPublicRegressionIntegrationTest {
             ids.add(row.path("id").longValue());
         });
         assertThat(ids).containsExactlyInAnyOrder(c1.id(), c2.id());
-        for (String query : List.of("", "?name=ALP", "?name=does-not-exist", "?name=%25_")) {
-            assertPage(json(send("GET", "/products" + query, invalid ? INVALID_TOKEN : null, null, null), 200), 0, 12, List.of(alpha, beta), false);
-        }
+        assertPage(json(send("GET", "/products", invalid ? INVALID_TOKEN : null, null, null), 200),
+                0, 12, List.of(alpha, beta), false);
+        assertPage(json(send("GET", "/products?name=ALP", invalid ? INVALID_TOKEN : null, null, null), 200),
+                0, 12, List.of(alpha), false);
+        assertPage(json(send("GET", "/products?name=does-not-exist", invalid ? INVALID_TOKEN : null, null, null), 200),
+                0, 12, List.of(), false);
+        assertPage(json(send("GET", "/products?name=%25_", invalid ? INVALID_TOKEN : null, null, null), 200),
+                0, 12, List.of(), false);
         var publicDetail = json(send("GET", "/products/" + alpha.id(), invalid ? INVALID_TOKEN : null, null, null), 200);
         assertProduct(publicDetail, alpha, true);
         assertThat(publicDetail.path("categories")).isEqualTo(mapper.valueToTree(List.of("Same name")));
@@ -216,7 +221,8 @@ class AdminProductPublicRegressionIntegrationTest {
     void ordersKeepAuthorizationNewOrderPerSendAndHistoricalValuesAfterMaintenance(Set<UserRole> roles) throws Exception {
         var buyer = account(roles);
         var token = login(buyer, false);
-        var adminToken = login(account(Set.of(UserRole.ADMIN)), false);
+        var administrator = account(Set.of(UserRole.ADMIN));
+        var adminToken = login(administrator, false);
         var target = product("Product old price", "10.00");
         var other = product("Product other", "3.25");
         var category = fixture.createCategory("History category");
@@ -240,6 +246,14 @@ class AdminProductPublicRegressionIntegrationTest {
         var detail = json(send("GET", "/products/" + target.id(), INVALID_TOKEN, null, null), 200);
         assertThat(detail.path("price").isNumber()).isTrue();
         assertThat(detail.path("price").decimalValue()).isEqualByComparingTo("12.00");
+        // T024: exercise the filter with populated history, whose stored price remains 10.00.
+        var current = new ProductData(target.id(), target.name(), target.description(), target.image(), new BigDecimal("12.00"));
+        assertPage(json(send("GET", "/products?name=Product%20old%20price", INVALID_TOKEN, null, null), 200),
+                0, 12, List.of(current), false);
+        assertThat(database.snapshot()).as("public detail and filtered catalog preserve populated history").isEqualTo(afterPut);
+        assertThat(database.accountIds()).containsExactlyInAnyOrder(buyer.id(), administrator.id());
+        assertThat(database.roles(buyer.id())).isEqualTo(roles);
+        assertThat(database.roles(administrator.id())).containsExactly(UserRole.ADMIN);
         var denied = json(send("DELETE", "/admin/products/" + target.id(), adminToken, null, null), 409);
         fields(denied, "status", "error", "message", "path", "errors");
         assertThat(denied.path("message").textValue()).isEqualTo("Product deletion violates referential integrity");
@@ -371,6 +385,7 @@ class AdminProductPublicRegressionIntegrationTest {
         var result = client.send(request.method(method, body == null ? HttpRequest.BodyPublishers.noBody()
                 : HttpRequest.BodyPublishers.ofString(body)).build(), HttpResponse.BodyHandlers.ofString());
         noCallerTransaction();
+        System.out.printf("T024_HTTP method=%s path=/api%s status=%d%n", method, path, result.statusCode());
         return result;
     }
 

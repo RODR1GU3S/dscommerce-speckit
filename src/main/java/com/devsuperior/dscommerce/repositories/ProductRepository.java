@@ -43,7 +43,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             SELECT COUNT(p) FROM Product p
             WHERE locate(lower(:name), lower(p.name)) > 0
             """)
-    Page<Product> findAdminPageByName(@Param("name") String name, Pageable pageable);
+    Page<Product> findPageByName(@Param("name") String name, Pageable pageable);
 
     @Transactional(readOnly = true)
     @Query("""

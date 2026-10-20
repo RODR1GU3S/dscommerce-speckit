@@ -39,6 +39,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 class H2ConsoleSecurityIntegrationTest {
 
+    @DynamicPropertySource
+    static void isolatedDatabase(DynamicPropertyRegistry registry) {
+        // This servlet context owns its schema, including create-drop on cache eviction.
+        var databaseUrl = "jdbc:h2:mem:h2-console-root-" + UUID.randomUUID()
+                + ";DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE";
+        registry.add("spring.datasource.url", () -> databaseUrl);
+    }
+
     @Autowired
     private MockMvc mockMvc;
 

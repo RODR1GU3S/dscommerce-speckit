@@ -30,10 +30,10 @@ public class AdminProductQueryService {
     public PageResponseDTO<AdminProductItemDTO> listProducts(String name, int page, int size,
                                                            AuthenticatedAccountPrincipal principal) {
         access.requireAdmin(principal);
-        var filter = trimFilter(name);
+        var filter = ProductNameFilter.normalize(name);
         var request = PageRequest.of(page, size);
         var result = filter.isEmpty() ? products.findAdminPage(request)
-                : products.findAdminPageByName(filter, request);
+                : products.findPageByName(filter, request);
         var content = result.getContent().stream()
                 .map(product -> new AdminProductItemDTO(product.getId(), product.getName(),
                         product.getImage(), price(product)))
@@ -56,26 +56,5 @@ public class AdminProductQueryService {
 
     private static String price(Product product) {
         return product.getPrice().setScale(2, RoundingMode.UNNECESSARY).toPlainString();
-    }
-
-    private static String trimFilter(String name) {
-        if (name == null) return "";
-        int start = 0;
-        int end = name.length();
-        while (start < end) {
-            int codePoint = name.codePointAt(start);
-            if (!isExternalSpace(codePoint)) break;
-            start += Character.charCount(codePoint);
-        }
-        while (start < end) {
-            int codePoint = name.codePointBefore(end);
-            if (!isExternalSpace(codePoint)) break;
-            end -= Character.charCount(codePoint);
-        }
-        return name.substring(start, end);
-    }
-
-    private static boolean isExternalSpace(int codePoint) {
-        return Character.isWhitespace(codePoint) || Character.isSpaceChar(codePoint);
     }
 }

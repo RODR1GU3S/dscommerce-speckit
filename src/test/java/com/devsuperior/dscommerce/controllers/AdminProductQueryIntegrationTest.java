@@ -347,7 +347,7 @@ class AdminProductQueryIntegrationTest {
 
     @ParameterizedTest(name = "public context={0}, invalid Bearer={1}")
     @MethodSource("publicControls")
-    void shouldKeepThePublicCatalogNumericAndUnfilteredByTheAdministrativeNameParameter(
+    void shouldFilterThePublicCatalogByNameWithNumericPricesAndCoherentPagination(
             String externalContext, boolean invalidBearer) throws Exception {
         var manifest = v03();
         var pages = new ArrayList<PageResponseDTO<JsonNode>>();
@@ -355,10 +355,11 @@ class AdminProductQueryIntegrationTest {
             var call = call(externalContext, "/products", query("name", "fone", "page", Integer.toString(page), "size", "2"));
             if (invalidBearer) call.header(HttpHeaders.AUTHORIZATION, "Bearer deliberately-invalid");
             var result = observe(call, "public-catalog-page-" + page, 200);
-            pages.add(assertPage(result, page, 2, 6, productsAt(manifest, manifest.unfilteredOrder(), page, 2), false));
+            pages.add(assertPage(result, page, 2, 5, productsAt(manifest, manifest.filteredOrder(), page, 2), false));
         }
-        assertThat(assertCompletePages(pages, 2, manifest.unfilteredOrder(), item -> item.get("id").asLong()))
-                .containsExactlyElementsOf(manifest.unfilteredOrder());
+        assertThat(pages).extracting(value -> value.content().size()).containsExactly(2, 2, 1, 0);
+        assertThat(assertCompletePages(pages, 2, manifest.filteredOrder(), item -> item.get("id").asLong()))
+                .containsExactlyElementsOf(manifest.filteredOrder());
     }
 
     @ParameterizedTest(name = "public detail context={0}, invalid Bearer={1}")
@@ -396,7 +397,7 @@ class AdminProductQueryIntegrationTest {
         var accountIds = database.accountIds();
         sql.clear();
         var request = PageRequest.of(page, size);
-        var result = filter == null ? repository.findAdminPage(request) : repository.findAdminPageByName(filter, request);
+        var result = filter == null ? repository.findAdminPage(request) : repository.findPageByName(filter, request);
         assertNoCallerTransaction();
         assertThat(database.snapshot()).as("independent snapshot after direct repository comparison").isEqualTo(before);
         assertThat(database.accountIds()).isEqualTo(accountIds);

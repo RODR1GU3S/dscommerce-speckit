@@ -116,3 +116,89 @@ Revisão documental desta correção por Python via stdin no ambiente existente 
 ## Pendências e limites
 
 Sem decisão de negócio ou clarificação bloqueante. Implementação, geração de tasks, testes locais e CI da 007 pertencem às fases posteriores, mediante pedido próprio. O PDF local é fonte reaproveitada da investigação anterior, não arquivo versionado ou novamente auditado nesta etapa. Sem validação em PostgreSQL/produção, SLA, concorrência serializada ou implantação. Nesta fase são gerados somente os cinco artefatos de planejamento; não fazer stage/commit/push.
+
+## T001 — Contexto inicial da execução limitada — 2026-10-19
+
+**Escopo executado**: somente T001 de [tasks.md](tasks.md), sem iniciar T002 ou tarefas posteriores. O histórico acima permanece como registro das etapas anteriores; os comandos de aplicação ali apresentados continuam procedimentos futuros.
+
+### Estado inicial confirmado
+
+- Raiz: `C:/Users/ronal/dscommerce-speckit`; branch real: `007-consultar-meus-pedidos`.
+- HEAD inicial real: `5f1a3a440bcd610c23e376cf390523fdcd7e58c3`, commit das tarefas. A base documental das tarefas é `97ac0354d9f3835e041629fee4a661c0afe09eb7`, commit do planejamento; não é o HEAD desta execução. Spec/checklist foram commitados em `d69ef4690e2c684c540b12a7f304978671c3ba7a`.
+- `git rev-parse --show-toplevel`, `git branch --show-current`, `git rev-parse HEAD` e `git status --short --untracked-files=all` confirmaram esses valores e árvore inicialmente limpa. `git diff --name-status` e `git diff --cached --name-status` não exibiram alterações.
+- Seleção local: `.specify/feature.json` aponta para `specs\007-consultar-meus-pedidos`; `SPECIFY_FEATURE` e `SPECIFY_FEATURE_DIRECTORY` ausentes. SHA-256 inicial do ponteiro: `A8C06986C0FC138BC352E10DC584D77DE64AE7C2BF661D4F03F953BDE2D6A929`.
+- `git rev-parse main`: `b092a6849177a7d72c40c67f896f0b70a56e0f10`. A leitura do histórico confirma a sequência integração001–006 → especificação007 → planejamento007 → tarefas007; isso não comprova execução funcional da007.
+
+### Procedimentos e resultados desta T001
+
+- Lidas as instruções de [AGENTS.md](../../AGENTS.md), [harness](../../docs/harness.md), [constituição1.0.0](../../.specify/memory/constitution.md) e da skill local `speckit-implement`; T001 lida integralmente e situada nas dependências da lista de tarefas. A autorização limita o fluxo da skill a T001, sem preparação de fases posteriores.
+- Lidos os sete artefatos aprovados: [spec](spec.md), [checklist](checklists/requirements.md), [plan](plan.md), [research](research.md), [data-model](data-model.md), [contrato](contracts/own-orders-openapi.yaml) e este quickstart. Reutilizadas as referências ao PDF registradas na spec, sem nova investigação do PDF ou de fontes externas.
+- Executado `.\.specify\scripts\powershell\check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks`: exit0. `FEATURE_DIR` absoluto `C:\Users\ronal\dscommerce-speckit\specs\007-consultar-meus-pedidos`; `AVAILABLE_DOCS`: `research.md`, `data-model.md`, `contracts/`, `quickstart.md`, `tasks.md`. A resolução utilizou a seleção existente, sem override de ambiente.
+- Checklist somente lido e contado: `requirements.md` com16 itens,16 marcados, zero abertos, **PASS documental**. As marcações qualificam os requisitos, não a implementação ou os testes.
+- `java -version` exibiu OpenJDK Azul Zulu `21.0.12.1`, build `21.0.12.1+1-LTS`. `.\mvnw.cmd --version` terminou com exit0 e informou Apache Maven `3.9.16`, Java `21.0.12.1`, Azul Systems, runtime `C:\Program Files\Zulu\zulu-21`, Windows10/amd64. A distribuição Maven foi localizada no cache `.m2/wrapper/dists`. Não foi executado goal de build/teste.
+- Lidas as propriedades existentes do Wrapper: `wrapperVersion=3.3.4`, tipo `only-script`, distribuição Maven3.9.16 e checksum configurado. Não houve regeneração do Wrapper ou nova auditoria do ZIP/checksum publicado.
+- Verificação de setup somente em leitura: repositório Git confirmado; `.gitignore` existente cobre `target/`, `*.class`, `*.jar`, `build/`, `.gradle/` e padrões usuais locais. A busca de arquivos de Docker/ESLint/Prettier/npm/Terraform/Helm, fora de `.git/` e `target/`, não encontrou marcadores. Nenhum ignore, configuração, fixture ou diretório de preparação foi criado/alterado.
+- `.specify/extensions.yml` ausente na entrada: nenhum hook prévio aplicável.
+
+### Evidências históricas e limites
+
+O harness registra separadamente os79 testes históricos locais no Windows e a primeira CI Linux da fundação, execução36776432450 para `1d49b28d46d6a73cf6c39b1077574c1306dba7f2`. O [quickstart da006](../006-filtrar-catalogo-produtos/quickstart.md) registra, entre suas evidências históricas, a suíte local corrigida de2.754 testes e os problemas de isolamento H2. Esses registros permanecem históricos, sem reexecução ou reclassificação nesta T001. As validações OpenAPI0.9.0 anteriores, registradas acima, continuam evidência estrutural documental; não foram repetidas. Nenhuma CI foi consultada, disparada ou atribuída ao HEAD atual.
+
+O recorte preservado é CLIENT/ADMIN atuais consultando somente compras próprias, incluindo conteúdo/count/detalhe; dinheiro histórico exato, nome atual e ordem registrada. A proteção antecipada, o binding exato page/size antes das transformações do binder, a validação pura na fronteira e o isolamento H2 permanecem decisões para tarefas futuras. Nenhuma dessas propriedades foi comprovada funcionalmente aqui. A Feature005 permanece **EXCEÇÃO DOCUMENTADA, sem PASS estrito no Gate IV**; a007 não herda essa exceção.
+
+**Limite de execução**: sem baseline B0/T002, compilação, teste, dispatch MockMvc, requisição HTTP, inicialização Spring/H2, implementação ou preparação de testes. Relatórios existentes não foram movidos, sobrescritos ou tratados como testes desta execução. Nenhum stage, commit, push, troca de branch ou alteração de main. Sem impedimento identificado para atender ao escopo documental/ambiental da T001; a feature ainda não tem comprovação funcional neste checkpoint.
+
+### Fechamento documental da T001
+
+Revisão do diff e dos dois arquivos alterados concluída. Conferência local por PowerShell/.NET: 28 links Markdown locais dos dois documentos com destinos existentes; prefixo recebido do quickstart preservado byte a byte; tasks difere do HEAD somente pelo marcador de T001. Resultado: **1 tarefa concluída (T001), 33 abertas (T002–T034)**. Nenhum arquivo novo.
+
+Comparação dos manifestos SHA-256 de caminhos/conteúdos confirmou preservação dos 263 rastreados fora de quickstart/tasks e dos 940 arquivos recebidos em `target/surefire-reports/`, sem mover relatórios ou apurar testes novos. Ponteiro local com o mesmo SHA-256 inicial; HEAD e main mantidos. `.specify/extensions.yml` continua ausente, sem hooks posteriores aplicáveis.
+
+`git diff --check`: exit0, sem diagnóstico de whitespace; `git diff --cached --exit-code`: exit0, índice vazio. Estado final limitado a quickstart.md e tasks.md modificados, sem não rastreados ou staged. Estas são conferências documentais/de preservação, não comprovação HTTP, JPA, segurança, RED/GREEN ou CI da Feature007. T002 e os demais checkpoints continuam não executados.
+
+## T002 — Baseline B0 recuperada após interrupção — 2026-10-20
+
+**Escopo**: retomada e fechamento somente da T002, dependente da T001 já concluída. O texto e as evidências da T001 acima permanecem integrais, inclusive suas afirmações sobre o estado naquele checkpoint. A interrupção por limite de uso deixou o registro documental da T002 pendente; as evidências encontradas demonstram que o Maven e a auditoria original haviam terminado. Nenhum Maven foi iniciado nesta retomada, nem tarefa T003 ou posterior.
+
+### Execução anterior recuperada
+
+- Antes de decidir sobre nova execução, consultados os processos locais por `Get-CimInstance Win32_Process`: nenhum Java/Maven ativo. Encontrada uma execução B0 em `target/feature007-validation/t002-b0-20261019T232239386-dfb1e6/`, com console completo, exit code capturado, relatórios e auditoria. Nenhum motivo de repetição: revisão, arquivos relevantes, configuração e seleção permanecem iguais.
+- Raiz e branch real mantidas: `C:/Users/ronal/dscommerce-speckit`, `007-consultar-meus-pedidos`; HEAD testado e atual `5f1a3a440bcd610c23e376cf390523fdcd7e58c3`; main `b092a6849177a7d72c40c67f896f0b70a56e0f10`. `session-start.json`, `received.diff`, cópias recebidas de quickstart/tasks e `tracked-before.json` identificam o checkout da execução: somente o registro e a marcação da T001, sem alteração de código/testes/configuração.
+- Comando realmente executado na raiz em **2026-10-19**, antes desta retomada:
+
+```powershell
+.\mvnw.cmd '-Dtest=OrderSecurityIntegrationTest*,PublicCatalogNameFilterIntegrationTest*' test
+```
+
+- `result.json`: início `2026-10-19T23:26:30.0250952-03:00`, término `2026-10-19T23:30:06.5447774-03:00`, duração do processo `216,520 s`, **MavenExitCode=0**. Console termina com **BUILD SUCCESS**, duração Maven `03:26 min`, **269 testes, 0 falhas, 0 erros, 0 ignorados**. A duração Maven e a duração externa do processo são medidas distintas.
+- Ambiente: XMLs registram Java Azul `21.0.12.1` e Windows10; Wrapper existente seleciona Maven `3.9.16`, conforme suas propriedades e a verificação de versão da T001. Não foi repetido comando de versão nesta retomada. As notas de preparação originais preservam uma interrupção de auxiliar de metadados (exit -1) antes de Maven/arquivamento e uma limitação de caminho longo corrigida antes dos testes; nenhuma delas constitui falha funcional ou RED.
+
+### Seleção efetiva e conferência dos resultados
+
+| Classe/contexto no Surefire | Métodos distintos | Invocações JUnit aprovadas |
+| --- | --- | --- |
+| `OrderSecurityIntegrationTest` | 8 | 185 |
+| `PublicCatalogNameFilterIntegrationTest$ApiContext` | 11 | 42 |
+| `PublicCatalogNameFilterIntegrationTest$RootContext` | 11 | 42 |
+| `PublicCatalogNameFilterIntegrationTest` (contêiner externo vazio) | 0 | 0 |
+| **Total, sem duplicatas** | **30 por classe concreta** | **269** |
+
+Os XMLs foram relidos nesta retomada, com comparação dos resumos TXT e console, contagem de cada `testcase`, detecção de duplicatas por classe/nome e comparação da seleção histórica esperada. Confirmados todos os269 casos, sem omissões, casos inesperados, falhas, erros, ignorados ou duplicatas. A referência histórica serviu somente à conferência da seleção; a aprovação vem dos resultados locais da B0 recuperada.
+
+Segurança: oito métodos, com invocações `9/8/5/6/6/12/1/138`, respectivamente para subject/perfis atuais, rechecagem pelo proxy, identidade inválida pelo proxy, ausência de perfis, falha de resolução, rechecagem entre filtro/serviço, servlet context path e JWT inválido. Catálogo em **cada** contexto: preparo1, paginação existente1, nomes/literais5, comprimentos2, espaços externos19, espaços internos3, paginação filtrada1, páginas vazias7, independência entre requisições1, acesso/formato público1 e detalhes/legado1. `executed-cases.json` da execução original e `methods.json` da auditoria de retomada preservam os nomes e invocações individuais.
+
+As invocações parametrizadas contam individualmente. Dispatches MockMvc, chamadas diretas pelo proxy do serviço e requisições HTTP não são testes JUnit adicionais. A suíte de segurança utiliza MockMvc com filtros reais e chamadas pelo proxy; a suíte de catálogo usa HTTP real em porta aleatória nos contextos raiz e `/api`, inclusive os cenários de login/acesso. Esta baseline de contratos existentes não substitui os testes HTTP novos da007.
+
+### Preservação e auditoria da retomada
+
+- Antes do Maven original, os **940 arquivos recebidos** de `target/surefire-reports/` foram movidos para `received-surefire-reports/` dentro do diretório B0, com origem/destino absolutos conferidos dentro de `target/`, sem sobreposição ou sobrescrita. `session-start.json`, `received-reports-manifest.json` e `archive-preservation.json` registram a operação e a igualdade de hashes. A retomada reconferiu integralmente caminhos, tamanhos e SHA-256 desses940 arquivos; nenhum entra na contagem da B0.
+- Os **oito relatórios novos** (quatro XML/quatro TXT) permanecem tanto em `target/surefire-reports/` quanto na cópia `reports/` da execução original; tamanhos e SHA-256 das duas áreas conferem com `new-reports-manifest.json`. Não foram movidos nem sobrescritos nesta retomada.
+- Auditoria independente, sem Maven: `target/feature007-validation/t002-resume-20261020/audit-resume.ps1`, executada da raiz via PowerShell. Resultado final **exit0, Pass=true**, em `attempt3/resume-audit.json`, com suites, ambiente e métodos detalhados nos JSONs correspondentes. Duas tentativas auxiliares anteriores terminaram com exit1 por enumeração JSON do PowerShell5.1 e leitura de tamanho em caminho longo; notas e saídas parciais preservadas em diretórios distintos, sem alteração de relatórios ou rastreados. A leitura por caminho Windows estendido confirmou tamanho/hash, sem divergência de arquivo. Essas falhas de auditoria não são falhas de testes ou RED.
+- Confirmada a preservação dos **964 arquivos** de evidência da execução original; dos **265 rastreados** no manifesto anterior ao Maven, todos correspondiam byte a byte ao iniciar o fechamento documental, incluindo as cópias recebidas de quickstart/tasks da T001. O fechamento apenas acrescenta esta seção ao quickstart e marca T002; a T001 permanece intacta. A seleção local mantém o SHA-256 registrado na T001.
+- Reexecutado `check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks`: exit0, feature007 e artefatos esperados. Checklist de requisitos somente lido:16/16, **PASS documental**. `.specify/extensions.yml` ausente, sem hooks aplicáveis. Skill `speckit-implement` aplicada somente à T002 autorizada.
+
+**Resultado e limites**: B0/T002 aprovada por evidência local completa, recuperada sem repetição. Não houve suíte completa inicial, `clean`, Maven concorrente, RED artificial, mudança de cache/ordem/seed/asserções, implementação ou preparação das próximas tarefas. Nenhuma CI foi consultada, disparada ou atribuída à revisão atual; os históricos locais/remotos anteriores permanecem separados. Não há prova nova das consultas GET/HEAD, titularidade da007, binding P2, dinheiro histórico nas novas respostas ou ausência de escrita dessas consultas. A Feature005 permanece **EXCEÇÃO DOCUMENTADA, sem PASS estrito no Gate IV**. Nenhum stage, commit, push, merge ou troca de branch.
+
+### Fechamento documental da T002
+
+Revisão por PowerShell/.NET: exit0; prefixo recebido do quickstart preservado byte a byte; tasks recebida difere somente pelo marcador T002; os263 demais rastreados e os964 arquivos originais de evidência mantêm seus SHA-256. Conferidos28 links Markdown locais; ponteiro local preservado. `git diff --check`: exit0, sem diagnóstico de whitespace; `git diff --cached --exit-code`: exit0, índice vazio. Detalhes em `target/feature007-validation/t002-resume-20261020/final-review.json`. Diff e artefatos novos de auditoria revisados. Estado: **T001 e T002 concluídas;32 tarefas abertas (T003–T034)**; somente quickstart.md e tasks.md modificados no Git, sem staged ou não rastreados visíveis (`target/` ignorado). Branch, HEAD e main mantidos; sem novo Maven ou CI na retomada.

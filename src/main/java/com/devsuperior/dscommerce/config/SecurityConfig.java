@@ -5,12 +5,17 @@ import com.devsuperior.dscommerce.security.AdminAuthenticationEntryPoint;
 import com.devsuperior.dscommerce.security.OrderAccessDeniedHandler;
 import com.devsuperior.dscommerce.security.OrderAuthenticationEntryPoint;
 import com.devsuperior.dscommerce.security.OrderJwtAuthenticationConverter;
+import com.devsuperior.dscommerce.security.OwnOrderQueryAccessDeniedHandler;
+import com.devsuperior.dscommerce.security.OwnOrderQueryAuthenticationEntryPoint;
+import com.devsuperior.dscommerce.security.OwnOrderQueryJwtAuthenticationConverter;
 import com.devsuperior.dscommerce.services.AuthenticatedAccountService;
+import com.devsuperior.dscommerce.services.OwnOrderQueryAccessService;
 import com.devsuperior.dscommerce.services.exceptions.OrderAccountResolutionException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -20,6 +25,7 @@ import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.security.web.util.matcher.OrRequestMatcher;
 
 import java.time.Clock;
 
@@ -35,6 +41,52 @@ public class SecurityConfig {
     public OrderJwtAuthenticationConverter orderJwtAuthenticationConverter(AuthenticatedAccountService accounts,
                                                                           Clock clock) {
         return new OrderJwtAuthenticationConverter(accounts, clock);
+    }
+
+    @Bean
+    public OwnOrderQueryJwtAuthenticationConverter ownOrderQueryJwtAuthenticationConverter(
+            OrderJwtAuthenticationConverter converter, OwnOrderQueryAccessService access) {
+        return new OwnOrderQueryJwtAuthenticationConverter(converter, access);
+    }
+
+    @Bean
+    @Order(0)
+    public SecurityFilterChain ownOrderQuerySecurityFilterChain(HttpSecurity http, JwtDecoder decoder,
+                                                               OwnOrderQueryJwtAuthenticationConverter converter,
+                                                               ObjectMapper mapper) throws Exception {
+        var entryPoint = new OwnOrderQueryAuthenticationEntryPoint(mapper);
+        var deniedHandler = new OwnOrderQueryAccessDeniedHandler(mapper);
+        http
+                .securityMatcher(new OrRequestMatcher(
+                        new AntPathRequestMatcher("/orders", "GET"),
+                        new AntPathRequestMatcher("/orders", "HEAD"),
+                        new AntPathRequestMatcher("/orders/*", "GET"),
+                        new AntPathRequestMatcher("/orders/*", "HEAD")))
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .headers(headers -> headers
+                        .frameOptions(frameOptions -> frameOptions.sameOrigin()))
+                .authorizeHttpRequests(authorize -> authorize
+                        .anyRequest().hasAnyRole("CLIENT", "ADMIN"))
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint(entryPoint).accessDeniedHandler(deniedHandler))
+                .oauth2ResourceServer(resourceServer -> resourceServer
+                        .authenticationEntryPoint(entryPoint).accessDeniedHandler(deniedHandler)
+                        .jwt(jwt -> jwt.decoder(decoder).jwtAuthenticationConverter(token -> {
+                            try {
+                                return converter.convert(token);
+                            } catch (OrderAccountResolutionException failure) {
+                                throw new OAuth2AuthenticationException(new OAuth2Error("server_error"),
+                                        "Order query could not be completed", failure);
+                            } catch (AccessDeniedException failure) {
+                                // Conversion runs before ExceptionTranslationFilter: preserve its 403 category
+                                // through the Bearer filter's authentication failure entry point.
+                                throw new OAuth2AuthenticationException(new OAuth2Error("insufficient_scope"),
+                                        "Order query not permitted", failure);
+                            }
+                        })));
+        return http.build();
     }
 
     @Bean

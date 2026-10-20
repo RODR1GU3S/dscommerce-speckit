@@ -14,7 +14,7 @@ import org.springframework.test.context.ContextConfiguration;
 @ActiveProfiles("test")
 @ContextConfiguration(initializers = AdminProductTestConfig.class)
 @Import(OwnOrderQueryTestObservationConfig.class)
-class OwnOrderQuerySecurityApiHttpIntegrationTest extends OwnOrderQueryHttpTestSupport {
+class OwnOrderQuerySecurityApiHttpIntegrationTest extends OwnOrderQueryUs3HttpTestSupport {
     @Override protected String expectedContextPath() { return "/api"; }
     @Override protected String expectedContextIdentity() { return "api"; }
 }

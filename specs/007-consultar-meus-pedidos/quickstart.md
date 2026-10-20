@@ -1489,3 +1489,377 @@ A primeira chamada de `final-review.ps1` terminou exit1 na conferência auxiliar
 Fechamento estático final em `final-review.ps1`/`final-review.json`: exit0; prefixo integral do quickstart recebido preservado byte a byte, tasks difere somente pelo marcador T022; demais292 rastreados, cinco Java,31 fontes,1.881 arquivos históricos e relatórios recebidos/novos íntegros. Diff/arquivos novos, referências/links locais e whitespace revisados. `git diff --check` e `git diff --cached --exit-code`: exit0; cinco Java não rastreados conferidos individualmente por `git -c core.autocrlf=false -c core.safecrlf=false diff --no-index --check -- /dev/null <arquivo>`, sem diagnóstico (exit1 pela diferença de arquivo novo). Branch/HEAD/main/seleção007 e índice vazio preservados.
 
 **Somente T022 marcada nesta execução: T001–T022 concluídas; T023–T034 abertas,12 pendências.** Checkpoint C3/F2-GREEN atendido no recorte US2; segurança transversal/falhas/US4/regressões/fechamento ainda obrigatórios para concluir a feature. Alterados nesta tarefa somente este acréscimo e o marcador T022; fontes/asserções recebidos intactos. Git final: os mesmos dez rastreados modificados e cinco Java não rastreados, nada staged. Sem impedimento, stage, commit, push, troca de branch/main, CI, baseline, suíte completa ou execução T023+. Feature005 permanece EXCEÇÃO DOCUMENTADA, sem PASS estrito no Gate IV.
+
+
+## T023 — Escrita da consolidação de titularidade e perfis atuais — 2026-10-20
+
+**Escopo executado: exclusivamente T023, escrita de testes e revisão estática, dependente de T022.** Estado inicial confirmado: raiz `C:/Users/ronal/dscommerce-speckit`, branch real `007-consultar-meus-pedidos`, HEAD `80dc6b1741d4624508610e8516471100745fc425`, Git limpo, nada staged e seleção local Feature007. Esse HEAD registra o checkpoint US2/T017–T022 (`feat: view own order details`); main permanece em `b092a6849177a7d72c40c67f896f0b70a56e0f10`.
+
+Skill `speckit-implement` limitada ao pedido; T023 integral, dependência T022, procedimentos F3 e artefatos pertinentes de constituição/spec/plano/pesquisa/modelo/contrato/quickstart revisados. `check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks`: exit0, diretório absoluto Feature007; checklist de requisitos16/16, PASS documental. Ignores Java existentes suficientes; `.specify/extensions.yml` ausente, sem hooks. Não executar tarefas paralelas nem interpretar `[P]` como autorização para T024.
+
+### Testes HTTP escritos, ainda sem execução
+
+Estendidos [OwnOrderQuerySecurityHttpIntegrationTest](../../src/test/java/com/devsuperior/dscommerce/controllers/OwnOrderQuerySecurityHttpIntegrationTest.java) e [OwnOrderQuerySecurityApiHttpIntegrationTest](../../src/test/java/com/devsuperior/dscommerce/controllers/OwnOrderQuerySecurityApiHttpIntegrationTest.java). A classe raiz contém o suporte abstrato novo `OwnOrderQueryUs3HttpTestSupport`, herdado pelas duas classes concretas e derivado do [suporte HTTP aprovado](../../src/test/java/com/devsuperior/dscommerce/controllers/OwnOrderQueryHttpTestSupport.java). O arquivo do suporte anterior permanece byte a byte intacto: métodos, providers, asserções e controles `authenticationGate*` são herdados uma única vez, sem copiar seus casos. As anotações/configurações e identidades raiz/API anteriores permanecem; a única mudança na classe API é a superclasse intermediária.
+
+| Cenário / método novo compartilhado | Invocações previstas por contexto | Expectativas escritas, não resultados obtidos |
+| --- | ---: | --- |
+| US3.1 / `ownershipUs31ListsCountsAndDetailsOnlyTheCurrentOwnersPurchases` |3| CLIENT, ADMIN isolado e ambos: páginas de tamanho2 até página vazia posterior, conteúdo/ordem/metadados/contagem exclusivamente próprios, todos os detalhes próprios200, repetição da lista e HEAD próprios200 sem corpo. Parâmetros accountId/buyerId/sort alheios não ampliam conteúdo/count. |
+| US3.4–US3.5 / `ownershipUs34And35ForeignAndAbsentIdsHaveTheSame404EvenForAdmin` |3| Mesmos três perfis: provar primeiro200 do ID existente sob seu titular real; sob outra conta, esse ID e Long.MAX_VALUE confirmado ausente exigem404 de negócio com os mesmos status/error/message/campos. path conserva a URI específica sem query; GET e HEAD, JSON fixo/corpo vazio, nenhum dado de compra/titular. Lista/detalhe próprio continuam200. |
+| US3.1–US3.3 / `ownershipUsesSubjectAndCurrentDatabaseRolesInsteadOfSignedNameOrRoleClaims` |4| JWT assinado pelo encoder real com subject da conta, name de outro titular e roles enganosos: três combinações autorizadas continuam vendo somente suas compras, sem acesso ao detalhe alheio; conta sem perfil com claims privilegiados continua403 em lista/detalhe. Login original e token reemitido são distinguidos. |
+| US3.6 / `ownershipUs36AuthenticatesAndAuthorizesBeforeAdditionalInvalidInputs` |6| Casos adicionais sem duplicar os targets legados: page negativa, size51, page repetida, ID0, negativo e overflow de Long. Controle autorizado exige400; sem credencial401 e conta sem perfil403, em GET/HEAD, challenge Bearer apenas no401 e nenhum corpo HEAD. Envelope e path sem query exatos. |
+| Perfis atuais / `ownershipCurrentRoleGrantAndRevocationApplyToTheSamePreviouslyIssuedJwt` |3| Conta sem perfil com compra própria faz login real uma vez. Mesmo token:403 inicial, concessão commitada CLIENT/ADMIN/ambos permite lista/detalhe e HEAD200, revogação volta a403 inclusive ID inválido e HEAD; nova concessão restaura200. Nenhuma reemissão/relogin entre fases. |
+
+US3.2/US3.3 e precedência original de US3.6 também continuam nos `authenticationGate*` herdados: credencial ausente, malformada, assinatura inválida, expirada, conta removida e conta sem perfil; GET/HEAD de lista/segmento de detalhe válidos e malformados, envelope seguro e challenge. O antigo controle autorizado que aceita200/404/405 continua identificado como prova da barreira, não como prova de sucesso de negócio/ownership. Os novos cenários exigem explicitamente200/404 de negócio conforme o caso, sem enfraquecer asserções anteriores nem fabricar RED.
+
+Preparadas **cinco funções HTTP novas,19 invocações por contexto,38 novas no total**; essas contagens são revisão dos fontes/providers, não descoberta Surefire. O suporte abstrato não é terceira suíte. Métodos herdados não são novos casos. Contadores `T005_*` continuam pertencendo ao suporte original; `T023_HTTP/T023_COUNTS` separam as novas consultas/logins por contexto, sem imprimir token, senha, hash ou corpo. A descoberta das duas classes e a contagem efetiva dependerão do checkpoint futuro.
+
+### Suporte, persistência e leitura: procedimento preparado
+
+Reutilizados sem alteração `AdminProductTestConfig`, `OwnOrderQueryTestFixture`, `OwnOrderQueryTestObservationConfig`, `OwnOrderQueryDatabaseProbe` e a configuração global. HTTP previsto por `HttpClient`, porta aleatória, login/JWT/decoder/filtros/JPA reais, OSIV false; nenhum mock de bean ou transação externa ao HTTP. As propriedades raiz/API e URLs H2 exclusivas/estáveis por ApplicationContext continuam as aprovadas, com create-drop e SQL/import desabilitados somente no contexto isolado. O contexto JPA novo tem identidade própria distinta. Não há mudança de cache/ordem/seed/schema global, produção, entidades, políticas POST/admin/público ou poderes de ADMIN.
+
+Cada caso novo usa sua própria fixture commitada e manifesto independente de pedidos/itens. O setup legado de contas/tokens permanece vivo no superclass; a limpeza local remove somente as linhas da fixture nova, itens/pedidos antes de produtos/contas. Uma asserção adicional após cada caso compara o snapshot completo com o setup legado recebido, incluindo quando o caso é herdado, e confere URL estável. Não duplicar o login MockMvc da fixture: seu suporte é construído, mas as novas requisições são escritas para transporte real.
+
+Cada GET/HEAD novo fica entre snapshots JDBC independentes de produtos/categorias/associações/contas completas/perfis/pedidos/itens, com `assertNoWrites` e observação Hibernate somente SELECT. Login/setup/concessão/revogação/limpeza ficam fora dessas janelas. Esperados vêm dos manifestos, não de getTotal/getSubtotal/mapper produtivo. Igualdade JSON cobre todos os campos, itens/ordem, valores, totais e metadados; os dois lados são lidos como JSON para não confundir pequenos IDs int64 com classes numéricas internas de JsonNode. Diagnósticos de divergência não imprimem o corpo possivelmente sensível. Erros exigem exatamente os quatro campos, mensagens/status e path sem query; nenhum dado alheio ou credencial é permitido como campo extra.
+
+### Projeção escalar: teste JPA separado, ainda sem execução
+
+Criado [OwnOrderQueryCurrentRolesIntegrationTest](../../src/test/java/com/devsuperior/dscommerce/services/OwnOrderQueryCurrentRolesIntegrationTest.java), SpringBoot completo `webEnvironment=MOCK` com H2 próprio, OSIV false e mesmo inicializador/probe aprovados, sem servidor, login, cliente HTTP ou mocks. `scalarRolesReflectCommittedGrantRevocationOrReplacementWhileTheManagedCollectionStaysStale` prepara seis transições: vazio→CLIENT, vazio→ADMIN, CLIENT→vazio, ADMIN→vazio, ambos→CLIENT e CLIENT→ADMIN. Carrega conta/roles gerenciadas; altera o banco em REQUIRES_NEW commitado; conserva a mesma instância e coleção inicial obsoleta na transação externa READ_COMMITTED. Consulta diretamente `findEffectiveAccountRolesById` e a guarda real: linhas escalares atuais, left join com role nulo para conta existente sem perfil, autoridades exatas/negação, nenhuma leitura de pedidos e nenhum DML na janela. Authentication fornecida tem autoridade ADMIN deliberadamente enganosa; não é login/JWT nem prova HTTP.
+
+`scalarLookupDoesNotAutoFlushAnUnsavedManagedRoleChangeOverCommittedPermissions` acrescenta duas variantes com coleção gerenciada suja e deliberadamente oposta à permissão commitada, para exigir que a consulta escalar/guarda não faça autoflush nem regrave perfis. As transações externas são sempre encerradas com rollback; comparações JDBC independentes durante/depois conservam a preparação commitada. Cleanup é da fixture própria. **Dois métodos, oito invocações previstas de JPA; ainda não compilados/executados.** Nenhuma requisição HTTP é simulada dentro dessas transações; não há promessa de serialização de revogação concorrente depois da leitura autorizadora.
+
+### Validação atual e próximos checkpoints
+
+**Nesta T023: zero execuções Maven/compilador, zero testes JUnit, zero inicializações Spring/H2 da aplicação, zero requisições HTTP e zero dispatches MockMvc.** Escrita/revisão estática não comprova compilação, descoberta Surefire, setup, status real, concessão/revogação ou projeção JPA. Nenhum console, exit code Maven ou relatório Surefire novo foi produzido; os dez relatórios recebidos continuam em seus lugares, sem movimentação ou reclassificação. Não foram executados baseline, checkpoints anteriores ou suíte completa.
+
+A aprovação histórica T022 continua sendo uma execução de198 aprovados/zero falhas/erros/ignorados/exit0, restrita àquela revisão/seleção. Titularidade alheio/inexistente já tem prova JPA/serviço T020–T022; **a consolidação HTTP da US3 permanece pendente**, agora com as asserções escritas. T018 continua RED por endpoint ausente, sem prova de titularidade. As evidências e asserções de T001–T022 permanecem históricas, sem repetição, enfraquecimento ou nova atribuição de aprovação.
+
+Futuro procedimento **não executado nesta T023**: concluir a escrita T024 e somente então executar F3 pela T025, na raiz/Java21, com Wrapper Maven3.9.16 e protocolo de preservação de relatórios de [tasks.md](tasks.md). Não criar uma seleção focal alternativa nesta etapa. Seleção prevista para esse checkpoint posterior:
+
+```powershell
+.\mvnw.cmd '-Dtest=OwnOrderQueryList*,OwnOrderQueryDetail*,OwnOrderQuerySecurity*,OwnOrderQueryFailure*,OwnOrderQueryCurrentRolesIntegrationTest,OwnOrderQueryAccessServiceTest,OwnOrderQueryJwtAuthenticationConverterTest,OwnOrderQueryPageArgumentResolverTest,OwnOrderQueryDtoContractTest,OwnOrderQueryRepositoryTest,OwnOrderQueryServiceTest' test
+```
+
+Conferir nos futuros XML/TXT/console os métodos herdados e novos em ambas as classes concretas, variantes parametrizadas e oito casos JPA, sem somar suporte abstrato ou requisições como testes JUnit. Falhas/omissões exigem diagnóstico e preservação segundo T025–T027; não fabricar RED de proteção existente. Falhas reais por etapa/erros500 continuam T024; regressões/fechamento seguem T028+.
+
+Limites de leitura permanecem: snapshots compostos em duas transações não são fotografia global atômica concorrente; inspector não observa JDBC direto; igualdade antes/depois não detecta escrita transitória restaurada. readOnly não é prova isolada. Não inferir orçamento SQL HTTP ou equivalência temporal de404, snapshot imutável entre requisições, conclusão US3/US4 ou conformidade integral da Feature007 a partir da escrita.
+
+### Preservação e fechamento estático
+
+Diretório ignorado próprio `target/feature007-validation/t023-security-tests-20261020/`: manifesto inicial dos299 rastreados,1.959 arquivos históricos e dez relatórios recebidos, cópias de quickstart/tasks e revisão estática. A primeira tentativa de preparar hashes por Get-FileHash não resolveu cinco caminhos históricos longos no Windows; o helper `preserve.ps1` usou caminhos estendidos para completar a leitura, sem editar/mover esses arquivos. Esse impedimento do helper não é falha/RED da aplicação. Nenhum Maven foi iniciado.
+
+Diff integral, novo Java, imports/assinaturas/providers, herança/ciclo de vida, links locais e whitespace revisados. Conferências estáticas em `review.ps1`/`final-review.json`: exit0, preservação dos demais295 rastreados, suporte anterior e todas as fontes de produção,1.959 arquivos históricos e dez relatórios, prefixo integral de272.078 bytes do quickstart e único marcador T023 em tasks;24 imports locais e90 links locais conferidos, branch/HEAD/main/seleção007 e índice vazio. `git diff --check` e `git diff --cached --exit-code`: exit0. Java novo conferido por `git -c core.autocrlf=false -c core.safecrlf=false diff --no-index --check -- /dev/null <arquivo>`, sem diagnóstico (exit1 pela diferença de arquivo novo). São verificações estáticas, não compilação/testes nem checkpoint F3.
+
+A tentativa de revisão preservada em `review-attempt1.ps1`/`review-attempt1.json` terminou exit1 porque PowerShell com ErrorActionPreference Stop tratou o aviso nativo de conversão futura LF/CRLF de `git diff --check` como NativeCommandError. Ajustada somente a captura de stderr do helper para conferir o exit code do Git; não foi desativada a normalização do repositório, editada configuração Git ou normalizado arquivo histórico. A revisão estática seguinte concluiu exit0; nenhuma falha/RED da aplicação nem execução Maven decorreu disso.
+
+**Somente T023 marcada nesta tarefa: T001–T023 concluídas; T024–T034 abertas,11 pendências.** Critério de escrita atendido; aprovação executável das novas provas permanece futura. Alterados somente os dois Java HTTP, o novo Java JPA, este acréscimo e o marcador T023: cinco arquivos, sendo quatro rastreados modificados e um Java não rastreado, nada staged. Sem stage, commit, push, troca de branch/main ou execução T024+. Feature005 permanece EXCEÇÃO DOCUMENTADA, sem PASS estrito no Gate IV.
+
+
+## T024 — Escrita de falhas reais por etapa e erros de contrato — 2026-10-20
+
+**Escopo executado: exclusivamente T024, escrita de testes e revisão estática, dependente de T022.** Estado inicial confirmado: raiz `C:/Users/ronal/dscommerce-speckit`, branch real `007-consultar-meus-pedidos`, HEAD `80dc6b1741d4624508610e8516471100745fc425`, seleção local Feature007 e nada staged. Recebidos exatamente quatro rastreados modificados: os dois testes HTTP de segurança da T023, quickstart/tasks; somente `src/test/java/com/devsuperior/dscommerce/services/OwnOrderQueryCurrentRolesIntegrationTest.java` não rastreado. T023 permanece escrita/revisão estática, sem aprovação executável das invocações previstas. Main preservada em `b092a6849177a7d72c40c67f896f0b70a56e0f10`.
+
+Aplicada a skill `speckit-implement` somente à T024; lidas tarefa integral, dependência T022, procedimento F3/T025 e fontes pertinentes de constituição/spec/plano/pesquisa/modelo/contrato/quickstart. `check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks`: exit0, diretório absoluto Feature007; checklist requirements16/16, PASS documental. `.specify/extensions.yml` ausente; ignores Java existentes suficientes. A T025 determina executar F3 depois da escrita T023–T024; **nenhum Maven, compilador ou checkpoint foi executado nesta T024**.
+
+Criados somente [OwnOrderQueryFailureInjectionTestConfig](../../src/test/java/com/devsuperior/dscommerce/config/OwnOrderQueryFailureInjectionTestConfig.java), [OwnOrderQueryFailureHttpIntegrationTest](../../src/test/java/com/devsuperior/dscommerce/controllers/OwnOrderQueryFailureHttpIntegrationTest.java) e [OwnOrderQueryFailureApiHttpIntegrationTest](../../src/test/java/com/devsuperior/dscommerce/controllers/OwnOrderQueryFailureApiHttpIntegrationTest.java). O arquivo raiz contém o suporte abstrato compartilhado `OwnOrderQueryFailureHttpTestSupport`; as duas classes concretas herdam seus casos, sem `@Nested` nem herança/repetição de testes dos checkpoints anteriores. Os três Java recebidos da T023 e todo o suporte anterior ficam byte a byte intactos; produção, asserções anteriores, entidades e contratos não foram alterados.
+
+### Injeção escopada preparada, ainda sem exercício
+
+Configuração `@TestConfiguration`/perfil test importada explicitamente apenas pelas duas classes novas. H2 exclusivo/estável por ApplicationContext via `AdminProductTestConfig`; propriedades de identidade `feature007.own-order-failure-test-context=root/api`, distintas das anteriores; portas aleatórias, OSIV false, create-drop, SQL/import desabilitados somente nesses contextos. Reutilizados fixture, probe e observador SQL aprovados. Sem mudança de perfil/seed/cache/ordem global, cadeias de segurança, decoder, políticas POST/admin/público ou poderes de ADMIN.
+
+O probe envolve os proxies Spring transacionais/repositórios existentes e o datasource/JDBC reais; não substitui serviço/repositório por mocks. Um filtro de teste anterior à segurança vincula por ThreadLocal somente a requisição cujo header de caso coincide com o Attempt armado. Sem o marcador, tudo é delegado sem injeção. Setup, login, snapshots independentes e cleanup ficam fora do armamento; um latch confirma término da requisição antes de ler contadores. A configuração não é descoberta globalmente por component scan.
+
+| Etapa escrita | Ponto exato preparado | Expectativa futura |
+| --- | --- | --- |
+| Lookup inicial | Advice do `findByIdWithRoles`, chamado pela resolução real do subject antes do adaptador de leitura. |500 fixo; não alcançar serviço de consulta nem leituras de pedido. Não converter falha de resolução em401. |
+| Escalar no filtro / guarda tardia | Advice de `findEffectiveAccountRolesById`, distinguindo entrada anterior ao serviço e chamada dentro de list/detail. |500 fixo e contador da etapa específica; guarda tardia dentro da transação real, antes do fetch. |
+| Página de IDs, count e fetch | Delegação real de PreparedStatement.executeQuery; contagem por fase de repositório e SQL. Após retorno do driver, fecha o ResultSet e lança SQLException controlada no ponto selecionado. |500 fixo, nunca vazio/parcial/404; SQL efetivamente delegado, inclusive count, e sem avanço a etapas posteriores ao ponto falho. |
+| Cálculo | Agregado carregado pelo fetch real recebe decorador transitório que falha ao alcançar getTotal no serviço. |500 fixo após validação das linhas, sem reprecificação, reparo ou alteração de entidade gerenciada. |
+| Mapeamento do detalhe | Decoradores transitórios de pedido/item/produto delegam ao agregado real e falham no getName usado pelo DTO de detalhe. |500 fixo após fetch/cálculo, sem substituir consulta nem alterar campos da entidade gerenciada. Essa etapa específica do nome não é atribuída à lista. |
+| Conclusão transacional | Synchronization real em beforeCommit, após o corpo devolver o DTO e antes do proxy transacional devolvê-lo ao controller. | Corpo retornou uma vez; proxy não retornou; rollback observado;500 sem resposta parcial. Não é simulação de falha física de commit já delegado/confirmado pelo driver. |
+
+A fixture usa cinco pedidos próprios e outros intercalados; page0/size2 é completa. Além da condição escrita que exige count no caminho paginado, as asserções exigem `countSqlExecuted=1` tanto no controle de sucesso quanto nas falhas posteriores ao count. A injeção COUNT só ocorre **depois de o executeQuery do driver retornar**; lançar uma exceção antes de chamar o repositório não é aceito como prova desse count. Caminhos anteriores ao count exigem contadores zero nas etapas ainda não alcançadas. Esses mecanismos estão escritos, ainda sem SQL observado em execução nesta tarefa.
+
+### Casos preparados para raiz e API
+
+| Método compartilhado | Invocações previstas por contexto | Expectativas escritas, não resultados obtidos |
+| --- | ---: | --- |
+| `failureUs37IsSafe500AtTheReachedRealStage` |30| GET e HEAD: lookup inicial/escalar do filtro/escalar tardio/cálculo/conclusão em lista e detalhe; página de IDs/count/fetch da lista; fetch/mapeamento do detalhe. Exige500 e envelope status/error/message/path fixo, Content-Type JSON, sem challenge401 ou dados internos; HEAD sem corpo. Um hit na etapa, transação no hit e ausência de retorno do proxy, sem falso sucesso parcial. |
+| `failureDisarmedStageControlUsesRealQueriesAndCompleteSuccessfulDto` |4| NONE significa injeção desativada, observação do mesmo transporte/proxies ativa: GET/HEAD próprios200 em lista/detalhe, count real da lista, DTO completo/campos/valores/metadados exatos, conclusão transacional aprovada pelo controle escrito e nenhum hit. Não é reexecução de checkpoint nesta tarefa. |
+| `failureLateCurrentAccountOrProfileLossRetains401Or403InsteadOf500` |8| GET/HEAD de lista/detalhe; após conversão do JWT no filtro, antes da guarda tardia real: remoção commitada da conta→401 com Bearer; remoção somente do CLIENT→403 sem challenge. Nenhum fetch de pedido nem body/proxy return; rollback da transação leitora não desfaz a preparação independente. |
+| `failureInvalidInputIs400BeforeAnyServiceOrCompletionInjection` |4| Paginação negativa ou ID0 após autorização:400 fixo, query fora do path, HEAD vazio; serviço/guarda/hit não alcançados mesmo com COMPLETION armado. Autenticação do filtro continua distinta da validação MVC. |
+| `failureNativeMethodAndNegotiationKeepTheirSemanticsBeforeTheService` |6| PUT em lista/detalhe→405, Allow comparado ao header nativo do Spring para os métodos declarados GET/POST da lista e GET do detalhe, sem impor ordem ou acrescentar métodos ao contrato nativo; GET/HEAD com Accept text/plain→406. Serviço/injeção não alcançados; preservar semântica/headers nativos sem forçar JSON de negócio no406; HEAD sem corpo. |
+
+**Cinco métodos compartilhados,52 invocações escritas por contexto,104 novas previstas no total.** São contagens estáticas dos providers, não descoberta Surefire, resultados JUnit ou contagem de HTTP realizado. Configuração/suporte abstrato não são suítes adicionais. Nenhuma quantidade prevista na T023 foi presumida como executada ou aprovada. `T024_CONTEXT/HTTP/REACHED/COUNTS` registram futuramente contexto, transporte, etapa e contadores, sem imprimir corpo, credencial, JWT ou hash. Mensagens privadas controladas das injeções não podem aparecer no envelope.
+
+Cada caso terá fixture própria e login por HttpClient/JWT/decoder/filtros reais, sem transação do chamador envolvendo HTTP e sem dispatch MockMvc. O manifesto fornece esperados de cabeçalho/itens/finanças/ordem; não usa mapper/cálculo produtivo como oráculo. No controle GET, ambos os lados são parseados como JSON para comparar IDs numéricos pequenos sem confundir IntNode/LongNode. Diagnósticos de corpo divergente usam mensagem fixa segura.
+
+### Preparação tardia deliberada e limites dos snapshots
+
+Nos casos ordinários, snapshots JDBC completos antes/depois devem ser iguais e o StatementInspector deve observar somente SELECT. Nos casos LATE_REMOVED/LATE_NO_ROLE, o callback de teste faz uma **mutação deliberada durante a requisição, antes da guarda tardia**, em conexão independente commitada. Isso é preparação injetada, não escrita de produção nem prova de que o GET permaneceu imutável em toda a janela externa. Revogação exclui só o perfil; remoção da conta exclui primeiro seus itens/pedidos próprios para respeitar FKs, depois perfil/conta da fixture, sem tocar terceiros. Asserções conferem catálogo, pedidos/itens e identidades/perfis alheios preservados; para revogação, todos os dados de compra permanecem iguais.
+
+O snapshot capturado imediatamente depois dessa preparação passa a ser a referência para o restante da requisição; exige-se igualdade dele com o estado final e somente SELECT Hibernate. O JDBC direto do callback não é visível ao inspector e não é apresentado como zero DML global. Cleanup continua restrito às linhas da fixture e ocorre depois da observação. Mantidos os limites conhecidos: snapshots compostos não são fotografia global atômica, inspector não observa JDBC direto e igualdade antes/depois não detecta escrita transitória restaurada. Não prometer serialização de revogação após a leitura autorizadora, equivalência temporal de404 ou fotografia imutável entre requisições.
+
+### Resultados atuais e execução futura
+
+**Nesta T024 foram executados zero Maven/compiladores, zero testes JUnit, zero inicializações Spring/H2 da aplicação, zero requisições HTTP e zero dispatches MockMvc.** Nenhum console, exit code Maven ou relatório Surefire novo existe desta escrita. Os dez relatórios recebidos não foram movidos/regravados/contados como novos. Não há RED/GREEN funcional atual, aprovação de compilação/preparação ou observação real dos pontos de injeção; comportamento existente aprovado, falha funcional e impedimento de compilação/setup só poderão ser classificados depois do checkpoint efetivo. Nenhum RED artificial foi fabricado.
+
+A dependência T022 permanece o GREEN histórico de198 aprovados/zero falhas/erros/ignorados/exit0 na revisão/seleção registrada. Titularidade alheio/inexistente já foi validada em JPA/serviço; sua consolidação HTTP segue escrita na T023 e pendente de F3. O antigo404 da T018 por endpoint ausente não prova proteção. Os controles novos apontam aos endpoints implementados, mas não foram executados. Nenhuma prova JPA/serviço ou contagem prevista foi reclassificada como HTTP real aprovado.
+
+**Procedimento posterior, não executado:** F3 é a T025; usar exatamente o seletor aprovado em [tasks.md](tasks.md), Wrapper sequencial na raiz/Java21, preservando relatórios recebidos em destino inédito dentro de target antes de iniciar. Não executar seleção focal alternativa, baseline, checkpoints anteriores ou suíte completa nesta T024.
+
+```powershell
+.\mvnw.cmd '-Dtest=OwnOrderQueryList*,OwnOrderQueryDetail*,OwnOrderQuerySecurity*,OwnOrderQueryFailure*,OwnOrderQueryCurrentRolesIntegrationTest,OwnOrderQueryAccessServiceTest,OwnOrderQueryJwtAuthenticationConverterTest,OwnOrderQueryPageArgumentResolverTest,OwnOrderQueryDtoContractTest,OwnOrderQueryRepositoryTest,OwnOrderQueryServiceTest' test
+```
+
+No F3, capturar console, exit code e novos XML/TXT; conferir ambas as classes concretas de falhas, métodos/providers e invocações efetivamente executadas, suites aninhadas dos demais fontes selecionados, sem duplicar agregadores/contêineres vazios. Conferir hits, count JDBC delegado, body/proxy returns e beforeCommit/rollback, além de status/headers/path/JSON; a intenção do provider não basta. Verificar separadamente os casos HTTP da T023 e seu JPA de coleção obsoleta, sem herdar aprovação de suas contagens previstas. Erro de compilação, filtro, fixture, schema, SQL não reconhecido ou etapa não alcançada é impedimento de preparação/observação ou teste falho a diagnosticar, nunca prova automática de desvio funcional nem RED válido. T026 só corrige desvios demonstrados no checkpoint autorizado.
+
+### Revisão estática e preservação
+
+Diretório ignorado `target/feature007-validation/t024-failure-tests-20261020/`: estado inicial, manifesto dos299 rastreados recebidos, hash do Java não rastreado recebido,1.971 arquivos históricos, dez relatórios e cópias de quickstart/tasks. Sem mover/deletar/normalizar evidências. O acréscimo mantém integralmente o prefixo documental recebido, incluindo T023, e tasks muda somente o marcador T024. Produção e demais297 rastreados, inclusive os dois HTTP recebidos, e o Java JPA recebido são conferidos contra os hashes iniciais.
+
+Revisados integralmente diff e três Java novos, imports locais/assinaturas/providers, alvos dos advice/JDBC, isolamento dos contextos, tratamento de ResultSet e ciclo de vida, snapshots e limites, referências/links/whitespace. A revisão é estática e não comprova compilação nem funcionamento da instrumentação. `review.ps1`/`final-review.json` registram o fechamento estático; comandos/exit codes finais são registrados ao concluir a revisão abaixo.
+
+Fechamento estático por `& 'target/feature007-validation/t024-failure-tests-20261020/review.ps1'`: exit0, Pass=true;297 rastreados e o Java recebido intactos,1.971 arquivos históricos/dez relatórios preservados, prefixo de286.310 bytes do quickstart intacto,23 imports locais e94 links locais conferidos, somente marcador T024 alterado. `git diff --check` e `git diff --cached --exit-code`: exit0. Os quatro Java não rastreados foram conferidos individualmente por `git -c core.autocrlf=false -c core.safecrlf=false diff --no-index --check -- /dev/null <arquivo>`: nenhum diagnóstico, exit1 pela diferença de arquivo novo. Branch/HEAD/main/seleção007 e índice vazio preservados; nenhuma validação executável da aplicação inferida dessas verificações.
+
+As três tentativas anteriores do helper, preservadas em `review-attempt1/2/3.ps1` e respectivos JSON, terminaram exit1 com PathTooLongException em GetFullPath/OpenRead. A inspeção da estrutura mostrou a causa: `@(ConvertFrom-Json)` reteve os1.971 registros como um único array; seus caminhos foram convertidos em uma string agregada, não em um caminho individual. Corrigida a enumeração do manifesto no helper. As tentativas intermediárias de lidar com caminhos longos não resolveram essa causa; a revisão final dispensa os switches .NET tentados, sem mudar configuração do repositório/Windows ou qualquer arquivo histórico. Essas falhas estáticas não são falha funcional, RED, compilação ou preparação da aplicação e não motivaram Maven.
+
+**Somente T024 marcada nesta tarefa: T001–T024 concluídas; T025–T034 abertas,10 pendências.** Critério de escrita atendido; US3/Feature007 e as provas executáveis novas permanecem pendentes. Nesta tarefa: três Java novos e acréscimo/checkbox em quickstart/tasks. Estado recebido preservado: Git final com os mesmos quatro rastreados modificados e quatro Java não rastreados (um recebido mais três novos), nada staged. Sem stage, commit, push, troca de branch/main ou execução T025+. Feature005 permanece EXCEÇÃO DOCUMENTADA, sem PASS estrito no Gate IV.
+
+
+## T025 — Execução F3 conjunta e diagnóstico do ciclo de limpeza — 2026-10-20
+
+**Escopo executado: exclusivamente T025, dependente da escrita T023–T024; nenhuma correção T026+ realizada.** Conferidos inicialmente: raiz `C:/Users/ronal/dscommerce-speckit`, branch real `007-consultar-meus-pedidos`, HEAD `80dc6b1741d4624508610e8516471100745fc425`, seleção local Feature007 e índice vazio. Quatro rastreados modificados recebidos: quickstart/tasks e os dois HTTP de segurança. Os quatro Java não rastreados foram resolvidos e capturados por caminho completo/SHA-256:
+
+- `src/test/java/com/devsuperior/dscommerce/services/OwnOrderQueryCurrentRolesIntegrationTest.java`
+- `src/test/java/com/devsuperior/dscommerce/config/OwnOrderQueryFailureInjectionTestConfig.java`
+- `src/test/java/com/devsuperior/dscommerce/controllers/OwnOrderQueryFailureHttpIntegrationTest.java`
+- `src/test/java/com/devsuperior/dscommerce/controllers/OwnOrderQueryFailureApiHttpIntegrationTest.java`
+
+Skill `speckit-implement` limitada ao pedido; T025 integral, dependências, protocolo/seletor F3 e fontes pertinentes de constituição/spec/plano/pesquisa/modelo/contrato/quickstart revisados. `check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks`: exit0, diretório absoluto Feature007; checklist requirements16/16, PASS documental. `.specify/extensions.yml` ausente antes/depois, sem hooks; ignores existentes suficientes. Java21.0.12.1 Azul Zulu confirmado por `java -version`; Wrapper seleciona Maven3.9.16. Não havia Java/Maven concorrente antes da execução.
+
+### Comando único, preservação e resultado
+
+Executado exatamente o F3 aprovado, na raiz, sequencialmente, sem clean, sem seleção alternativa e sem baseline/suíte completa:
+
+```powershell
+.\mvnw.cmd '-Dtest=OwnOrderQueryList*,OwnOrderQueryDetail*,OwnOrderQuerySecurity*,OwnOrderQueryFailure*,OwnOrderQueryCurrentRolesIntegrationTest,OwnOrderQueryAccessServiceTest,OwnOrderQueryJwtAuthenticationConverterTest,OwnOrderQueryPageArgumentResolverTest,OwnOrderQueryDtoContractTest,OwnOrderQueryRepositoryTest,OwnOrderQueryServiceTest' test
+```
+
+Runner `& 'target/feature007-validation/t025-f3-20261020/run.ps1'`: início `2026-10-20T19:59:27.7445651-03:00`, fim `2026-10-20T20:04:28.2229886-03:00`, duração externa300,478s; Maven04:51. **BUILD FAILURE, exit code1:1.107 testes,1.067 aprovados,30 falhas,10 erros,zero ignorados.** Não houve repetição Maven, correção de teste/suporte/produção ou tentativa de fabricar RED. Os115 fontes de teste compilaram com javac release21; produção já estava compilada. Surefire e os contextos Spring/H2/servidores iniciaram; o resultado não é impedimento de compilação ou inicialização. Avisos existentes de agente/depreciação/EOL não foram tomados como falha funcional.
+
+Antes do Maven, os dez relatórios recebidos foram movidos de `target/surefire-reports/` para o destino inédito `target/feature007-validation/t025-f3-20261020/received-surefire-reports/`. Origem/destino absolutos conferidos dentro de target, disjuntos e sem sobrescrita; tamanhos e SHA-256 idênticos depois de mover (`archive-preservation.json`: Count10, HashesMatch=true). Os resultados atuais vêm somente dos32 novos arquivos,16 XML/16 TXT, em `reports/` e na área Surefire recriada; nenhum resultado anterior foi somado. Console, comando, revisão/diff/ambiente/horários/exit code, manifestos e41 fontes capturados ficam no diretório próprio ignorado.
+
+### Seleção efetiva reconciliada
+
+| Classe concreta Surefire | Executados | Falhas | Erros | Ignorados |
+| --- | ---: | ---: | ---: | ---: |
+| config.OwnOrderQuerySecurityConfigurationTest |58|0|0|0|
+| controllers.OwnOrderQueryDetailApiHttpIntegrationTest |9|0|0|0|
+| controllers.OwnOrderQueryDetailHttpIntegrationTest |9|0|0|0|
+| controllers.OwnOrderQueryFailureApiHttpIntegrationTest |52|0|0|0|
+| controllers.OwnOrderQueryFailureHttpIntegrationTest |52|0|0|0|
+| controllers.OwnOrderQueryListApiHttpIntegrationTest |115|0|0|0|
+| controllers.OwnOrderQueryListHttpIntegrationTest |115|0|0|0|
+| controllers.OwnOrderQueryPageArgumentResolverTest |254|0|0|0|
+| controllers.OwnOrderQuerySecurityApiHttpIntegrationTest |79|13|3|0|
+| controllers.OwnOrderQuerySecurityHttpIntegrationTest |79|13|3|0|
+| dto.OwnOrderQueryDtoContractTest |119|0|0|0|
+| repositories.OwnOrderQueryRepositoryTest |33|0|0|0|
+| security.OwnOrderQueryJwtAuthenticationConverterTest |26|0|0|0|
+| services.OwnOrderQueryAccessServiceTest |16|0|0|0|
+| services.OwnOrderQueryCurrentRolesIntegrationTest |8|4|4|0|
+| services.OwnOrderQueryServiceTest |83|0|0|0|
+| **Total** |**1107**|**30**|**10**|**0**|
+
+Prefixo das classes: `com.devsuperior.dscommerce`. Foram16 classes,157 combinações classe/método e1.107 identidades testcase únicas; console, atributos de suite, XML/TXT e nós testcase concordam. `selection-audit.json` compara as classes concretas do seletor e os métodos do fonte, resolvendo a herança HTTP: zero diferenças de classes/métodos, zero lacunas nos índices parametrizados, zero duplicatas, zero suites vazias. Não há `@Nested` nesses fontes nem relatórios aninhados/agregadores a somar. Helpers abstratos/configuração de injeção não são testes adicionais. `OwnOrderQuerySecurityConfigurationTest` foi incluído pelo wildcard Security*, não é HTTP/JPA. As quantidades agora são resultados reais, não reaproveitamento das previsões T023/T024. Nenhum teste fora do seletor foi contado por ter sido compilado.
+
+### Classificação das40 ocorrências: desmontagem e resíduo da fixture
+
+`issue-classification.json` e os stacks originais classificam **todos os10 erros e30 failures JUnit como problemas de cleanup/estado residual dos testes; zero ocorrência sem classificação e nenhum desvio funcional de endpoint demonstrado**. Não são RED funcional nem justificativa para alterar produção. A execução falhou e a aprovação F3/US3 permanece bloqueada por esse impedimento do harness.
+
+| Origem | Erros | Failures | Local/causa observados |
+| --- | ---: | ---: | --- |
+| Perfis atuais HTTP, três variantes em raiz e API |6|0| Método `ownershipCurrentRoleGrantAndRevocationApplyToTheSamePreviouslyIssuedJwt` chega ao fechamento da fixture, que tenta excluir conta ainda referenciada por perfil concedido por JDBC. H2 SQLState23503, FK_USER_ACCOUNT_ROLE_ACCOUNT, DataIntegrityViolationException. |
+| Demais casos novos de segurança após as limpezas malsucedidas |0|26| Após executar as asserções dos corpos, `preserveInheritedAccountsAndCleanOnlyEachUs3Fixture` falha no `@AfterEach`: produtos/categorias/associações/contas/perfis residuais diferem do snapshot original. São13 por contexto: seis variantes de entrada, três de alheio/inexistente e quatro de claims. |
+| Coleção obsoleta/projeção escalar JPA |3|3| Três erros de fechamento com a mesma FK; três outras invocações falham em `verifyOwnedCleanupAndStableContext/assertEmpty` pelo resíduo acumulado. |
+| Coleção suja/ausência de autoflush JPA |1|1| Concessão/revogação executadas, mas uma variante termina no erro de fechamento e outra na asserção de banco vazio posterior. |
+
+A fonte [AdminProductTestFixture](../../src/test/java/com/devsuperior/dscommerce/fixtures/AdminProductTestFixture.java) registra os pares accountId/role que criou em `owned.roles`; cleanup apaga somente esses pares antes de apagar as contas, preservando sua disciplina de propriedade. A T023 alterou perfis diretamente, fora desse registro: a conta originalmente sem perfil termina o cenário HTTP com a concessão restaurada; variantes JPA também deixam papéis diferentes dos preparados. Esses novos pares continuam no banco e impedem o DELETE da conta. A transação de cleanup do catálogo é revertida pela FK, retendo as demais linhas; a limpeza de pedidos/itens já ocorreu em etapa própria. Isso explica os resíduos nas verificações seguintes. A falha está no ciclo de vida dos novos testes de perfis recebidos, não em escrita inesperada de um GET, indisponibilidade de H2 ou DROP entre contextos.
+
+Os dez erros também carregam falhas suprimidas de `@AfterEach`, preservadas nos XMLs; não foram contadas como testes ou failures adicionais. As30 failures primárias apontam exclusivamente aos hooks de verificação pós-teste. Não houve violação de status esperado, JSON de resposta ou cálculo identificada nos40 registros. Nenhuma asserção foi retirada para ocultar esses problemas; nenhum fonte foi corrigido. O tratamento dessa limpeza e eventual nova execução precisam de escopo posterior autorizado; não antecipar T026/T027 nem pressupor desvio produtivo pela cor vermelha do build.
+
+### HTTP real: aprovações completas e evidência parcial de titularidade/perfis
+
+Oito classes HTTP concretas executaram510 invocações JUnit:478 aprovadas e32 não aprovadas por cleanup/resíduo. Contadores, console e saída por testcase reconciliados: **974 requisições HTTP reais,200 logins e774 consultas/ensaios de método (588 GET,182 HEAD e4 PUT)**. As774 respostas têm status compatível com a expectativa específica do caso; não implica que todos os testes completos tenham passado. Separadamente, o resolver efetuou217 dispatches MockMvc; eles não são HTTP de rede nem testes JUnit adicionais. A fixture monta suporte MockMvc, mas os logins/consultas das oito classes usam HttpClient/porta/JWT/filtros reais.
+
+- **Lista/detalhe:**230 e18 testes completos aprovados, respectivamente, em raiz/API; conteúdo/totais/ordem/representações e histórico financeiro preservados no recorte F3. São resultados novos desta revisão/seleção, não soma dos históricos F1/F2.
+- **Proteção herdada:**120 `authenticationGate*` completos aprovados, mantendo autenticação/permissão/precedência e HEAD. Seus controles autorizados de roteamento ainda aceitam200/404/405 e não substituem prova estrita de ownership.
+- **Titularidade estrita própria:**seis novos testes completos aprovados, três por contexto, CLIENT/ADMIN/ambos; páginas/count/detalhes próprios e HEAD, inclusive parâmetros de titular alheio ignorados.
+- **Demais32 casos novos HTTP da T023:**os passos de resposta/JSON/status esperados foram alcançados antes do erro de fechamento ou do hook residual, mas esses casos JUnit não são GREEN. Incluem mesmo ID200 sob dono real e404 sob outra conta/inexistente, inclusive ADMIN; claims enganosos, entrada inválida e concessão/revogação/reconcessão sob o mesmo JWT. São observações parciais num ciclo de isolamento falho; não aprovar a consolidação integral US3 nem reclassificá-los como testes aprovados. O404 antigo da T018 por endpoint ausente continua sem valor probatório de titularidade.
+
+Foram11 contextos de aplicação com H2 distintos: oito HTTP, repositório, serviço e JPA de perfis. URLs reais/portas estão em `transport-console.json`; sem compartilhamento entre configurações. OSIV false e inicializador seed-free permanecem. Há ainda o H2 independente do teste de proxy transacional do serviço de acesso, sem JPA; slices JSON, testes de configuração/JWT e mocks locais não são consultas JPA ou HTTP reais. O resolver tem MockMvc próprio e não usa servidor/banco. Não transformar essas métricas em cobertura integral de regressões001–006 ou suíte completa.
+
+### JPA/serviço e falhas injetadas: alcances distintos
+
+**Repositório:**33 casos reais aprovados, incluindo lista/detalhe, titular obrigatório, count/fetch, ordenação, ausência/alheio e não mutação nas janelas. Contadores51 janelas,13 páginas de IDs/sete lotes e31 detalhes se referem às janelas desse teste, não orçamento global HTTP. **Serviço:**83 aprovados;16 invocações com JPA/guarda reais (oito listReal/oito detailReal) e67 com colaboradores simulados locais. Foram12 janelas reais antigas de lista mais15 sucessos/oito rejeições de detalhe. Não atribuir aos mocks a prova de carregamento ou autorização de HTTP real.
+
+**JPA novo de perfis:**oito invocações executadas, nenhuma integralmente aprovada (quatro failures/quatro errors). As marcações `T023_JPA` e stacks mostram que os passos de projeção escalar com coleção gerenciada obsoleta/suja, commit independente e rollback externo foram alcançados, antes de a limpeza/banco vazio falhar. Isso é evidência parcial de corpo, sem autenticação HTTP e sem GREEN da classe. Não atribuir a ela aprovação das jornadas HTTP de JWT ou vice-versa. Unitários de acesso/conversor/configuração aprovados são provas complementares com seus próprios limites.
+
+**Falhas T024:**104 testes HTTP completos aprovados,52 por contexto. Asserções de etapa e transporte passaram: lookup inicial, escalar do filtro/tardio, IDs/count/fetch, cálculo e nome no mapeamento do detalhe;60 respostas500 (30 GET e30 HEAD), envelope fixo com path sem query, HEAD vazio e sem challenge401. Count JDBC efetivamente delegado quando exigido; falhas posteriores não viraram vazio/404/sucesso parcial. COMPLETION alcançou beforeCommit após retorno do corpo/DTO, com zero retorno do proxy e rollback. Essa simulação não representa falha física de commit já delegado/confirmado no driver nem prova de toda falha possível de serialização/transporte.
+
+Os controles NONE passaram com200 real e DTO completo, nas mesmas configurações instrumentadas. Os16 casos de perda tardia de conta/perfil passaram com401/Bearer ou403, sem fetch; oito controles de entrada passaram com400 antes do serviço. Os12 ensaios nativos preservaram405/Allow ou406, incluindo HEAD sem corpo. Log de SQL controladamente injetado pode conter nível ERROR; isso não é failure JUnit dos104 aprovados. Janelas ordinárias conservaram snapshots completos/SELECT-only. Nos16 casos de mutação tardia, callback JDBC independente faz preparação deliberada antes da guarda; a referência do restante da requisição é o snapshot após essa mutação, não o estado anterior ao GET inteiro. Não apresentar esses casos como ausência global de DML.
+
+Persistem os limites já registrados: snapshots compostos não são fotografia global atômica; inspector Hibernate não observa JDBC direto; igualdade antes/depois não detecta escrita transitória restaurada. Não há promessa de serialização de revogação depois da leitura autorizadora, equivalência temporal de404, snapshot imutável entre requisições ou orçamento SQL HTTP derivado dos componentes.
+
+### Fechamento da T025 e preservação
+
+`audit.ps1`: exit0 como auditoria dos relatórios, **não** aprovação da aplicação. `audit.json`: MavenRuns1/MavenExitCode1, SelectionReconciled=true, ApplicationApproved=false, Feature007Complete=false. `diagnose.ps1`: exit0; zero divergência de status nas774 observações, classificação dos40 problemas e F3GreenApproved=false/US3HttpCheckpointApproved=false. Registros por caso/método/suite, seleção e índices, HTTP/etapas/contextos, diagnóstico e fontes capturadas ficam separados no diretório ignorado. A preservação final compara297 rastreados fora dos dois documentos, quatro Java recebidos,41 fontes capturados,1.988 arquivos históricos, dez relatórios arquivados e os32 novos com seus hashes. Prefixo integral do quickstart recebido preservado; único marcador modificado em tasks é T025.
+
+**Somente T025 marcada nesta execução, como checkpoint diagnóstico executado e reconciliado.** Sua descrição exige executar F3 e registrar os resultados antes de corrigir; não exige GREEN para registrar a execução, diferentemente da consolidação posterior. A checkbox não aprova F3, não conclui US3/Feature007 e não fecha o impedimento do harness. T001–T025 marcadas; T026–T034 abertas,nove pendências. Alterados nesta tarefa somente este acréscimo e o marcador T025. Os quatro rastreados modificados e quatro Java não rastreados recebidos continuam nessa condição, nada staged; HEAD/branch/main/seleção007 preservados. Sem correção, novo Maven, baseline, suíte completa, CI, stage, commit, push ou execução T026+. Feature005 permanece EXCEÇÃO DOCUMENTADA, sem PASS estrito no Gate IV.
+
+Fechamento estático: `& 'target/feature007-validation/t025-f3-20261020/final-review.ps1'`, exit0. `final-review.json` confirma todos os hashes acima, prefixo recebido do quickstart intacto e tasks alterado somente em T025; 95 links locais existentes conferidos. `git diff --check` e `git diff --cached --exit-code`: exit0. Cada um dos quatro Java não rastreados foi revisado e conferido com `git -c core.autocrlf=false -c core.safecrlf=false diff --no-index --check -- /dev/null <caminho>`, sem diagnóstico de whitespace (exit1 pela diferença de arquivo novo). Avisos Git de futura conversão LF/CRLF não são erros de whitespace. Diff integral e referências revistos; esta auditoria documental não executa testes da aplicação. Uma leitura auxiliar anterior do manifesto de hashes agregou indevidamente caminhos ao envolver o array JSON e encontrou PathTooLong; corrigida somente a leitura do helper, sem alteração de entradas nem repetição Maven. Conferência posterior completa: exit0. Hooks pós-execução novamente ausentes. Estado final: quatro rastreados modificados, quatro Java não rastreados nos caminhos iniciais, nada staged; branch/HEAD/main/seleção007 preservados.
+
+
+## T026 — Correção focal da limpeza de perfis concedidos pelos testes — 2026-10-20
+
+**Escopo: exclusivamente T026, dependente do diagnóstico T025.** Confirmados inicialmente raiz `C:/Users/ronal/dscommerce-speckit`, branch real `007-consultar-meus-pedidos`, HEAD `80dc6b1741d4624508610e8516471100745fc425`, seleção local Feature007 e índice vazio. Recebidos quatro rastreados modificados (quickstart/tasks e os dois HTTP de segurança) e quatro Java não rastreados, exatamente os caminhos do fechamento T025. `session-start.json` registra a lista completa e main em `b092a6849177a7d72c40c67f896f0b70a56e0f10`. Aplicada a skill `speckit-implement` somente neste escopo; lidas T026 integral, dependências e condições T025/T027, artefatos pertinentes e evidências F3, incluindo console, XML/TXT Surefire, diagnóstico e `final-review.json` recebidos. `check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks`: exit0, Feature007 absoluta; checklist requirements16/16, PASS documental. Ignores Java existentes suficientes; `.specify/extensions.yml` ausente, sem hooks.
+
+### Causa inicial comprovada e consequências
+
+A reanálise dos 16 XMLs F3 confirma 1.107 casos, 30 failures e dez errors. Os dez errors são `DataIntegrityViolationException`, SQLState23503/FK_USER_ACCOUNT_ROLE_ACCOUNT, no DELETE da conta em `AdminProductTestFixture.cleanUp`; os 30 failures primários estão em `preserveInheritedAccountsAndCleanOnlyEachUs3Fixture` ou `verifyOwnedCleanupAndStableContext/assertEmpty`, após o corpo de cada teste. TXT e console confirmam 13 failures/três errors por classe HTTP e quatro failures/quatro errors no JPA. Não é impedimento de compilação/inicialização, falha de infraestrutura externa ou RED funcional do endpoint.
+
+Os testes T023 concedem/substituem perfis por JDBC em transação independente commitada. A [fixture de catálogo aprovada](../../src/test/java/com/devsuperior/dscommerce/fixtures/AdminProductTestFixture.java) registra somente os pares conta/perfil originalmente criados em `owned.roles`; remove esses pares antes da conta. O cenário HTTP termina com a reconcessão CLIENT/ADMIN/ambos à conta originalmente sem perfil. No JPA, vazio→CLIENT, vazio→ADMIN e CLIENT→ADMIN também deixam pares diferentes dos originais. Esses pares novos não são removidos pela limpeza rastreada, que encontra a FK ao excluir a conta. A transação de limpeza do catálogo reverte, deixando contas/perfis/produtos/categorias/associações; pedidos/itens já foram removidos pela etapa própria da fixture007.
+
+**Origem:** seis erros nos três casos HTTP de concessão por contexto, três nas transições JPA citadas e um na variante suja CLIENT→ADMIN. **Consequências:** 26 failures HTTP nos casos posteriores de precedência, alheio/inexistente e claims; quatro failures JPA nas demais invocações, pela permanência dos resíduos anteriores. Failures suprimidos nos dez errors são preservados e não somados novamente. A ordem recebida distingue as seis aprovações HTTP próprias anteriores à concessão dos cenários contaminados posteriores; variantes JPA que não deixam perfil extra também falharam por resíduo precedente. Não são 40 defeitos independentes da produção.
+
+`diagnose-received.ps1`/`received-diagnosis.json` recontam os casos e conferem os stacks dos 40 problemas; exit0. Uma tentativa auxiliar anterior por comando PowerShell inline terminou em ParserError/chave ausente, exit1, antes de executar o corpo; corrigida somente a sintaxe do helper. Não foi teste da aplicação, nova execução RED ou alteração das evidências recebidas.
+
+### Menor correção aplicada, restrita aos testes
+
+Alterados nesta T026 somente dois fontes, além deste acréscimo documental e do marcador T026:
+
+- [OwnOrderQuerySecurityHttpIntegrationTest.java](../../src/test/java/com/devsuperior/dscommerce/controllers/OwnOrderQuerySecurityHttpIntegrationTest.java): `try/finally` no cenário de concessão/revogação/reconcessão; restaura somente a conta modificada ao conjunto original vazio antes de fechar sua fixture. A classe concreta API herda a mesma correção, sem editar seu arquivo.
+- [OwnOrderQueryCurrentRolesIntegrationTest.java](../../src/test/java/com/devsuperior/dscommerce/services/OwnOrderQueryCurrentRolesIntegrationTest.java): `finally` nos dois métodos restaura o conjunto inicial da transição ou CLIENT no cenário de coleção suja. A restauração acontece após o término/rollback da transação externa e após conferir os perfis correntes commitados.
+
+Reutilizadas as funções JDBC existentes, com DELETE/INSERT restritos ao ID da conta própria e confirmação por snapshot independente. `finally` também trata saída excepcional após a alteração. Restauração/cleanup ficam fora de todas as janelas de GET/HEAD e da consulta escalar observada. Os snapshots, SQL somente SELECT, coleções obsoletas/sujas, ausência de autoflush, rollback externo, estabilidade do H2 e verificações `@AfterEach` continuam intactos. Nenhum baseline é recalculado para aceitar resíduos. Não há limpeza global, mudança de ordem/cache/seed, recriação de contexto entre invocações ou ampliação da fixture compartilhada para apagar linhas não registradas.
+
+**Correção produtiva da T026: não aplicação justificada.** A T025 não demonstrou desvio produtivo, e a correção focal autorizada pelo pedido resolve o ciclo de vida dos testes. Nenhum fonte `src/main`, entidade, repositório, serviço, filtro, handler, contrato ou política de ADMIN/outra operação foi editado. Não alterar produção para contornar a FK dos testes. Todas as asserções de titularidade/perfis/ausência de mutação recebidas foram mantidas; apenas os três blocos de restauração e a indentação necessária foram acrescentados.
+
+### Validação focal executada uma vez
+
+Java21.0.12.1 Azul Zulu confirmado por `java -version`; Wrapper Maven3.9.16 pelas propriedades existentes. Nenhum Java/Maven concorrente antes de iniciar. Executado sequencialmente na raiz, sem clean nem parâmetros de ordenação:
+
+```powershell
+.\mvnw.cmd '-Dtest=OwnOrderQuerySecurityHttpIntegrationTest,OwnOrderQuerySecurityApiHttpIntegrationTest,OwnOrderQueryCurrentRolesIntegrationTest' test
+```
+
+Seleção limitada às três classes afetadas por origem/consequências da T025, por inteiro; não é F3/T027, baseline ou suíte completa. Não repetir casos isolados com banco novo no lugar da sequência contaminante. Antes do Maven, os 32 arquivos recebidos em `target/surefire-reports/` foram movidos para o destino inédito `target/feature007-validation/t026-cleanup-20261020/received-surefire-reports/`; origem/destino absolutos conferidos dentro de target, disjuntos, sem sobrescrever, hashes e tamanhos preservados. A cópia histórica da T025 continua intacta em seu diretório próprio.
+
+Runner `& 'target/feature007-validation/t026-cleanup-20261020/run.ps1'`: início `2026-10-20T20:17:57.8310946-03:00`, fim `2026-10-20T20:20:06.1295198-03:00`, duração externa128,298s; Maven02:03. **BUILD SUCCESS, exit0: 166 aprovados, zero failures/errors/skipped.** Compilados os115 fontes de teste com release21; compilar fontes não selecionados não conta como executá-los. Produção já compilada. Console e seis relatórios novos (três XML/três TXT), manifestos,41 fontes da revisão executada, horários/comando/diff/exit code preservados no diretório próprio ignorado. Sem outro Maven nesta T026.
+
+| Classe concreta, prefixo com.devsuperior.dscommerce | Casos efetivos | Aprovados | Failures/errors/skipped | Não aprovados T025 agora aprovados |
+| --- | ---: | ---: | --- | ---: |
+| controllers.OwnOrderQuerySecurityApiHttpIntegrationTest |79|79|0/0/0|16|
+| controllers.OwnOrderQuerySecurityHttpIntegrationTest |79|79|0/0/0|16|
+| services.OwnOrderQueryCurrentRolesIntegrationTest |8|8|0/0/0|8|
+| **Total** |**166**|**166**|**0/0/0**|**40**|
+
+`audit.ps1`: exit0; seleção concreta/herança conferidas no fonte, 18 combinações classe/método,166 identidades testcase únicas, zero duplicatas, diferenças de métodos/classes, lacunas parametrizadas ou suites vazias. Nenhum `@Nested` ou agregador a somar. Console, atributos/nós XML e TXT concordam. `order-comparison.json` confirma exatamente os mesmos casos e a mesma sequência de invocações dentro de cada classe da T025; todos os40 casos antes não aprovados passaram.
+
+`transport-and-order.ps1`: exit0; também confirmou mesma ordem relativa API→raiz→JPA do console F3, sem impor ordenação nova. Nos HTTP, concessão/revogação/reconcessão continua antes de precedência/alheio/claims; no JPA, as seis transições continuam antes das duas coleções sujas. Portanto o GREEN inclui a condição sequencial que antes propagava resíduos, com os mesmos hooks pós-teste, não apenas aprovação isolada dos erros iniciais. Três contextos H2 próprios/distintos e estáveis, OSIV false, sem seeds; URLs e portas efetivas registradas em `transport-console.json`/`transport-and-order.json`.
+
+### Alcance da aprovação e limites preservados
+
+158 invocações HTTP completas aprovadas:120 barreiras herdadas e38 cenários novos de titularidade/perfis,19 por contexto. São436 requisições reais:66 logins e370 GET/HEAD; contadores e observações por caso XML/console concordam, zero status divergente e zero dispatch MockMvc executado. Suporte MockMvc construído pela fixture não equivale a dispatch. As janelas de leitura conservam snapshots completos e SELECT-only; restauração JDBC explícita depois das asserções é cleanup de teste, não mutação pela consulta.
+
+Os38 casos novos incluem próprios/count/detalhe com CLIENT, ADMIN e ambos; ID implementado primeiro200 sob seu dono real e404 sob alheio/inexistente, inclusive ADMIN; claims enganosos e precedência; concessão/revogação/reconcessão com o mesmo JWT em raiz/API. Essas são provas HTTP reais integralmente aprovadas **neste recorte focal**. Os controles herdados que aceitam200/404/405 continuam apenas prova da barreira; o antigo404 da T018 por endpoint ausente não se transforma em prova de titularidade.
+
+As oito invocações JPA também passaram integralmente (seis de coleção obsoleta/duas de coleção suja), inclusive guarda/projeção escalar atual, commit independente, não autoflush e rollback externo, sem transação envolvendo HTTP. Não atribuir essa prova à autenticação JWT/HTTP nem confundir o recorte focal com todos os componentes F3. Falhas injetadas T024 não foram selecionadas ou reexecutadas: seus104 resultados na T025 permanecem históricos, com os limites de simulação já descritos, sem aprovação nova ou alcance maior sobre commit físico/serialização.
+
+**O F3 da T025 continua reprovado: 1.107 casos,30 failures/dez errors,exit1.** Não foi reescrito, somado aos166 ou convertido em GREEN. A aprovação focal demonstra a correção do impedimento de limpeza na sequência afetada, sem consolidar US3/F3, regressões001–006 ou Feature007. T027 deverá consolidar o checkpoint conjunto na revisão corrigida conforme seu próprio escopo autorizado; não foi executada antecipadamente. Permanecem os limites de snapshots compostos, SQL JDBC fora do inspector, escrita transitória restaurada, revogação posterior à leitura e ausência de promessa de equivalência temporal404.
+
+### Preservação e fechamento
+
+Manifestos iniciais:299 rastreados, quatro Java não rastreados e2.101 arquivos históricos sob `target/feature007-validation/`, incluindo todo o F3 recebido. Cópias anteriores dos dois fontes alterados e dos dois documentos foram preservadas antes da edição. O fechamento compara296 rastreados fora dos três alterados nesta tarefa, os três Java não rastreados não editados, os41 fontes capturados da execução, os2.101 históricos,32 relatórios arquivados e seis novos nas duas localizações. A cópia recebida do quickstart é mantida como prefixo byte a byte; tasks muda somente T026. Diff integral, diferenças em relação aos fontes recebidos, arquivos novos, referências/links e whitespace revisados; resultado estático final em `final-review.json`.
+
+**Somente T026 marcada nesta tarefa.** T001–T026 marcadas; T027–T034 abertas,oito pendências. Git mantém quatro rastreados modificados e quatro Java não rastreados nos mesmos caminhos recebidos, nada staged. Branch/HEAD/main/seleção007 preservados; nenhum stage, commit, push, CI ou execução T027+. Feature005 permanece EXCEÇÃO DOCUMENTADA, sem PASS estrito no Gate IV.
+
+Fechamento estático final: `& 'target/feature007-validation/t026-cleanup-20261020/final-review.ps1'`, exit0. `final-review.json` confirma os hashes acima,98 links locais válidos, prefixo integral recebido do quickstart e único marcador T026 em tasks. As52 linhas de asserções/chamadas de verificação HTTP e53 JPA têm conteúdo e ordem idênticos após remover apenas indentação; o diff confirma que argumentos, continuações, providers e verificações pós-teste foram preservados. `git diff --check` e `git diff --cached --exit-code`: exit0. Os quatro Java não rastreados conferidos individualmente por `git -c core.autocrlf=false -c core.safecrlf=false diff --no-index --check -- /dev/null <caminho>` não emitiram diagnóstico (exit1 pela diferença de arquivo novo). Avisos nativos LF/CRLF não são falha de whitespace. São auditorias estáticas, sem novo Maven. Hooks pós-execução novamente ausentes. Estado final conferido: os mesmos quatro rastreados modificados e quatro Java não rastreados, nada staged; HEAD/branch/main/seleção007 preservados. Nenhum impedimento remanescente observado na seleção focal; aprovação conjunta F3/T027 continua pendente.
+
+
+## T027 — Consolidação conjunta F3-GREEN na revisão corrigida — 2026-10-20
+
+**Exclusivamente T027, dependente de T026; T028+ não executadas.** Conferidos inicialmente raiz `C:/Users/ronal/dscommerce-speckit`, branch real `007-consultar-meus-pedidos`, HEAD `80dc6b1741d4624508610e8516471100745fc425`, seleção local Feature007 e índice vazio. Quatro rastreados modificados recebidos: `specs/007-consultar-meus-pedidos/quickstart.md`, `specs/007-consultar-meus-pedidos/tasks.md`, `src/test/java/com/devsuperior/dscommerce/controllers/OwnOrderQuerySecurityHttpIntegrationTest.java` e `src/test/java/com/devsuperior/dscommerce/controllers/OwnOrderQuerySecurityApiHttpIntegrationTest.java`. Quatro Java não rastreados conferidos:
+
+- `src/test/java/com/devsuperior/dscommerce/services/OwnOrderQueryCurrentRolesIntegrationTest.java`
+- `src/test/java/com/devsuperior/dscommerce/config/OwnOrderQueryFailureInjectionTestConfig.java`
+- `src/test/java/com/devsuperior/dscommerce/controllers/OwnOrderQueryFailureHttpIntegrationTest.java`
+- `src/test/java/com/devsuperior/dscommerce/controllers/OwnOrderQueryFailureApiHttpIntegrationTest.java`
+
+Skill `speckit-implement` limitada à tarefa; T027 integral, dependências T025/T026 e protocolo/seletor F3 revisados com os artefatos pertinentes já lidos e evidências recebidas. `check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks`: exit0, Feature007 absoluta; checklist requirements16/16, PASS documental. `.specify/extensions.yml` ausente antes/depois, sem hooks; ignores Java existentes suficientes. Java21.0.12.1 Azul Zulu confirmado por `java -version`; Wrapper seleciona Maven3.9.16. Main preservada em `b092a6849177a7d72c40c67f896f0b70a56e0f10`.
+
+### Necessidade da execução e preservação
+
+O F3 da T025 foi reprovado (1.107 casos,30 failures/dez errors,exit1); a T026 corrigiu exclusivamente o cleanup de perfis nos testes e aprovou166 casos focais. Esses166 não equivalem à seleção conjunta; a condição de reutilizar um F3 já aprovado não se aplica. Executado agora F3 completo na mesma revisão corrigida de fontes da T026:41 fontes capturados/SHA-256 idênticos aos do focal, incluindo os três blocos `finally`, asserções e suporte. Nenhum fonte de teste ou produção foi alterado nesta T027.
+
+Diretório próprio ignorado: `target/feature007-validation/t027-f3-green-20261020/`. Antes do Maven, os seis relatórios recebidos da T026 foram movidos de `target/surefire-reports/` para o destino inédito `received-surefire-reports/` nesse diretório. Origem/destino absolutos resolvidos dentro de target, disjuntos, sem sobrescrita; hashes/tamanhos conferidos após movimentação (`archive-preservation.json`: Count6/HashesMatch=true). As cópias próprias e todos os arquivos históricos do F3 reprovado e da validação focal permanecem intactos. Os32 relatórios novos (16 XML/16 TXT) estão em `reports/` e na área Surefire recriada; não somar arquivos arquivados ou resultados anteriores.
+
+### Comando e resultado atuais
+
+Executado uma vez, sequencialmente na raiz, sem clean, ordenação/cache/seed novos, baseline ou suíte completa; ausência de Java/Maven concorrente conferida antes de iniciar:
+
+```powershell
+.\mvnw.cmd '-Dtest=OwnOrderQueryList*,OwnOrderQueryDetail*,OwnOrderQuerySecurity*,OwnOrderQueryFailure*,OwnOrderQueryCurrentRolesIntegrationTest,OwnOrderQueryAccessServiceTest,OwnOrderQueryJwtAuthenticationConverterTest,OwnOrderQueryPageArgumentResolverTest,OwnOrderQueryDtoContractTest,OwnOrderQueryRepositoryTest,OwnOrderQueryServiceTest' test
+```
+
+Runner `& 'target/feature007-validation/t027-f3-green-20261020/run.ps1'`: início `2026-10-20T20:25:58.4968884-03:00`, fim `2026-10-20T20:30:05.5584721-03:00`, duração externa247.062s; tempo Maven registrado no console. **BUILD SUCCESS, exit0:1.107 aprovados,zero falhas/erros/ignorados.** Comando idêntico ao F3 aprovado no procedimento; resultado desta execução, sem soma dos166 da T026. Console, ambiente, HEAD/diff, horários/exit code, manifestos e fontes da revisão executada preservados. Compilação/preparação não foram tomadas como aprovação; o resultado vem dos casos efetivamente executados.
+
+| Classe concreta Surefire | Executados/aprovados | Falhas | Erros | Ignorados |
+| --- | ---: | ---: | ---: | ---: |
+| config.OwnOrderQuerySecurityConfigurationTest |58|0|0|0|
+| controllers.OwnOrderQueryDetailApiHttpIntegrationTest |9|0|0|0|
+| controllers.OwnOrderQueryDetailHttpIntegrationTest |9|0|0|0|
+| controllers.OwnOrderQueryFailureApiHttpIntegrationTest |52|0|0|0|
+| controllers.OwnOrderQueryFailureHttpIntegrationTest |52|0|0|0|
+| controllers.OwnOrderQueryListApiHttpIntegrationTest |115|0|0|0|
+| controllers.OwnOrderQueryListHttpIntegrationTest |115|0|0|0|
+| controllers.OwnOrderQueryPageArgumentResolverTest |254|0|0|0|
+| controllers.OwnOrderQuerySecurityApiHttpIntegrationTest |79|0|0|0|
+| controllers.OwnOrderQuerySecurityHttpIntegrationTest |79|0|0|0|
+| dto.OwnOrderQueryDtoContractTest |119|0|0|0|
+| repositories.OwnOrderQueryRepositoryTest |33|0|0|0|
+| security.OwnOrderQueryJwtAuthenticationConverterTest |26|0|0|0|
+| services.OwnOrderQueryAccessServiceTest |16|0|0|0|
+| services.OwnOrderQueryCurrentRolesIntegrationTest |8|0|0|0|
+| services.OwnOrderQueryServiceTest |83|0|0|0|
+| **Total** |**1107**|**0**|**0**|**0**|
+
+Prefixo das classes: `com.devsuperior.dscommerce`. `audit.ps1`: exit0;16 classes concretas,157 combinações classe/método,1.107 identidades testcase únicas. Console, atributos/nós XML e TXT concordam; zero omissões de classes/métodos, lacunas parametrizadas, duplicatas ou suites vazias. Herança HTTP resolvida no fonte; nenhum `@Nested` ou agregador a somar. `OwnOrderQuerySecurityConfigurationTest` é selecionado pelo wildcard Security*, não é HTTP/JPA. Fontes apenas compilados e suportes abstratos não contam como testes adicionais.
+
+`consolidate.ps1`: exit0; mesmas1.107 identidades e mesma ordem de invocações dentro de cada classe da T025, todos os40 casos antes não aprovados agora passaram; todos os166 do focal também foram incluídos/aprovados no conjunto atual. Sem reduzir a seleção nem isolar os casos de cleanup dos seus sucessores. `consolidation.json` registra F3GreenApproved=true/US3HttpCheckpointApproved=true/Feature007Complete=false.
+
+### Provas HTTP atuais e ausência de resíduos
+
+Oito classes HTTP concretas,510 invocações JUnit completas aprovadas:230 de lista,18 de detalhe,158 de segurança e104 de falhas. **974 requisições HTTP reais:200 logins e774 consultas/ensaios (588 GET,182 HEAD,quatro PUT)**. Observações por caso XML e console e contadores concordam; zero status divergente. Separadamente,217 dispatches MockMvc do resolver; não são HTTP de rede ou testes JUnit adicionais. O suporte MockMvc montado pela fixture não é login interno executado pelas oito classes.
+
+Nos158 de segurança,120 barreiras herdadas e38 novos cenários (19 por contexto) passaram em raiz e `/api`: CLIENT, ADMIN isolado e ambos só obtêm conteúdo/count/detalhe próprios; ID implementado200 sob o titular real e404 sob outra conta/inexistente, inclusive ADMIN; claims/parâmetros enganosos não ampliam acesso; concessão/revogação/reconcessão commitadas alteram o acesso sob o mesmo JWT. Precedência401/403 sobre entrada inválida, mensagens fixas, path sem query, challenge Bearer no401 e HEAD vazio preservados. Controles antigos que aceitam200/404/405 continuam prova da barreira, não substituem as asserções estritas de titularidade; o404 da T018 por rota ausente continua sem valor probatório de ownership.
+
+Os testes e hooks pós-teste mantêm snapshots/SQL somente SELECT nas janelas observadas. Restaurações dos perfis em `finally` ocorrem depois das asserções e, no JPA, depois do rollback externo, antes da limpeza rastreada. Não houve erro de FK nem failure por estado residual nessa execução conjunta; todos os casos posteriores à concessão passaram com as verificações de isolamento existentes. Onze contextos de aplicação H2 próprios/distintos/estáveis (oito HTTP, repositório, serviço e JPA de perfis), OSIV false e sem seeds; URLs/portas em `transport-console.json`/`consolidation.json`. Nenhum contexto foi recriado entre invocações para ocultar resíduos.
+
+Listagem/detalhe conservaram conteúdo, totais, ordem, representações, histórico financeiro e controles anteriores no recorte F3. Nenhuma política de ADMIN, POST, domínio, contrato ou fluxo anterior foi ampliada. Isso não substitui as jornadas US4/regressões001–006 ainda reservadas às próximas tarefas.
+
+### JPA/serviço e alcance das falhas simuladas
+
+**JPA de perfis:** oito casos completos aprovados, seis de coleção gerenciada obsoleta e dois de coleção suja; projeção escalar/perfis atuais, commit independente, ausência de autoflush e rollback externo, sem HTTP dentro da transação. **Repositório:**33 casos reais aprovados. **Serviço:**83 aprovados,16 com JPA/guarda reais e67 com colaboradores simulados locais. Os16 testes de acesso,26 do conversor,58 de configuração,119 de DTO e254 do resolver são provas complementares em seus próprios contextos; não atribuir aos mocks/slices autenticação ou persistência HTTP reais. Há H2 independente adicional no controle transacional do serviço de acesso, sem contexto JPA.
+
+**Injeções T024:**104 casos HTTP reais aprovados,52 por contexto, com60 respostas500 (30 GET/30 HEAD). Exercitados lookup inicial, escalar do filtro/tardio, IDs/count/fetch, cálculo e mapeamento; count realmente delegado ao JDBC quando exigido. Erro fixo seguro, nunca vazio/404/parcial/401, path sem query e HEAD vazio. COMPLETION atinge beforeCommit após o corpo/DTO, antes do retorno do proxy, com rollback. Isso não comprova falha física de commit já delegado/confirmado pelo driver, nem todas as falhas possíveis de serialização/transporte. Logs SQL controladamente injetados em nível ERROR não são falhas JUnit.
+
+Controles NONE com200/DTO completo;16 perdas tardias de conta/perfil com401/Bearer ou403, sem fetch; oito controles400 antes do serviço e12 controles nativos405/Allow ou406 passaram. A remoção JDBC intencional nos casos tardios é preparação independente: o snapshot de referência do restante da requisição é o estado após essa mutação, não uma prova de ausência de DML no GET inteiro. Nas demais janelas, snapshots completos/SELECT-only permaneceram. Mantidos os limites de snapshots compostos não atômicos, inspector que não vê JDBC direto e escrita transitória restaurada; sem promessa de serialização de revogação depois da leitura autorizadora, equivalência temporal404 ou orçamento SQL global HTTP deduzido dos componentes.
+
+### Fechamento e limites
+
+F3-GREEN consolidado pela execução atual; o F3 reprovado da T025 permanece histórico com exit1 e a T026 permanece focal com166/exit0, sem reclassificação retroativa. Nenhuma falha funcional, de preparação/compilação ou infraestrutura impediu esta seleção; nenhum ajuste produtivo ou de teste foi necessário. Alterados nesta tarefa somente este acréscimo e o marcador T027 em tasks. **Somente T027 marcada: T001–T027 marcadas; T028–T034 abertas,sete pendências.** US4/FINAL/revisões posteriores e conclusão da Feature007 continuam pendentes. Feature005 permanece EXCEÇÃO DOCUMENTADA, sem PASS estrito no Gate IV.
+
+Preservação final:297 rastreados fora dos dois documentos, quatro Java recebidos,41 fontes capturados,2.220 arquivos históricos, seis relatórios arquivados e32 novos nas duas localizações conferidos por hash. Prefixo integral recebido do quickstart mantido byte a byte; tasks muda somente T027. Diff/arquivos novos, referências/links e whitespace revisados; registro estático final em `final-review.json`. Git mantém os quatro rastreados modificados e quatro Java não rastreados recebidos, nada staged, HEAD/branch/main/seleção007 preservados. Sem stage, commit, push, CI, baseline, suíte completa ou execução T028+.
+
+Fechamento estático: `& 'target/feature007-validation/t027-f3-green-20261020/final-review.ps1'`, exit0. `final-review.json` confirma todos os hashes acima,98 links locais válidos, prefixo recebido do quickstart intacto e tasks alterado somente em T027. `git diff --check` e `git diff --cached --exit-code`: exit0; os quatro Java não rastreados conferidos individualmente com `git -c core.autocrlf=false -c core.safecrlf=false diff --no-index --check -- /dev/null <caminho>` não emitiram diagnóstico (exit1 pela diferença de arquivo novo). Avisos Git de futura conversão LF/CRLF não são erros de whitespace. Diff documental e fontes/arquivos novos preservados revisados; auditorias estáticas não são outro Maven. Hooks pós-execução novamente ausentes. Estado final: quatro rastreados modificados, quatro Java não rastreados nos caminhos iniciais, nada staged; HEAD/branch/main/seleção007 preservados. Maven total04:01; sem impedimento remanescente neste checkpoint, sem concluir Feature007 ou executar T028+.

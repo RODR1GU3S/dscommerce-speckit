@@ -1,6 +1,7 @@
 package com.devsuperior.dscommerce.config;
 
 import com.devsuperior.dscommerce.services.AuthenticatedAccountService;
+import com.devsuperior.dscommerce.services.OwnOrderQueryAccessService;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -18,4 +19,7 @@ public class OrderSecuritySliceTestConfig {
 
     @Bean
     public AuthenticatedAccountService orderSliceAccountService() { return mock(AuthenticatedAccountService.class); }
+
+    @Bean
+    public OwnOrderQueryAccessService orderSliceQueryAccessService() { return mock(OwnOrderQueryAccessService.class); }
 }

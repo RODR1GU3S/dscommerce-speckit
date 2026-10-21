@@ -25,6 +25,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -53,6 +54,8 @@ import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.handler;
 
@@ -95,17 +98,27 @@ class OrderSecurityChainTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"POST,/orders,true", "GET,/orders,false", "PUT,/orders,false", "PATCH,/orders,false",
-            "DELETE,/orders,false", "HEAD,/orders,false", "OPTIONS,/orders,false", "POST,/orders/,false",
+    @CsvSource({"POST,/orders,true", "GET,/orders,true", "PUT,/orders,false", "PATCH,/orders,false",
+            "DELETE,/orders,false", "HEAD,/orders,true", "OPTIONS,/orders,false", "POST,/orders/,false",
             "POST,/orders/1,false", "POST,/login,false", "GET,/products,false", "GET,/products/1,false",
             "GET,/h2-console/,false", "POST,/h2-console/login.do,false", "POST,/api/orders,false"})
-    void shouldSelectBearerOnlyForTheExactPostRouteEvenWithAContextPath(String method, String path, boolean bearer) {
+    void shouldSelectBearerForProtectedOrderMethodsEvenWithAContextPath(String method, String path, boolean bearer)
+            throws Exception {
         var request = new MockHttpServletRequest(method, "/api" + path);
         request.setContextPath("/api");
         request.setServletPath(path);
         var chain = filters.getFilterChains().stream().filter(candidate -> candidate.matches(request)).findFirst().orElseThrow();
         assertThat(chain.getFilters().stream().anyMatch(BearerTokenAuthenticationFilter.class::isInstance)).isEqualTo(bearer);
         assertThat(chain.getFilters()).noneMatch(CsrfFilter.class::isInstance);
+        if (path.equals("/orders") && (method.equals("GET") || method.equals("HEAD"))) {
+            var result = mvc.perform(request(HttpMethod.valueOf(method), "/api" + path)
+                            .contextPath("/api").servletPath(path))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(header().string(HttpHeaders.WWW_AUTHENTICATE, "Bearer")).andReturn();
+            if (method.equals("HEAD")) {
+                assertThat(result.getResponse().getContentAsByteArray()).isEmpty();
+            }
+        }
     }
 
     @ParameterizedTest

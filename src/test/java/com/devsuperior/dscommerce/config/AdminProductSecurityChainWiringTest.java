@@ -138,20 +138,26 @@ class AdminProductSecurityChainWiringTest {
     }
 
     @Test
-    void shouldSelectThreeScopedChainsInTheRequiredOrderForEveryAdministrativeMethod() {
-        assertThat(security.getFilterChains()).hasSize(3);
+    void shouldSelectFourScopedChainsInTheRequiredOrderForEveryAdministrativeMethod() {
+        assertThat(security.getFilterChains()).hasSize(4);
         assertThat(security.getFilterChains()).containsExactly(
+                context.getBean("ownOrderQuerySecurityFilterChain", SecurityFilterChain.class),
                 context.getBean("orderSecurityFilterChain", SecurityFilterChain.class),
                 context.getBean("adminProductSecurityFilterChain", SecurityFilterChain.class),
                 context.getBean("securityFilterChain", SecurityFilterChain.class));
         for (var method : List.of("GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS")) {
             for (var path : List.of("/admin/products", "/admin/products/1", "/admin/categories", "/admin/unsupported")) {
-                assertThat(selectedChain(method, path)).isSameAs(security.getFilterChains().get(1));
+                assertThat(selectedChain(method, path)).isSameAs(security.getFilterChains().get(2));
             }
         }
-        assertThat(selectedChain("POST", "/orders")).isSameAs(security.getFilterChains().get(0));
-        for (var path : List.of("/products", "/products/1", "/login", "/orders")) {
-            assertThat(selectedChain("GET", path)).isSameAs(security.getFilterChains().get(2));
+        assertThat(selectedChain("POST", "/orders")).isSameAs(security.getFilterChains().get(1));
+        for (var method : List.of("GET", "HEAD")) {
+            for (var path : List.of("/orders", "/orders/1", "/orders/not-an-integer")) {
+                assertThat(selectedChain(method, path)).isSameAs(security.getFilterChains().get(0));
+            }
+        }
+        for (var path : List.of("/products", "/products/1", "/login")) {
+            assertThat(selectedChain("GET", path)).isSameAs(security.getFilterChains().get(3));
         }
         assertThat(selectedChain("POST", "/login").getFilters())
                 .noneMatch(BearerTokenAuthenticationFilter.class::isInstance);

@@ -1,0 +1,459 @@
+openapi: 3.0.3
+info:
+  title: DSCommerce Own Order Queries - Feature 008 evolution
+  version: 0.2.0
+  description: >-
+    Planned complete replacement for the Feature 007 own-order query contract
+    after Feature 008 is delivered. Until then the original 007 contract remains
+    current. Not implemented or runtime-tested at this checkpoint.
+    Only stored-state admission, examples and contract metadata evolve:
+    WAITING_PAYMENT and PAID. No new fields, ownership privileges or transitions.
+security:
+  - bearerAuth: []
+x-status: planned
+x-origin-contract: ../../007-consultar-meus-pedidos/contracts/own-orders-openapi.yaml
+x-origin-specification: ../../007-consultar-meus-pedidos/spec.md
+x-contract-precedence: README.md
+x-effective-after-delivery: Complete replacement of the 007 query contract; never simultaneous alternatives.
+x-specification: ../spec.md
+x-plan: ../plan.md
+x-data-model: ../data-model.md
+x-registration-contract: ../../004-registrar-pedido/contracts/README.md
+x-authentication: >-
+  Require a valid existing account and current database CLIENT or ADMIN role;
+  ADMIN alone is sufficient. Ignore role/name claims as authority sources.
+  Owner comes only from the authenticated account ID. Apply the same rule to
+  page content, counts and detail. HEAD follows GET authentication/authorization
+  and ownership with no response body; no new business operation is added.
+x-error-policy: >-
+  Authenticate and authorize before MVC input handling, including malformed IDs.
+  Fixed four-field errors contain no account, order, item, token, query string,
+  SQL or internal diagnostic data. path is the requested URI including context
+  path, without query. Internal lookup/read/mapping/transaction failures are 500,
+  never empty success, not-found or partial success. Native method/negotiation
+  errors retain their HTTP semantics and headers; this contract does not replace
+  the framework's 405/406 representation.
+paths:
+  /orders:
+    get:
+      operationId: listOwnOrders
+      summary: List only the authenticated account's orders
+      description: >-
+        Order by createdAt DESC, then id DESC. Page and count use the identical
+        owner predicate and count orders, not items. On a stable dataset, pages
+        have neither omissions nor duplicates. No immutable snapshot across
+        concurrent requests is promised. Missing parameters default to page 0
+        and size 12; empty parameters are invalid. Duplicate page or size is 400.
+        Unknown parameters are ignored: accountId, buyerId, sort and filters
+        cannot select another owner or change ordering. No request body is used.
+        Maximum offset page*size is 2147483647; exceeding it is 400 before service
+        execution. This is an operational bound, not a clamp. Money uses only
+        registered quantity and unitPrice. Reads do not mutate any domain data.
+      x-origin-requirements: [FR-001, FR-002, FR-003, FR-006, FR-007, FR-008, FR-009, FR-010, FR-011, FR-012, FR-013, FR-015, FR-016, FR-017, FR-018]
+      x-requirements: [FR-016, FR-017, FR-018, FR-019, FR-020, FR-021]
+      parameters:
+        - name: page
+          in: query
+          required: false
+          description: >-
+            Zero-based int32 page. Default only when omitted. Empty, noninteger,
+            overflow or repeated value is invalid. Together with size must
+            satisfy page*size <= 2147483647.
+          schema:
+            type: integer
+            format: int32
+            minimum: 0
+            maximum: 2147483647
+            default: 0
+        - name: size
+          in: query
+          required: false
+          description: >-
+            Number of orders per page; default only when omitted. No silent
+            truncation. Empty, noninteger, overflow or repeated value is invalid.
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 50
+            default: 12
+      responses:
+        '200':
+          description: >-
+            Own orders only. No own orders means empty content and zero totals,
+            even on a later valid page and when others have orders. A valid page
+            beyond own results is empty but retains own totals, page and size.
+            Never clamp page. totalPages is ceil(totalElements/size), or zero.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnOrderPage'
+              examples:
+                firstOfThreePages:
+                  value:
+                    content:
+                      - id: 105
+                        createdAt: '2026-10-19T12:00:00.000Z'
+                        status: WAITING_PAYMENT
+                        total: '42.50'
+                      - id: 103
+                        createdAt: '2026-10-19T12:00:00.000Z'
+                        status: WAITING_PAYMENT
+                        total: '20.00'
+                    page: 0
+                    size: 2
+                    totalElements: 5
+                    totalPages: 3
+                mixedStoredStates:
+                  value:
+                    content:
+                      - id: 105
+                        createdAt: '2026-10-19T12:00:00.000Z'
+                        status: PAID
+                        total: '42.50'
+                      - id: 103
+                        createdAt: '2026-10-19T12:00:00.000Z'
+                        status: WAITING_PAYMENT
+                        total: '20.00'
+                    page: 0
+                    size: 2
+                    totalElements: 2
+                    totalPages: 1
+                noOwnOrders:
+                  value:
+                    content: []
+                    page: 4
+                    size: 12
+                    totalElements: 0
+                    totalPages: 0
+                beyondOwnOrders:
+                  value:
+                    content: []
+                    page: 3
+                    size: 2
+                    totalElements: 5
+                    totalPages: 3
+                exactLargeValue:
+                  value:
+                    content:
+                      - id: 106
+                        createdAt: '2026-10-19T12:01:00.000Z'
+                        status: WAITING_PAYMENT
+                        total: '9007199254740993.01'
+                    page: 0
+                    size: 12
+                    totalElements: 1
+                    totalPages: 1
+        '400':
+          $ref: '#/components/responses/BadQuery'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/QueryFailure'
+  /orders/{id}:
+    get:
+      operationId: getOwnOrder
+      summary: Read an order owned by the authenticated account
+      description: >-
+        Lookup by id AND authenticated owner, without a global existence probe.
+        An absent or foreign order has the same 404 code, message and field set,
+        including for ADMIN. Different request paths need not be byte-identical
+        and no timing-equivalence guarantee is made. Independent of the last
+        requested list page. Items follow the recorded position, not product ID
+        or name. productName is current original text, never a historical
+        snapshot; equal names do not merge items. Current product price or
+        administrative name/category validation cannot invalidate a past purchase.
+        All monetary values derive only from recorded quantity/unitPrice.
+        No query parameter changes this lookup. No request body is used.
+      x-origin-requirements: [FR-001, FR-002, FR-004, FR-005, FR-006, FR-007, FR-008, FR-014, FR-015, FR-016, FR-017, FR-018]
+      x-requirements: [FR-016, FR-017, FR-018, FR-019, FR-020, FR-021]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Positive signed-int64 order identifier; invalid syntax/range is 400 after authorization.
+          schema:
+            $ref: '#/components/schemas/PositiveId'
+      responses:
+        '200':
+          description: Own order and all recorded items, without mutation or sensitive account data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnOrderDetail'
+              examples:
+                recordedOrder:
+                  value:
+                    id: 105
+                    createdAt: '2026-10-19T12:00:00.000Z'
+                    status: WAITING_PAYMENT
+                    total: '42.50'
+                    items:
+                      - productId: 8
+                        productName: Produto B atual
+                        quantity: 2
+                        unitPrice: '10.00'
+                        subtotal: '20.00'
+                      - productId: 3
+                        productName: ' Produto A atual '
+                        quantity: 3
+                        unitPrice: '7.50'
+                        subtotal: '22.50'
+                paidOrder:
+                  value:
+                    id: 105
+                    createdAt: '2026-10-19T12:00:00.000Z'
+                    status: PAID
+                    total: '42.50'
+                    items:
+                      - productId: 8
+                        productName: Produto B atual
+                        quantity: 2
+                        unitPrice: '10.00'
+                        subtotal: '20.00'
+                      - productId: 3
+                        productName: ' Produto A atual '
+                        quantity: 3
+                        unitPrice: '7.50'
+                        subtotal: '22.50'
+                exactSmallValue:
+                  value:
+                    id: 107
+                    createdAt: '2026-10-19T12:02:00.000Z'
+                    status: WAITING_PAYMENT
+                    total: '0.01'
+                    items:
+                      - productId: 3
+                        productName: Produto atual
+                        quantity: 1
+                        unitPrice: '0.01'
+                        subtotal: '0.01'
+                exactLargeValue:
+                  value:
+                    id: 106
+                    createdAt: '2026-10-19T12:01:00.000Z'
+                    status: WAITING_PAYMENT
+                    total: '9007199254740993.01'
+                    items:
+                      - productId: 3
+                        productName: Nome atual
+                        quantity: 1
+                        unitPrice: '9007199254740993.01'
+                        subtotal: '9007199254740993.01'
+        '400':
+          $ref: '#/components/responses/BadQuery'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/OrderNotFound'
+        '500':
+          $ref: '#/components/responses/QueryFailure'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Existing signed credential, resolved to current account and database roles.
+  responses:
+    BadQuery:
+      description: Invalid input; no service query, domain data or mutation.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/QueryError'
+          example:
+            status: 400
+            error: Bad Request
+            message: Invalid order query data
+            path: /orders
+    Unauthenticated:
+      description: Missing/invalid/expired credential or nonexistent identified account; no order data.
+      headers:
+        WWW-Authenticate:
+          description: Bearer challenge for authentication rejection, including service revalidation.
+          schema:
+            type: string
+            enum: [Bearer]
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/QueryError'
+          example:
+            status: 401
+            error: Unauthorized
+            message: Authentication required or invalid
+            path: /orders
+    Forbidden:
+      description: Current existing account lacks both CLIENT and ADMIN; no order data.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/QueryError'
+          example:
+            status: 403
+            error: Forbidden
+            message: Order query not permitted
+            path: /orders
+    OrderNotFound:
+      description: Identical business outcome for an absent or foreign order, even for ADMIN.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/QueryError'
+          example:
+            status: 404
+            error: Not Found
+            message: Order not found
+            path: /orders/999
+    QueryFailure:
+      description: >-
+        Internal account lookup, query/count/fetch, financial invariant, mapping
+        or transaction failure. Never substitute empty success, 404 or 401.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/QueryError'
+          example:
+            status: 500
+            error: Internal Server Error
+            message: Order query could not be completed
+            path: /orders
+  schemas:
+    PositiveId:
+      type: integer
+      format: int64
+      minimum: 1
+      maximum: 9223372036854775807
+    Money:
+      type: string
+      minLength: 4
+      maxLength: 20
+      pattern: '^(0\.(0[1-9]|[1-9][0-9])|[1-9][0-9]{0,16}\.[0-9]{2})$'
+      description: >-
+        Exact positive decimal19,2 in plain base-ten text, at most 17 integer
+        digits and exactly two fraction digits. No rounding/exponent/float.
+        Historical quantity and unitPrice only; current catalog price is unused.
+      example: '9007199254740993.01'
+    OwnOrderPage:
+      type: object
+      additionalProperties: false
+      required: [content, page, size, totalElements, totalPages]
+      properties:
+        content:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/OwnOrderSummary'
+        page:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 2147483647
+        size:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 50
+        totalElements:
+          type: integer
+          format: int64
+          minimum: 0
+          maximum: 9223372036854775807
+          description: Only the authenticated account's orders, never all accounts or item rows.
+        totalPages:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 2147483647
+    OwnOrderSummary:
+      type: object
+      additionalProperties: false
+      required: [id, createdAt, status, total]
+      properties:
+        id:
+          $ref: '#/components/schemas/PositiveId'
+        createdAt:
+          type: string
+          format: date-time
+          pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z$'
+          description: Recorded creation instant, UTC with milliseconds as in the existing order contract.
+        status:
+          type: string
+          enum: [WAITING_PAYMENT, PAID]
+          description: Current stored state, including PAID recorded by Feature 008. Querying performs no payment or transition.
+        total:
+          $ref: '#/components/schemas/Money'
+    OwnOrderDetail:
+      type: object
+      additionalProperties: false
+      required: [id, createdAt, status, total, items]
+      properties:
+        id:
+          $ref: '#/components/schemas/PositiveId'
+        createdAt:
+          type: string
+          format: date-time
+          pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z$'
+        status:
+          type: string
+          enum: [WAITING_PAYMENT, PAID]
+          description: Current stored state, including PAID recorded by Feature 008, without query-side transition or payment fields.
+        total:
+          $ref: '#/components/schemas/Money'
+        items:
+          type: array
+          minItems: 1
+          description: All items in recorded position order, without truncation, merging or reordering.
+          items:
+            $ref: '#/components/schemas/OwnOrderItem'
+    OwnOrderItem:
+      type: object
+      additionalProperties: false
+      required: [productId, productName, quantity, unitPrice, subtotal]
+      properties:
+        productId:
+          $ref: '#/components/schemas/PositiveId'
+        productName:
+          type: string
+          description: Current original stored name; not historical snapshot. No write-time length constraint.
+        quantity:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 2147483647
+          description: Registered quantity, never a current catalog/cart value.
+        unitPrice:
+          $ref: '#/components/schemas/Money'
+        subtotal:
+          $ref: '#/components/schemas/Money'
+    QueryError:
+      type: object
+      additionalProperties: false
+      required: [status, error, message, path]
+      description: >-
+        Fixed status/error/message correspondence is prescribed by the referenced
+        response example and description; this shared schema alone does not
+        enforce that correspondence. Assert the exact triplet per response case.
+      properties:
+        status:
+          type: integer
+          enum: [400, 401, 403, 404, 500]
+        error:
+          type: string
+          enum: [Bad Request, Unauthorized, Forbidden, Not Found, Internal Server Error]
+        message:
+          type: string
+          enum:
+            - Invalid order query data
+            - Authentication required or invalid
+            - Order query not permitted
+            - Order not found
+            - Order query could not be completed
+        path:
+          type: string
+          description: Requested URI with context path and without query; no diagnostic or sensitive content.

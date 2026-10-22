@@ -1544,3 +1544,280 @@ T019–T036 permanecem abertas:sem antecipar concorrência US3,failpoints/rollba
 Acrescentada somente esta seção ao quickstart, preservando seu prefixo recebido byte a byte; em tasks.md,alterado somente o marcador T018 para[X]. **T001–T018[X],T019–T036 abertas:18 concluídas/18 abertas.** Revisados diff incremental,conteúdo/referências dos seis Java recebidos,links locais e whitespace;`git diff --check` exit0 e seis verificações `git -c core.autocrlf=false diff --no-index --check -- /dev/null <Java>` sem diagnóstico (exit1 pelo arquivo novo). REVIEW-T018/final-review.json registra preservação por SHA-256 dos352 demais arquivos recebidos e das2.155 evidências inventariadas, incluindo oráculos e controles anteriores.
 
 Git final mantém raiz/branch/HEAD/seleção e main;somente quickstart.md/tasks.md modificados e os mesmos seis Java não rastreados;nada staged. Sem stage,commit,push,merge ou alteração de main. Pendência seguinte:T019,fora do escopo executado.
+
+## T019 — Autoria de repetição e disputa concorrente pelo mesmo pedido (2026-10-22)
+
+Aplicada speckit-implement exclusivamente à [T019](tasks.md). Confirmados raiz `C:/Users/ronal/dscommerce-speckit`, branch real `008-registrar-pagamento`, HEAD `1b49dc1b61f27ccecbe7aa561dfc56fc4da93125`, Git limpo, índice vazio e seleção local008. O commit recebido é `test: verify payment authorization and validation`, com os oito arquivos do checkpoint US2, sem alteração de produção. Lidos T019 integralmente, dependência T018 e limites T020–T022, constituição, AGENTS.md/harness, spec US3.1–5, plano, pesquisa/modelo de locks e unicidade, contrato POST e procedimentos do quickstart. Pré-requisitos `.specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks`: exit0, FEATURE_DIR absoluto008. Checklist requirements.md:16/16, zero aberto, PASS documental. Ignore Java adequado; extensions.yml ausente antes e depois, sem hooks.
+
+### Limite desta entrega
+
+T019 é **criação do teste**; execução S3 está prevista antes de eventual correção T021 e no checkpoint T022. Nesta tarefa houve somente escrita e revisão estática. **Nenhum Wrapper/Maven, javac, compilação, teste, contexto Spring/H2, login ou request foi executado.** Não há novo RED/GREEN, console/Surefire ou exit code de testes; não foi fabricada falha para comportamento já presente. A compilabilidade e as comprovações concorrentes continuam pendentes.
+
+Criado somente [PaymentConcurrencyIntegrationTest.java](../../src/test/java/com/devsuperior/dscommerce/controllers/PaymentConcurrencyIntegrationTest.java), no caminho atribuído à T019. Seleciona ROOT/HTTP real com o suporte008 existente e observação explícita; não cria aliasApi nem altera suporte compartilhado, produção, mapper, seed, banco ou propriedades globais. A observação temporária está inteira no arquivo novo e delega aos proxies originais.
+
+O pedido também solicitou duas aceitações para pedidos distintos. Incluído um controle positivo básico no mesmo arquivo: ambas as transações adquirem suas raízes distintas enquanto estão abertas e depois são liberadas para concluir. Isso **não conclui nem implementa a prova própria da T020** de B confirmar commit enquanto A continua bloqueado, nem o teste de contexto pré-carregado/refresh. Os dois arquivos atribuídos à T020 não foram criados; T020 permanece aberta.
+
+### Matriz escrita, ainda não executada
+
+| Método | Casos previstos | Expectativa futura |
+| --- | ---: | --- |
+| `sequentialRepeatNeverReusesSuccessOrOverwritesTheOriginal` | 4 | Quitação original real201; repetição por mesmo/outro ADMIN e ocorrência igual/diferente409, sem sucesso reutilizado nem substituição da ocorrência. São chamadas sequenciais deliberadas, sem alegar concorrência. |
+| `existingPaymentPrecedesWaitingStateWithoutRepair` | 4 | Depois de quitação real, setup JDBC commitado altera somente o status próprio para WAITING_PAYMENT; Payment anterior é conservado. As quatro variantes exigem409 `Payment already registered`, sem reparar estado ou sobrescrever pagamento. O baseline da rejeição é posterior à preparação inconsistente. |
+| `overlappingTransactionsForTheSameOrderAcceptExactlyOnePayment` | 4 | Primeiro detentor da raiz ADMIN A/B × ocorrências iguais/diferentes. Duas chamadas HTTP sobre o mesmo banco, transações/sessões distintas e sobrepostas; exatamente201+409, um Payment com ocorrência vencedora, PAID e perdedora sem escrita. |
+| `validRequestsForDistinctOrdersBothSettleWithOverlappingTransactions` | 1 | Controle solicitado: duas raízes, sessões e transações simultaneamente abertas, ambos201, vínculos/ocorrências próprios e totais históricos20,00/22,50 conservados. |
+| Total estático | **13** | Quatro métodos, três matrizes4 e um @Test, somente ROOT. Sem testes herdados adicionais, @Nested, desabilitados ou assumptions. |
+
+Se todos os caminhos escritos forem alcançados futuramente, são26 POSTs de pagamento previstos:14 respostas201 e12 respostas409. Login de preparação fica separado. Esses valores não são contagens JUnit/HTTP observadas. Falha de setup, instrumentação, autorização inesperada, transporte, pool, timeout ou deadlock deve falhar o experimento, sem ser convertida em concorrência bem-sucedida ou409 presumido.
+
+### Coordenação e observação preparadas
+
+Fixture prepara somente dados próprios commitados, dois ADMINs atuais (ADMIN isolado e ADMIN+CLIENT), comprador alheio, alvo20,00 e outro pedido22,50, com catálogo12,00. Os dois tokens vêm do login HTTP real quando o teste for executado; snapshots estritos incluem as oito tabelas. Clock representável é fixado após login; ocorrências são válidas entre criação e referência, com diferença de1ms nas variantes diferentes. Cada tentativa exige a mesma referência e uma leitura de negócio.
+
+Um interceptor scoped ao par conta/pedido mantém apenas a associação entre request e observação por ThreadLocal. Outro observa `findPaymentOrderForUpdate` no repository real: exige transação nova READ_COMMITTED, conexão vinculada sem autoCommit, sessão H2, thread e URL do mesmo banco. O retorno do find+refresh real é observado antes de liberar o serviço; nenhum resultado é substituído. A conexão é devolvida por DataSourceUtils, sem encerrar a transação de aplicação.
+
+Na disputa, a primeira chamada adquire a raiz e permanece suspensa. Só então a segunda é enviada, mas a primeira ainda não concluiu: são duas solicitações sobrepostas, não dois POSTs sequenciais. Após liberar o gate de preparação SQL da segunda, o teste exige metadados H2 SESSION_STATE=BLOCKED e BLOCKER_ID da primeira sessão. Sessões e threads são distintas e a URL é igual à da terceira conexão observadora. `Future.isDone=false` e SQL preparado apenas complementam essa prova física; não a substituem.
+
+Primeiro ambas estão sem DML e o snapshot deve ser idêntico ao baseline. Depois a primeira avança até `beforeCommit`, após o flush explícito do serviço. O commit continua suspenso; são exigidos insert de Payment/update de Order, segundo request ainda fisicamente bloqueado e dados commitados ainda iguais ao baseline. Liberado o commit, a segunda aquisição/refresh precisa devolver PAID e permanece retida antes da elegibilidade. A primeira deve201, retornar do proxy sem transação externa e ser visível por JDBC independente. Só então a segunda avança para409 e seu término deve conservar o snapshot vencedor integralmente.
+
+`beforeCommit`, `afterCommit` e `afterCompletion` são callbacks Spring registrados dentro da transação real: o vencedor deve ter um commit confirmado pelo callback e completion COMMITTED; a perdedora, zero commits/beforeCommit e completion ROLLED_BACK. Asserções de HTTP, proxy e JDBC independente complementam os callbacks. **Isso não instrumenta a chamada física Connection.commit do driver**, não simula falha de commit e não antecipa o suporte/failpoints de T023. Todas essas observações são apenas código escrito nesta T019.
+
+O controle de pedidos distintos aguarda ambas as aquisições com transações ainda abertas, compara o baseline antes de mutar e libera ambos os serviços; exige dois201 e dois pagamentos exclusivos, sem misturar ocorrências ou históricos. Não mantém um pedido bloqueado enquanto exige o commit do outro: essa prova mais forte continua na T020. Ao final dos cenários concorrentes, conexões novas devem conseguir readquirir as raízes com FOR UPDATE e rollback, verificando liberação de locks.
+
+### Asserções, recursos e limites
+
+Confirmação compara a árvore inteira com o esperado lido pelo mesmo parser, conservando a correção IntNode/LongNode da T017, `isIntegralNumber`, capacidade long e identidade exata. Não aceita string/decimal para o ID, não remove campos e não usa ponto flutuante ou tolerância. Há somente orderId/occurredAt/status, UTC.SSS, sem Location ou WWW-Authenticate;409 tem envelope fechado e mensagem própria. Guardas, referência e proxy são exigidos por tentativa. SQL da rejeição deve ser somente SELECT, sem leitura de itens/catálogo; o sucesso admite somente um insert de Payment e um update de Order.
+
+Snapshots exigem exatamente o Payment esperado e apenas status dos pedidos aceitos alterado. O probe007 exige diagnóstico exclusivo `tb_order`, portanto mantém também comparação opaca de credenciais, contas/perfis, catálogo e itens; comparação adicional conserva comprador/criação e totais dos dois pedidos. A rejeição compara as oito tabelas contra seu baseline apropriado. StatementInspector observa preparação Hibernate, não todo JDBC/DML; snapshots não detectam qualquer mutação transitória revertida. Leituras durante os gates são feitas com escritores deliberadamente parados; após as respostas, todos os escritores devem ter terminado antes da comparação final.
+
+CountDownLatch/gates/Futures têm limites10s; polling de metadados tem prazo8s e queryTimeout2s, com cadência5ms por LockSupport.parkNanos. A cadência não prova espera e não há Thread.sleep, NOWAIT/SKIP LOCKED, mutex de negócio ou espera ilimitada. Reaquisição usa timeout local2s. O lock_timeout20s do suporte008 permanece inalterado.
+
+Em falha, try-with-resources primeiro libera os latches locais, depois fecha a Window (libera seus gates, aguarda/cancela trabalho e aguarda término dos requests) e só então remove ambos os advices. ThreadLocal é removido no finally do request. Interceptor parcialmente instalado é removido em falha de construção. Statements/resultsets/conexões auxiliares são fechados e a reaquisição termina em rollback. AfterEach limpa somente a fixture, Payment antes de itens/pedidos e demais linhas próprias, e exige restauração completa do baseline. Essa confiabilidade foi revisada estaticamente, não exercitada nesta tarefa.
+
+### Preservações, revisão e conclusão de autoria
+
+Recibo ignorado `target/feature008-evidence/CONCURRENCY-T019/` guarda manifesto/hashes dos354 arquivos recebidos, cópias dos documentos, main/status inicial,412 arquivos de evidência inventariados e revisão estática. A revisão também confere o manifesto anterior de2.155 evidências. C2 continua histórico separado:839 aprovados,zero falhas/erros/ignorados,exit0,17 XML/17 TXT na execução `S2-T018-20261022T162604150`; não foi repetido nem promovido a aprovação do Java novo. Diagnóstico839/814/25 e correção dos três oráculos, focais470/470,50 controles adicionais do parser e evidências T001–T018 permanecem preservados.
+
+Critérios de **autoria da T019 atendidos**. Somente seu marcador em tasks.md passa para[X]: **T001–T019[X],T020–T036 abertas,19 concluídas/17 abertas**. Não há compilação, prova concorrente executada, novo GREEN/C3 ou causa funcional observada para corrigir produção. Procedimento futuro aprovado: seleção S3/T022 inclui PaymentConcurrencyIntegrationTest,PaymentDistinctOrdersIntegrationTest,OrderPaymentLockRepositoryTest,PaymentPersistenceIntegrationTest,PaymentTemporalAndCurrentRolesIntegrationTest, quando todas existirem e na etapa autorizada, antes de eventual correção T021 e depois se necessária. Não executar seleção com classes ausentes ou omitir os controles posteriores para declarar C3.
+
+Diff, conteúdo completo do Java novo, APIs/referências locais, links e whitespace revisados. Revisão PowerShell/.NET em `review.ps1`, exit0, somente estática:352 arquivos recebidos fora dos dois documentos inalterados por hash, prefixo histórico do quickstart intacto e somente checkbox T019 alterada. `git diff --check` exit0; `git -c core.autocrlf=false diff --no-index --check -- /dev/null src/test/java/com/devsuperior/dscommerce/controllers/PaymentConcurrencyIntegrationTest.java` sem diagnóstico de whitespace (exit1 pelo arquivo novo). Isso não aprova compilabilidade, wiring ou comportamento.
+
+Git final: quickstart.md/tasks.md modificados e somente PaymentConcurrencyIntegrationTest.java não rastreado. Mesma raiz/branch/HEAD/seleção e main;nada staged. Sem stage,commit,push,merge ou alteração de main;sem C2,BASE ou suíte completa repetidos. T020–T036 e as comprovações executáveis permanecem pendentes;sem execução ou antecipação de suas entregas.
+
+## Autoria T020 — contexto obsoleto e pedidos distintos sob lock
+
+### Escopo recebido e decisão de execução
+
+Aplicada speckit-implement exclusivamente à [T020](tasks.md). Confirmados raiz `C:/Users/ronal/dscommerce-speckit`, branch real `008-registrar-pagamento`, HEAD `1b49dc1b61f27ccecbe7aa561dfc56fc4da93125`, seleção local008 e índice vazio. Estado recebido: somente quickstart.md/tasks.md modificados e `src/test/java/com/devsuperior/dscommerce/controllers/PaymentConcurrencyIntegrationTest.java` não rastreado. Checklist requirements.md:16/16, zero aberto. Pré-requisitos `.specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks`: exit0, FEATURE_DIR absoluto008. Lidos T020 integralmente, dependência T018, limites T019/T021/T022, constituição, spec/plan/research/data-model, contratos, harness e procedimentos aprovados. Ignore Java adequado; extensions.yml ausente, sem hooks.
+
+T020 exige **criação dos dois testes**. A seleção conjunta S3 está prevista antes de eventual correção T021 e no checkpoint T022. Nesta tarefa houve autoria e revisão estática, **sem Wrapper/Maven, javac, compilação, teste, Spring/H2, login ou HTTP executado**. Não há novo console/Surefire, exit code de testes, RED/GREEN ou C3. Nenhuma falha funcional, impedimento de preparação ou timeout de coordenação foi observado por execução; compilabilidade e funcionamento dos experimentos permanecem por verificar.
+
+### Casos escritos; contagens previstas, não executadas
+
+| Arquivo / método | Autoria | Invocações previstas | Executadas nesta T020 |
+| --- | --- | --- | --- |
+| [OrderPaymentLockRepositoryTest.java](../../src/test/java/com/devsuperior/dscommerce/repositories/OrderPaymentLockRepositoryTest.java): lockAndRefreshReplacePreloadedWaitingStateWithAnotherTransactionsCommittedSettlement | Um @Test de repository/JPA | 1 | 0 |
+| [PaymentDistinctOrdersIntegrationTest.java](../../src/test/java/com/devsuperior/dscommerce/controllers/PaymentDistinctOrdersIntegrationTest.java): distinctOrderCommitsWhileTheOtherStillWaitsForItsRootLock | Um @ParameterizedTest, ValueSource A/B alterna a raiz bloqueada | 2 | 0 |
+
+Total novo: **dois métodos, três invocações previstas e zero executadas**, sem @Nested/@Disabled/assumptions. O suporte HTTP herdado fornece lifecycle/helpers, sem métodos @Test herdados. As **13 invocações previstas da T019 continuam somente autoria recebida**, preservada byte a byte, sem presumir execução nem somar previsões como resultado Surefire. Repetição sequencial, disputa no mesmo pedido e controle básico de pedidos distintos da T019 continuam separados da prova forte escrita aqui.
+
+### Refresh de contexto JPA pré-carregado
+
+O teste de repository prepara fixture commitada, pré-carrega WAITING_PAYMENT em uma Session e conserva esse mesmo objeto gerenciado sem clear/evict. Outra Session/transação resource-local efetiva Payment+PAID e commit. Exige sessões H2 físicas distintas, mesma URL, READ_COMMITTED e autoCommit=false, sem transação Spring externa. O probe independente deve ver a quitação enquanto o primeiro contexto continua exibindo o estado antigo. O fragmento produtivo real recebe o EntityManager desse contexto por injeção local de teste; find+refresh com PESSIMISTIC_WRITE precisa devolver a mesma entidade agora PAID, mantendo ID, comprador e criação.
+
+StatementInspector instalado somente nessa Session captura a aquisição: dois SELECTs de lock somente da raiz por ID, sem JOIN/DISTINCT/Product/Payment/coleção ou filtro de estado/titular. Nenhum DML no leitor. Rollback do leitor deve preservar o commit independente do escritor. Snapshots exigem exatamente uma nova quitação/ocorrência e a mudança de status do alvo, conservando os demais dados das oito tabelas; limpeza remove somente dados próprios. Essa intercalação controlada no mesmo thread usa duas transações reais sobrepostas, **não é corrida de duas chamadas HTTP nem prova de commit HTTP com transação externa**.
+
+### Outro pedido confirma enquanto a raiz permanece bloqueada
+
+O teste HTTP usa dois ADMINs com credenciais reais e pedidos/históricos distintos:20,00 e42,50, ocorrências diferentes em1ms, mais pedido canário8,00. Uma transação JDBC auxiliar mantém somente a raiz escolhida sob FOR UPDATE. O primeiro POST entra no serviço real/proxy dono da transação; gate na preparação do SQL permite identificar sua conexão e observar `INFORMATION_SCHEMA.SESSIONS` com SESSION_STATE=BLOCKED e BLOCKER_ID da auxiliar, no mesmo banco. Só então o segundo POST é lançado para a outra raiz.
+
+Antes de liberar a auxiliar, exige201 do segundo POST, retorno do proxy/afterCompletion, commit observado por callback e quitação visível por conexão JDBC independente; o primeiro continua fisicamente BLOCKED e sem retorno da aquisição/DML. O snapshot intermediário admite somente a quitação/status do segundo pedido e preserva o primeiro e o canário. Depois do rollback auxiliar que libera o lock, o primeiro também precisa201. Exige duas sessões/thread de serviço diferentes e outra sessão auxiliar/observadora, mesma URL, transações novas READ_COMMITTED, uma leitura do Clock por request e referência constante. Observadores locais delegam integralmente ao repository/proxy; nenhum resultado é substituído e nenhum mutex comum é instalado.
+
+Resultado final esperado: duas linhas Payment exclusivas com os IDs/ocorrências correspondentes, somente esses dois status alterados, históricos20,00/42,50 e canário8,00 preservados, assim como produtos, itens/ordem/valores, contas, credenciais e perfis. Resposta201 compara a árvore JSON completa por parser comum nos dois lados (correção IntNode/LongNode preservada), exige orderId numérico integral convertível para int64 e igualdade exata long; sem strings/fracionários, float/double, tolerância ou remoção de campos. Confere headers, SQL de dois locks somente da raiz por ID e exatamente insert Payment/update Order por request, sem leitura de Product ou filtro de elegibilidade no lock.
+
+### Coordenação, limpeza e classificação futura
+
+Gates e futures têm espera limitada10s; consultas de metadados têm timeout2s e deadline8s. A consulta a BLOCKED/BLOCKER_ID é o oráculo; parkNanos5ms apenas limita a frequência desse polling, sem pressupor ordenação pelo tempo decorrido. Não há Thread.sleep, NOWAIT, SKIP LOCKED ou retry da operação para obter aprovação. Timeout de coordenação deve ser registrado como tal, não como409 funcional ou sucesso concorrente. Falhas de bootstrap/compilação não demonstram comportamento ausente; status/snapshot/SQL incompatíveis após preparação válida são diagnósticos funcionais a examinar antes de eventual ajuste.
+
+Nos caminhos de falha, liberar gates/rollback auxiliar antes de aguardar/cancelar workers; janela termina antes de retirar advice. Sessions/transactions resource-local têm rollback em finally e fechamento por try-with-resources. Fixtures limpam somente seus registros e comparam o baseline anterior. Após os cenários, conexões novas tentam readquirir as raízes com lock_timeout/queryTimeout2s e rollback, exigindo liberação dos locks. Timeout local do teste de repository também2s; não alterar configuração produtiva/global.
+
+### Comandos, preservação e limites
+
+Recibo local ignorado: `target/feature008-evidence/LOCKS-T020/`, com received.json, cópias dos documentos/Java recebidos, previous-evidence.json, main/status iniciais e review.ps1/static-review.json. Preservação conferida por SHA256, sem regenerar ou sobrescrever relatórios anteriores. Mantidos diagnóstico S2 inicial839/814/25, correção dos três oráculos, C2 conjunto839 aprovados/zero falhas-erros-ignorados/exit0 e50 controles adicionais do parser identificados separadamente, além das demais evidências históricas. Esses resultados continuam históricos, não novas execuções desta autoria.
+
+Comandos desta etapa documental/estática, na raiz PowerShell:
+
+~~~powershell
+.specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks
+powershell -NoProfile -ExecutionPolicy Bypass -File target/feature008-evidence/LOCKS-T020/review.ps1
+git diff --check
+git -c core.autocrlf=false diff --no-index --check -- /dev/null src/test/java/com/devsuperior/dscommerce/controllers/PaymentConcurrencyIntegrationTest.java
+git -c core.autocrlf=false diff --no-index --check -- /dev/null src/test/java/com/devsuperior/dscommerce/controllers/PaymentDistinctOrdersIntegrationTest.java
+git -c core.autocrlf=false diff --no-index --check -- /dev/null src/test/java/com/devsuperior/dscommerce/repositories/OrderPaymentLockRepositoryTest.java
+git status --short
+~~~
+
+Pré-requisitos exit0. Revisão estática e git diff --check: resultados registrados abaixo após execução; diff --no-index exit1 sem diagnóstico apenas sinaliza arquivo novo contra /dev/null. Nenhum exit code de teste é atribuído a esses comandos.
+
+Procedimento **futuro**, fora desta T020: S3/T022 usa exatamente `PaymentConcurrencyIntegrationTest,PaymentDistinctOrdersIntegrationTest,OrderPaymentLockRepositoryTest,PaymentPersistenceIntegrationTest,PaymentTemporalAndCurrentRolesIntegrationTest` pelo Wrapper sequencialmente, com diretório de relatórios próprio, diagnóstico anterior a eventual correção T021 e repetição somente se necessária. Conciliar console/Surefire, métodos parametrizados/aninhados/herdados e contagens efetivas; as previsões13+3 não substituem essa inspeção. Não repetir C2, BASE ou suíte completa para esta autoria.
+
+Limites: somente revisão estática local Windows; não comprovados compilação, wiring, SQL efetivo, independência/espera/commit executados, ausência de mutex global em execução, limpeza real ou C3. Callbacks não instrumentam o commit do driver; StatementInspector não captura JDBC direto; snapshots compostos não são uma fotografia atômica universal. O desenho usa H2 isolado, não valida PostgreSQL/CI/Linux, durabilidade/crash recovery ou SLA. Não há correção produtiva/mapper/suporte recebido nem antecipação T021+. Critérios de **autoria T020** atendidos após revisão; somente seu marcador muda: **T001–T020[X], T021–T036 abertas**. Sem stage/commit/push/merge ou mudança de main.
+
+Resultado efetivo da revisão: `powershell -NoProfile -ExecutionPolicy Bypass -File target/feature008-evidence/LOCKS-T020/review.ps1` **exit0**;353 arquivos recebidos preservados (todos exceto os dois documentos autorizados),7.077 arquivos de evidência com SHA256 idêntico, inclusive inventário exato dos396 arquivos Surefire anteriores, e prefixo integral recebido do quickstart com282.835 bytes preservado. Conferidos125 links locais e27 imports locais dos novos Java, dois métodos/três invocações somente previstas, zero casos herdados/aninhados. SHA256 do Java T019 recebido permanece `9C9736AE5936FA9E3FF0C920D5B4B19B388027AC847997F72CC7E5F9A9114234`. `git diff --check`:exit0;cada um dos três Java não rastreados em `diff --no-index --check`:exit1 sem diagnóstico de whitespace. Os avisos de Git sobre conversão futura LF/CRLF não alteraram os arquivos recebidos.
+
+Revisados conteúdo integral dos novos testes, diff documental, referências, recursos/limpeza e preservação das asserções recebidas. Git final: quickstart.md/tasks.md modificados; PaymentConcurrencyIntegrationTest.java recebido, PaymentDistinctOrdersIntegrationTest.java e OrderPaymentLockRepositoryTest.java não rastreados; índice vazio. Raiz/branch/HEAD/seleção/main permanecem os recebidos. T021–T036 e toda comprovação executável S3 continuam pendentes; nenhum impedimento de execução foi constatado porque ela não integra esta autoria.
+
+## T021 — revisão do núcleo após diagnóstico de repetição, locks e refresh (2026-10-22)
+
+### Estado recebido, escopo e seleção
+
+Aplicada speckit-implement exclusivamente à [T021](tasks.md), lida integralmente com as dependências T019/T020, T018 e os limites T022+. Confirmados raiz `C:/Users/ronal/dscommerce-speckit`, branch real `008-registrar-pagamento`, HEAD `1b49dc1b61f27ccecbe7aa561dfc56fc4da93125`, seleção local008 e índice vazio. Recebidos somente quickstart.md/tasks.md modificados e três Java não rastreados, nos caminhos completos relativos à raiz:
+
+- `src/test/java/com/devsuperior/dscommerce/controllers/PaymentConcurrencyIntegrationTest.java`;
+- `src/test/java/com/devsuperior/dscommerce/repositories/OrderPaymentLockRepositoryTest.java`;
+- `src/test/java/com/devsuperior/dscommerce/controllers/PaymentDistinctOrdersIntegrationTest.java`.
+
+Lidos constituição, AGENTS.md/harness, spec US3, plan/research/data-model, contrato POST e procedimentos/evidências anteriores. Pré-requisitos `.specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks`: exit0, FEATURE_DIR absoluto008. Checklist requirements.md:16/16, zero aberto, PASS documental. Ignore Java adequado; extensions.yml ausente antes/depois, sem hooks.
+
+A tabela de tasks determina a seleção S3 **antes de eventual correção T021**, incluindo os controles de constraints T007 e tempo/perfis T016. Executada uma única invocação dessa seleção exata como diagnóstico e fundamento da revisão T021. **Não se conclui o checkpoint C3/T022**; seu marcador permanece aberto por escopo desta solicitação. Sem C2, BASE ou suíte completa repetidos, sem segunda execução Maven após o GREEN.
+
+### Comando, ambiente e relatórios
+
+Na raiz/PowerShell, `.\mvnw.cmd -v` confirmou Maven3.9.16 pelo Wrapper e Java Azul Zulu21.0.12.1, Windows10 amd64, exit0. Boot3.3.4, Hibernate6.5.3.Final e H2 2.2.224 existentes, sem mudar POM, ambiente global, perfil ou seed.
+
+~~~powershell
+.\mvnw.cmd "-Dtest=PaymentConcurrencyIntegrationTest,PaymentDistinctOrdersIntegrationTest,OrderPaymentLockRepositoryTest,PaymentPersistenceIntegrationTest,PaymentTemporalAndCurrentRolesIntegrationTest" "-Dsurefire.reportNameSuffix=S3-T021-DIAG-20261022T171300981" test
+~~~
+
+Início `2026-10-22T17:13:31.9872671-03:00`; término `2026-10-22T17:15:19.1897706-03:00`; Maven reportou01:42min. **BUILD SUCCESS, exit0,37 testes aprovados, zero falhas/erros/ignorados**. Compilação dos143 fontes de teste foi preparação do build, não contagem de testes nem RED. Advertências existentes de SecurityManager, ByteBuddy/VM e H2Dialect não constituem falhas funcionais.
+
+Recibo exclusivo ignorado `target/feature008-evidence/S3-T021-DIAG-20261022T171300981/`: run.json, environment.txt, console.txt, exit.json, received.json/cópias/diff/status/main/HEAD iniciais, previous-evidence.json, previous-surefire-reports/, surefire-reports/, analysis.json, cases.json e coverage.json. Copiados os396 relatórios anteriores antes do Wrapper; sufixo novo gerou somente cinco XML e cinco TXT, arquivados após término junto dos anteriores. Console UTF-16 via Tee-Object, stderr mesclado com ErrorActionPreference=Continue; LASTEXITCODE capturado imediatamente. Nenhum clean, remoção, sobrescrita de sufixo anterior ou relatório fabricado.
+
+### Quantidades efetivamente conciliadas
+
+| Classe | Métodos | Invocações XML/console | Falhas/erros/ignorados |
+| --- | ---: | ---: | --- |
+| PaymentConcurrencyIntegrationTest | 4 | 13 | 0/0/0 |
+| PaymentDistinctOrdersIntegrationTest | 1 | 2 | 0/0/0 |
+| OrderPaymentLockRepositoryTest | 1 | 1 | 0/0/0 |
+| PaymentPersistenceIntegrationTest | 10 | 13 | 0/0/0 |
+| PaymentTemporalAndCurrentRolesIntegrationTest | 2 | 8 | 0/0/0 |
+| Total | **18** | **37** | **0/0/0** |
+
+Inspecionados cinco XML, cinco TXT e console dessa execução, sem agregar históricos. Os37 elementos testcase correspondem aos contadores das suites e ao resumo final. Conferidos os18 métodos: matrizes4+4+4 e controle1 da T019; duas variantes A/B do teste distinto; refresh1; oito métodos simples mais parâmetros3+2 de persistência; enum temporal6 e perfis2. Parâmetros aparecem como índices[1]…[n], contíguos e sem identidades repetidas. As classes não têm @Nested; suporte HTTP herdado fornece somente lifecycle/helpers, sem testes adicionais. Nenhuma omissão, classe adicional, duplicata, @Disabled, assumption ou seleção vazia. **As13 invocações da T019 e três da T020 agora têm prova executada nesta revisão**, distinta dos registros históricos de autoria.
+
+O leitor local inicial de metadados dos relatórios terminou exit1 porque esperava sufixo com hífen no nome interno da suite; o Surefire usa `Classe(sufixo)` no XML, mantendo hífen no nome do arquivo. Corrigido somente esse script local ignorado de análise, preservando analysis/cases/coverage-initial-parser.json. Nova análise dos mesmos relatórios terminou exit0 e conciliou as18 entradas. Isso não foi falha da aplicação, preparação JPA, oráculo dos testes ou coordenação; nenhum Java/assertion foi alterado e Maven não foi repetido.
+
+### Evidência de disputa e independência
+
+As quatro variantes de mesmo pedido (primeiro ADMIN A/B × ocorrência igual/diferente) concluíram201+409, com um commit e rollback da perdedora, Payment/ocorrência originais preservados e snapshots sem mutação na rejeição. Marcadores T019_WAIT observaram duas vezes por variante a sessão4 BLOCKED pela3: antes da mutação e depois do flush, ainda em beforeCommit. Só após liberar o commit a segunda aquisição/refresh devolveu PAID. Asserções exigiram transações novas READ_COMMITTED, conexões/sessões e threads distintas, mesma URL, sem transação externa HTTP, uma leitura do Clock e releitura de elegibilidade sob lock. A suspensão é local e determinística, com latches/gates/futures limitados; não é uma sequência de dois POSTs já terminados.
+
+Repetição sequencial e WAITING_PAYMENT com Payment anterior são oito invocações separadas, cada uma preparando quitação original201 e exigindo novo409 `Payment already registered`, inclusive outro ADMIN/ocorrência, sem sobrescrita ou reparo. O controle básico T019 de pedidos distintos é outra invocação: ambas as transações adquirem raízes diferentes enquanto abertas e depois201/201, históricos20,00/22,50. Ele continua distinto da prova forte T020 abaixo.
+
+Na T020 HTTP, antes da liberação do holder, B confirmou201/commit/JDBC enquanto A continuava BLOCKED; depois A também201. Executadas ambas as escolhas de raiz retida. Console registrou `committedOrder=28 session=4 blockedOrder=27 session=3 holder=295` e `committedOrder=30 session=3 blockedOrder=31 session=4 holder=318`. O bloqueio foi exigido por SESSION_STATE/BLOCKER_ID antes e depois da confirmação do outro pedido, não inferido apenas de Future pendente ou tempo decorrido. Snapshots intermediário/final conservaram o pedido retido e o canário8,00, ocorrências próprias e totais20,00/42,50, além dos demais dados. Readquisição posterior das raízes em conexões novas passou, com rollback e timeouts locais2s.
+
+O refresh JPA passou com `reader=3 committedWriter=4 order=1`: mesma entidade gerenciada permaneceu WAITING_PAYMENT após commit da outra transação e mudou para PAID pelo fragmento real find+refresh. Sessions resource-local independentes, mesma URL, READ_COMMITTED/autoCommit=false; rollback do leitor conservou o commit do escritor. Essa prova intercala duas transações no mesmo thread e banco; **não é experimento de duas chamadas HTTP nem garante commit no retorno de um serviço chamado dentro de transação externa**. IDs de sessão são locais a cada banco/contexto.
+
+Contextos reais isolados: HTTP ROOT compartilhou `admin-product-test-c1d353f2-44f3-4502-abdb-4adc638f8e5f`; repository usou `admin-product-test-ccaea786-6ecd-4b57-8d79-00f30c7a2a03`; constraints usaram `admin-product-test-1a28b289-05dc-413d-97d2-d334c8887a86`. Nenhuma inferência de conexões compartilhadas entre bancos distintos. Casos HTTP desta seleção usam ROOT; /api não foi executado novamente.
+
+Os oito controles T016 passaram: limites inclusivos201, imediatamente fora400, referências nativas `.123000001`/`.123999999` conservadas durante avanço do Clock e espera física; revogação de ADMIN isolado/ambos sob lock produziu403 apesar de roles antigas pré-carregadas. Rejeições conservaram o baseline apropriado, separado da alteração externa de perfil. Os13 controles T007 passaram: schema real/PK compartilhada/FK nomeada/NOT NULL, status/colunas, precisão exata, duplicata23505, órfão23506, nulos23502 e remoção referenciada23503, sem sobrescrita ou mutações alheias. Erros SQL esperados nesses controles JDBC não são falhas JUnit ou respostas409 da operação HTTP.
+
+### Revisão T021 do núcleo e classificação segura
+
+Revisados [OrderPaymentLockRepositoryImpl.java](../../src/main/java/com/devsuperior/dscommerce/repositories/OrderPaymentLockRepositoryImpl.java), [PaymentInsertRepositoryImpl.java](../../src/main/java/com/devsuperior/dscommerce/repositories/PaymentInsertRepositoryImpl.java) e [PaymentRegistrationService.java](../../src/main/java/com/devsuperior/dscommerce/services/PaymentRegistrationService.java). O núcleo recebido já atende: find PESSIMISTIC_WRITE seguido de refresh, lock somente da raiz por ID, sem filtro de estado/titular/JOIN/DISTINCT/Product/coleção; estado e Payment atuais verificados sob o lock mantido até conclusão. Inserção é EntityManager.persist, sem merge/save/UPDATE de Payment. SQL observado pelos testes exigiu dois locks de raiz, um insert Payment e um update Order no sucesso, apenas SELECT na rejeição e nenhuma leitura de Product. Históricos, estrutura e inteiros exatos dos oráculos permaneceram inalterados.
+
+Somente `payments.findById(orderId).isPresent()` gera ALREADY_REGISTERED/409 `Payment already registered`. Sem Payment, estado diferente de WAITING_PAYMENT gera INCOMPATIBLE_STATE/409 `Order is not awaiting payment`. Não há catch genérico de DataIntegrityViolationException/PK/FK/flush/timeout/deadlock/pool, consulta/retry em transação falha, compensação ou sucesso reaproveitado. Exceção de banco sai do corpo/proxy para rollback e o handler scoped a trata como500 seguro. Falha interna não vira entrada400 nem repetição409.
+
+A classificação interna foi confrontada com o código do handler e testes de serviço recebidos: asserções existentes de falhas em lock/payment-lookup/history/persist/flush exigem propagação da mesma causa e ausência de recuperação; são evidências históricas do C2, **não novos casos dessa seleção S3**. PAID sem Payment/409 específico também permanece coberto pelos testes anteriores preservados. Nesta execução não se injetaram falhas HTTP de commit, deadlock, pool ou transporte; essas provas posteriores não foram antecipadas. Constraints JDBC e sucesso concorrente não são apresentados como injeção HTTP500.
+
+**Nenhuma correção foi necessária**, produtiva ou de teste. GREEN observado uma vez com os três Java recebidos intactos; não se criou RED artificial ou alteração cosmética, não se enfraqueceu comparação/assertion e não se mudou suporte, mapper, produção ou configuração. Somente o script derivado local de análise de relatórios foi ajustado conforme descrito acima.
+
+### Preservação, revisão e limites finais
+
+Evidências históricas, inclusive diagnóstico S2 inicial839/814/25, correção dos três oráculos, C2 conjunto839 aprovados/exit0 e50 controles adicionais do parser identificados separadamente, continuam históricas e preservadas, sem reexecução. O recibo contém hashes de357 arquivos recebidos e7.088 arquivos anteriores de evidência/relatórios. A revisão final confere355 arquivos recebidos fora dos dois documentos autorizados, três Java recebidos byte a byte, prefixo integral do quickstart, somente checkbox T021 alterada e preservação dos396 arquivos Surefire anteriores; os dez novos relatórios têm o sufixo próprio. Diff, arquivos novos, referências/links e whitespace são conferidos sem stage.
+
+Comandos auxiliares realmente executados: `.specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks` exit0; `.\mvnw.cmd -v` exit0; scripts locais `T021-prepare.ps1`/`T021-run.ps1` exit0; `T021-analyze.ps1` exit1 inicial de parser, depois exit0 sobre os mesmos relatórios. Revisão final e seus resultados registrados abaixo; esses exits documentais não são contagens/exit codes de testes.
+
+**T021 atendida por revisão e diagnóstico GREEN, sem alteração de núcleo. Somente T021 é marcada; T001–T021[X], T022–T036 abertas.** C3/T022, histórias posteriores e FINAL continuam pendentes. Resultado local Windows/H2/ROOT, sem CI/Linux/PostgreSQL, throughput, SLA ou durabilidade/crash recovery. Callbacks Spring não instrumentam commit físico do driver; StatementInspector captura preparação Hibernate, não todo JDBC; snapshots compostos não detectam toda alteração transitória revertida. A validação observada é dos caminhos e intercalamentos controlados desta seleção.
+
+Sem stage/commit/push/merge, troca de branch ou alteração de main. Git final esperado conserva os dois documentos modificados e os mesmos três Java não rastreados, índice vazio, mesma raiz/branch/HEAD/seleção. Nenhum impedimento funcional, de preparação ou coordenação permaneceu nesta execução.
+
+Resultado final efetivo: `powershell -NoProfile -ExecutionPolicy Bypass -File target/feature008-evidence/T021-review.ps1` exit0. final-review.json confirma355 arquivos recebidos preservados fora dos documentos,7.088 evidências anteriores idênticas por SHA256,396 relatórios antigos preservados e somente5XML+5TXT novos idênticos às cópias arquivadas. Prefixo recebido do quickstart294.593 bytes intacto; somente checkbox T021 alterada em tasks. Conferidos129 links locais e45 referências de imports dos três Java,18 métodos/37 casos sem duplicatas ou omissões, índices parametrizados contíguos e nenhum caso herdado/aninhado omitido. `git diff --check` exit0; os três `git -c core.autocrlf=false diff --no-index --check -- /dev/null <Java>` terminaram exit1 sem diagnóstico de whitespace (arquivo novo contra /dev/null). Avisos LF/CRLF do Git são de conversão futura e não modificaram os bytes recebidos.
+
+Git final conferido: somente quickstart.md/tasks.md modificados e os mesmos três Java não rastreados nos caminhos listados acima, sem mudança de conteúdo; nada staged. Mesma raiz, branch, HEAD, seleção e main. As únicas alterações desta T021 são a seção acrescentada no quickstart e seu marcador em tasks; relatórios/metadados locais ficam ignorados em target. Sem correção de produção/testes, repetição de Maven, execução T022+, stage, commit ou push.
+
+## T022 — checkpoint conjunto C3/US3 (2026-10-22)
+
+### Escopo, preparação e execução nova
+
+Aplicada speckit-implement exclusivamente à [T022](tasks.md), lida integralmente com T021 e as dependências T019/T020, constraints T007 e controles T016. Confirmados raiz `C:/Users/ronal/dscommerce-speckit`, branch real `008-registrar-pagamento`, HEAD `1b49dc1b61f27ccecbe7aa561dfc56fc4da93125`, seleção local008 e nada staged. Recebidos somente quickstart.md/tasks.md modificados e os três Java não rastreados nos caminhos exatos:
+
+- `src/test/java/com/devsuperior/dscommerce/controllers/PaymentConcurrencyIntegrationTest.java`;
+- `src/test/java/com/devsuperior/dscommerce/controllers/PaymentDistinctOrdersIntegrationTest.java`;
+- `src/test/java/com/devsuperior/dscommerce/repositories/OrderPaymentLockRepositoryTest.java`.
+
+Confrontados spec US3.1–5, plan/research/data-model, contrato POST, constituição/harness e procedimentos aprovados. Pré-requisitos `.specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks`: exit0, FEATURE_DIR absoluto008. Checklist requirements.md:16/16, zero aberto. Ignore Java adequado; extensions.yml ausente, sem hooks antes/depois. T021 foi recebida concluída sem correção de código. Os37 testes do diagnóstico T021 permanecem históricos separados; **C3 abaixo decorre de uma nova execução conjunta solicitada expressamente nesta T022**.
+
+Na raiz/PowerShell, uma única invocação de testes, sem builds simultâneos, baseline, C2, seleção adicional ou suíte completa:
+
+~~~powershell
+.\mvnw.cmd "-Dtest=PaymentConcurrencyIntegrationTest,PaymentDistinctOrdersIntegrationTest,OrderPaymentLockRepositoryTest,PaymentPersistenceIntegrationTest,PaymentTemporalAndCurrentRolesIntegrationTest" "-Dsurefire.reportNameSuffix=S3-T022-20261022T172253803" test
+~~~
+
+Wrapper3.9.16 e Java Azul Zulu21.0.12.1 confirmados por `.\mvnw.cmd -v`, exit0; Windows10 amd64, Boot3.3.4/Hibernate6.5.3.Final/H2 2.2.224 existentes. Início `2026-10-22T17:23:24.0573001-03:00`, término `2026-10-22T17:24:28.7070885-03:00`; Maven reportou59.582s. **BUILD SUCCESS, exit0,37 aprovados, zero falhas/erros/ignorados**. Sem nova compilação necessária. Avisos conhecidos de VM/ByteBuddy/H2Dialect não são falha de teste ou timeout operacional.
+
+Recibo exclusivo ignorado `target/feature008-evidence/S3-T022-20261022T172253803/`: run.json/environment.txt/console.txt/exit.json, received.json/cópias/diff/status/HEAD/main iniciais, previous-evidence.json, previous-surefire-reports/, surefire-reports/, analysis.json/cases.json/coverage.json e final-review.json. Os406 arquivos Surefire recebidos foram copiados antes do Wrapper; cinco XML e cinco TXT novos usam somente o sufixo T022 e foram arquivados após término. Nenhum relatório anterior foi apagado/sobrescrito. Console UTF-16 via Tee-Object com stderr mesclado e LASTEXITCODE capturado imediatamente; metadados JSON UTF-8.
+
+### Conciliação efetiva, sem inferir contagem da T021
+
+| Classe | Métodos | Invocações desta execução | Falhas/erros/ignorados |
+| --- | ---: | ---: | --- |
+| PaymentConcurrencyIntegrationTest | 4 | 13 | 0/0/0 |
+| PaymentDistinctOrdersIntegrationTest | 1 | 2 | 0/0/0 |
+| OrderPaymentLockRepositoryTest | 1 | 1 | 0/0/0 |
+| PaymentPersistenceIntegrationTest | 10 | 13 | 0/0/0 |
+| PaymentTemporalAndCurrentRolesIntegrationTest | 2 | 8 | 0/0/0 |
+| Total | **18** | **37** | **0/0/0** |
+
+Conferidos console, cinco TXT e cinco XML próprios:37 elementos testcase correspondem ao resumo global e aos contadores das cinco suites; não somados arquivos históricos. coverage.json concilia cada um dos18 métodos com seu número efetivo: T0194+4+4+1; T0202+1; persistência oito simples mais parâmetros3+2; tempo/perfis6+2. cases.json identifica classname/nome/índice de cada invocação. Índices parametrizados contíguos, zero identidades duplicadas, sem classe/método omitido ou extra. As classes selecionadas não têm @Nested e o suporte HTTP herdado não acrescenta testes; sem @Disabled/assumption/seleção vazia. `T022-analyze.ps1`: exit0 sobre os relatórios novos, sem correção do leitor ou repetição do Wrapper.
+
+### Cinco cenários US3 e provas complementares
+
+| Cenário / método principal | Resultado nesta execução |
+| --- | --- |
+| US3.1–2: sequentialRepeatNeverReusesSuccessOrOverwritesTheOriginal, quatro variantes | Quitação original201; repetição igual/diferente e mesmo/outro ADMIN409 `Payment already registered`; ocorrência original e snapshot inteiro preservados, sem sucesso reutilizado. São repetições sequenciais, não provas concorrentes. |
+| US3.3: existingPaymentPrecedesWaitingStateWithoutRepair, quatro variantes | Setup commitado põe WAITING_PAYMENT com Payment anterior; novo409 por repetição, sem sobrescrever ocorrência nem reparar estado. Baseline da rejeição posterior ao setup inconsistente. |
+| US3.4: overlappingTransactionsForTheSameOrderAcceptExactlyOnePayment, quatro variantes | ADMIN A/B como primeiro detentor e ocorrências iguais/diferentes; exatamente201+409, um commit, rollback da perdedora, um Payment/PAID e ocorrência vencedora conservada. |
+| US3.5: validRequestsForDistinctOrdersBothSettleWithOverlappingTransactions, um controle | Duas raízes adquiridas com transações simultaneamente abertas, ambas201, históricos20,00/22,50 e vínculos próprios preservados. |
+| US3.5: distinctOrderCommitsWhileTheOtherStillWaitsForItsRootLock, duas variantes | Um pedido confirma201/commit/JDBC enquanto a outra raiz continua BLOCKED; depois da liberação, outro201, históricos20,00/42,50 e canário8,00 conservados. |
+
+Na disputa de mesmo pedido, sessões H2 físicas3/4 e threads de serviço distintas, mesma URL e transações novas READ_COMMITTED, sem transação externa HTTP. Metadados T019_WAIT observaram sessão4 bloqueada pela3 antes da mutação e novamente após flush em beforeCommit. Liberado o commit, aquisição/refresh da perdedora retornou PAID; somente depois ela avançou para409. Callback/retorno do proxy e JDBC independente confirmaram o vencedor antes da rejeição final sem mutações. Esses marcos foram alcançados nas quatro variantes, não deduzidos de dois POSTs sequenciais ou de Future pendente.
+
+Na prova forte de pedidos distintos, console registrou `committedOrder=28 session=4 blockedOrder=27 session=3 holder=295` e `committedOrder=30 session=4 blockedOrder=31 session=3 holder=318`. A transação JDBC auxiliar mantinha a raiz escolhida; SESSION_STATE=BLOCKED/BLOCKER_ID foram exigidos antes e depois da confirmação do outro pedido. Snapshot intermediário admitiu só a quitação livre; final exigiu exatamente os dois vínculos/ocorrências e somente os dois status alterados. Ambas as transações e a auxiliar usaram conexões independentes no mesmo banco. Isso comprova independência por pedido nesses intercalamentos, sem mutex global no desenho observado, não throughput ou SLA.
+
+O teste lockAndRefreshReplacePreloadedWaitingStateWithAnotherTransactionsCommittedSettlement passou com `reader=3 committedWriter=4 order=1`: entidade gerenciada pré-carregada WAITING_PAYMENT continuou obsoleta após commit de outra Session; fragmento real find+refresh com PESSIMISTIC_WRITE devolveu o mesmo objeto PAID. Rollback do leitor não desfez a quitação do escritor. Duas transações resource-local sobrepostas no mesmo thread, READ_COMMITTED/autoCommit=false, sessões distintas no mesmo banco; prova de repository, **não de commit HTTP com transação externa**. SQL de aquisição exigiu dois locks só da raiz por ID, sem predicado de estado/titular, JOIN/DISTINCT/Product/coleção. Asserções também confirmaram readquisição das raízes por conexão nova após conclusão, com rollback e timeouts locais2s.
+
+Os13 controles de persistência passaram no schema gerado real: PK compartilhada/FK nomeada/NOT NULL, colunas/status preservados e round-trip temporal integral. Duplicata23505, órfão23506, nulos23502 e remoção referenciada23503 rejeitados no JDBC, com snapshots preservados. Esses erros SQL esperados não são falhas JUnit nem conflito409 inferido da API. Equivalência Payment/PAID é regra do serviço, não CHECK universal entre tabelas; o caso inconsistente preparado para US3.3 continua deliberado e não é reparado.
+
+Os oito controles T016 passaram: limites inferior/superior inclusivos201, imediatamente fora400, referência nativa `.123000001`/`.123999999` conservada durante espera e avanço do Clock, uma leitura de negócio. Revogação de ADMIN isolado/ambos em outra transação durante o lock produziu403 mesmo com roles antigas gerenciadas; baseline separou a alteração externa da tentativa, sem mutação por rejeição. Coordenação usa gates/latches/futures finitos10s e metadados H2 com prazo8s/queryTimeout2s; parkNanos5ms limita apenas a cadência de polling. Sem sleeps arbitrários, NOWAIT, SKIP LOCKED ou retry para obter sucesso. Nenhum timeout/deadlock/pool/erro de preparação foi contado como sucesso concorrente.
+
+Snapshots e SQL dos sucessos/rejeições conservaram históricos, ordem/valores dos itens, catálogo, compradores/criação, contas/perfis/credenciais e demais pedidos. Somente Payment e status do alvo mudaram no sucesso; o probe das oito tabelas e a limpeza seletiva/baseline passaram. Mantidos os oráculos de igualdade estrutural JSON completa, IDs numéricos inteiros exatos/int64, sem strings/fracionários, ponto flutuante, tolerância ou remoção de campos; correção IntNode/LongNode recebida intacta.
+
+### Classificação, ambientes e limites
+
+Repetição409 é decidida pela constatação de Payment anterior e usa `Payment already registered`. Sem Payment, estado incompatível mantém409 `Order is not awaiting payment`; falha de persistência/interna mantém500 seguro, sem catch genérico que converta PK/FK/flush/timeout/deadlock/pool em duplicidade e sem consulta/retry na transação falha. Código/revisão T021 e controles históricos C2 dessa distinção preservados. Esta seleção S3 **não injeta nova falha HTTP500 nem executa o caso HTTP PAID sem Payment**; não atribuir os controles JDBC ao handler HTTP. Failpoints de commit/rollback/transporte continuam em T023+.
+
+Ambientes efetivos nesta execução: HTTP real ROOT, porta53537, banco `admin-product-test-4793d2e4-5265-46c7-9f34-55cb421ea637`; repository em `admin-product-test-6ada09fd-db9c-4ba3-84c1-c9480ed73b11`; constraints em `admin-product-test-0720e76f-4fb2-4be1-8630-992e12517307`, todos H2 isolados pelo initializer/perfil test. IDs de sessão são locais a cada banco. **Nenhum HTTP /api nesta seleção**, nem CI/Linux/PostgreSQL, falha física de rede, durabilidade/crash recovery ou teste de carga. Callbacks Spring não instrumentam commit físico do driver; StatementInspector observa preparação Hibernate, não JDBC universal; snapshots compostos não detectam toda mutação transitória revertida.
+
+**C3/US3 aprovado no alcance desta execução conjunta local. T022 atendida; somente seu marcador passa para[X]: T001–T022[X], T023–T036 abertas.** Não conclui C4, SC que depende também de C4, histórias posteriores, FINAL ou entrega/publicação da feature. Nenhuma correção necessária; produção, testes, asserções, suporte e mapper recebidos não foram alterados.
+
+### Preservação e revisão final
+
+Recibo inventaria357 arquivos recebidos e7.930 arquivos anteriores de evidência/relatórios, incluindo diagnóstico T021, S2 reprovado839/814/25, correção dos três oráculos, C2 conjunto839 aprovados/exit0 e50 controles adicionais do parser separados. Prefixo histórico do quickstart preservado; apenas checkbox T022 muda sobre tasks recebido. Revisão final verifica hashes dos355 demais arquivos recebidos, três Java byte a byte, todos os relatórios anteriores e os novos arquivados, diff/arquivos novos/imports/links/whitespace e estado Git.
+
+Comandos auxiliares efetivos: pré-requisitos exit0; `.\mvnw.cmd -v` exit0; `powershell -NoProfile -ExecutionPolicy Bypass -File target/feature008-evidence/T022-prepare.ps1`, `T022-run.ps1` e `T022-analyze.ps1`, todos exit0. Revisão final via `T022-review.ps1`, `git diff --check` e `git -c core.autocrlf=false diff --no-index --check -- /dev/null <cada Java recebido>` registrada abaixo. Exits documentais não substituem exit0 do Wrapper/contagens Surefire.
+
+Sem stage/commit/push/merge ou alteração de main; nada T023+ executado, sem baseline/suíte completa. Resultado e Git final efetivos registrados após revisão abaixo.
+
+Revisão final efetiva: `powershell -NoProfile -ExecutionPolicy Bypass -File target/feature008-evidence/T022-review.ps1` exit0. final-review.json confirmou355 arquivos recebidos fora dos dois documentos idênticos por SHA256, inclusive os três Java;7.930 evidências anteriores preservadas,406 arquivos Surefire antigos inalterados e5XML+5TXT novos idênticos às cópias arquivadas. Prefixo recebido do quickstart309.501 bytes intacto; tasks difere do recebido somente pelo marcador T022. Conferidos130 links locais,45 referências de imports dos Java,18 métodos/37 invocações e índices parametrizados, sem omissões/duplicatas ou casos herdados/aninhados adicionais. `git diff --check` exit0; cada Java em `diff --no-index --check` exit1 sem diagnóstico de whitespace, pela comparação de arquivo novo contra /dev/null. Avisos LF/CRLF do Git não alteraram os bytes recebidos.
+
+Git final conferido: quickstart.md/tasks.md modificados; somente PaymentConcurrencyIntegrationTest.java, PaymentDistinctOrdersIntegrationTest.java e OrderPaymentLockRepositoryTest.java não rastreados nos caminhos recebidos, sem alteração de conteúdo; nada staged. Mesma raiz/branch/HEAD/seleção/main. As únicas alterações desta T022 são esta seção do quickstart e seu marcador em tasks; metadados/relatórios ficam ignorados em target. Sem stage/commit/push ou execução T023+; nenhum impedimento funcional, de preparação ou coordenação observado nesta seleção.

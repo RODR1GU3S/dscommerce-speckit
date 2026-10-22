@@ -8,14 +8,20 @@ import com.devsuperior.dscommerce.security.OrderJwtAuthenticationConverter;
 import com.devsuperior.dscommerce.security.OwnOrderQueryAccessDeniedHandler;
 import com.devsuperior.dscommerce.security.OwnOrderQueryAuthenticationEntryPoint;
 import com.devsuperior.dscommerce.security.OwnOrderQueryJwtAuthenticationConverter;
+import com.devsuperior.dscommerce.security.PaymentAccessDeniedHandler;
+import com.devsuperior.dscommerce.security.PaymentAuthenticationEntryPoint;
 import com.devsuperior.dscommerce.services.AuthenticatedAccountService;
 import com.devsuperior.dscommerce.services.OwnOrderQueryAccessService;
+import com.devsuperior.dscommerce.services.PaymentAccessService;
 import com.devsuperior.dscommerce.services.exceptions.OrderAccountResolutionException;
+import com.devsuperior.dscommerce.services.exceptions.PaymentRegistrationException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -28,6 +34,7 @@ import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.security.web.util.matcher.OrRequestMatcher;
 
 import java.time.Clock;
+import java.util.List;
 
 @Configuration
 public class SecurityConfig {
@@ -47,6 +54,46 @@ public class SecurityConfig {
     public OwnOrderQueryJwtAuthenticationConverter ownOrderQueryJwtAuthenticationConverter(
             OrderJwtAuthenticationConverter converter, OwnOrderQueryAccessService access) {
         return new OwnOrderQueryJwtAuthenticationConverter(converter, access);
+    }
+
+    @Bean
+    @Order(-1)
+    public SecurityFilterChain paymentSecurityFilterChain(HttpSecurity http, JwtDecoder decoder,
+                                                          OrderJwtAuthenticationConverter converter,
+                                                          PaymentAccessService access, ObjectMapper mapper) throws Exception {
+        var entryPoint = new PaymentAuthenticationEntryPoint(mapper);
+        var deniedHandler = new PaymentAccessDeniedHandler(mapper);
+        http
+                .securityMatcher(new AntPathRequestMatcher("/admin/orders/*/payments"))
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .headers(headers -> headers.frameOptions(frameOptions -> frameOptions.sameOrigin()))
+                .authorizeHttpRequests(authorize -> authorize.anyRequest().hasRole("ADMIN"))
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint(entryPoint).accessDeniedHandler(deniedHandler))
+                .oauth2ResourceServer(resourceServer -> resourceServer
+                        .authenticationEntryPoint(entryPoint).accessDeniedHandler(deniedHandler)
+                        .jwt(jwt -> jwt.decoder(decoder).jwtAuthenticationConverter(token -> {
+                            try {
+                                var authentication = converter.convert(token);
+                                access.requireAdmin(authentication);
+                                // The scalar guard is authoritative, even if the converter saw an older roles collection.
+                                return UsernamePasswordAuthenticationToken.authenticated(authentication.getPrincipal(), null,
+                                        List.of(new SimpleGrantedAuthority("ROLE_ADMIN")));
+                            } catch (OrderAccountResolutionException failure) {
+                                throw new OAuth2AuthenticationException(new OAuth2Error("server_error"),
+                                        "Payment registration could not be completed", failure);
+                            } catch (PaymentRegistrationException failure) {
+                                var code = switch (failure.getReason()) {
+                                    case UNAUTHENTICATED -> "invalid_token";
+                                    case FORBIDDEN -> "insufficient_scope";
+                                    default -> "server_error";
+                                };
+                                throw new OAuth2AuthenticationException(new OAuth2Error(code),
+                                        "Payment access could not be completed", failure);
+                            }
+                        })));
+        return http.build();
     }
 
     @Bean

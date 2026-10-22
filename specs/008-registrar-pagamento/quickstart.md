@@ -208,3 +208,905 @@ Esta BASE cobre histórico do agregado, representações atuais, perfis efetivos
 Critérios da T002 atendidos. Somente seu marcador foi acrescentado aos concluídos; T001 preservada, T003–T036 abertas: **2 concluídas e34 abertas**. Alterações versionáveis desta tarefa limitadas a esta seção nova e à checkbox T002, preservando as alterações iniciais. Sem stage, commit, push, merge, troca de branch ou alteração de main. A revisão de diff, referências e whitespace e o estado final do Git são conferidos no fechamento desta execução.
 
 Fechamento efetivamente conferido: diff e seção nova revisados;12 links locais da seção resolvidos,0 ausentes; `git diff --check` exit0. O auxiliar verify_docs.py retornou exit0 e gravou docs-audit.json no diretório da execução, confirmando o prefixo inicial do quickstart preservado byte a byte e tasks.md diferente do inicial somente pelo marcador T002. Git final: apenas ` M specs/008-registrar-pagamento/quickstart.md` e ` M specs/008-registrar-pagamento/tasks.md`, nenhum staged ou não rastreado; branch, HEAD, main e hash da seleção iguais aos iniciais. Sem Maven/Surefire ativo após a execução. `.specify/extensions.yml` ausente também na conferência posterior: nenhum hook after_implement registrado.
+
+## T003 — Preparação do suporte de testes em 2026-10-21
+
+**Escopo realizado**: somente a escrita do suporte previsto em [T003](tasks.md), dependente da T002 concluída no checkpoint `3d8d1a4a99cfa3ea28e9aa7acff19e1d0008c279`. Esta seção é acrescentada ao registro existente; T001, os limites do inventário opcional interrompido e todas as evidências da BASE/T002 permanecem históricos intactos. Não é uma execução de teste nem comprovação funcional da 008.
+
+### Conferências iniciais e fronteira da tarefa
+
+`git rev-parse --show-toplevel`, `git branch --show-current`, `git rev-parse HEAD` e `git status --short --untracked-files=all` confirmaram, respectivamente, `C:/Users/ronal/dscommerce-speckit`, `008-registrar-pagamento`, `3d8d1a4a99cfa3ea28e9aa7acff19e1d0008c279` e saída vazia. `.specify/feature.json` seleciona `specs/008-registrar-pagamento`. O comando `.\.specify\scripts\powershell\check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks` retornou exit0 e o diretório absoluto da 008 com os artefatos esperados. Checklist requirements.md: 16 itens, 16 marcados, nenhum aberto; PASS documental, sem alterar marcadores.
+
+Foram considerados T003 integral, a dependência T002, o planejamento e a disciplina das tarefas, plano, pesquisa R2–R3/R5–R9, modelo, contratos e procedimentos pertinentes deste quickstart, sob a constituição e o harness. A T003 pede preparar o suporte; os primeiros cenários e seleções executáveis estão previstos em T006–T007. Por isso esta entrega não executa Maven, javac, testes, servidor ou validação OpenAPI. Também não cria cenários artificiais para obter GREEN, fixtures de T004 ou observadores/failpoints de T005+. `.specify/extensions.yml` ausente na conferência anterior; nenhum hook before_implement registrado. O ignore Java existente cobre target/; não houve ajuste de infraestrutura.
+
+### Suporte escrito e uso futuro
+
+| Arquivo novo | Preparação realizada, ainda sem execução |
+| --- | --- |
+| [PaymentRegistrationTestConfig.java](../../src/test/java/com/devsuperior/dscommerce/config/PaymentRegistrationTestConfig.java) | @TestConfiguration com perfil test e import explícito. Anotações compostas RootHttpContext e ApiHttpContext selecionam a aplicação real, RANDOM_PORT, ROOT ou /api, OSIV desativado e identidade feature008 própria na chave de contexto. |
+| [PaymentRegistrationHttpTestSupport.java](../../src/test/java/com/devsuperior/dscommerce/controllers/PaymentRegistrationHttpTestSupport.java) | Base abstrata sem métodos @Test: transporte HTTP, login/JWT reais, ciclo de vida do Clock e asserções para conexões, proxy e transação a serem exercitadas posteriormente. |
+
+As duas variantes reutilizam [AdminProductTestConfig](../../src/test/java/com/devsuperior/dscommerce/config/AdminProductTestConfig.java) sem alterá-lo: UUID/URL H2 e segredo JWT descartável gerados uma vez por ApplicationContext, SQL init desativado, import.sql desativado e create-drop local. As propriedades ROOT/Api e a identidade feature008 distinguem os contextos da 008 entre si e dos históricos; cada novo contexto recebe sua URL, estável nas leituras e conexões daquele contexto. O prefixo `admin-product-test-` é conservado deliberadamente para compatibilidade com a composição posterior da fixture007, sem reutilizar a URL fixa do perfil global. DB_CLOSE_DELAY não é tratado como proteção contra DROP de outro contexto.
+
+O bean @Primary reutiliza somente [OrderTestConfig.ControlledClock](../../src/test/java/com/devsuperior/dscommerce/config/OrderTestConfig.java), inicialmente `2030-01-01T12:00:00.123Z`. Não importa OrderTestConfig como configuração nem instala sua fixture de pedidos. O Clock permite setInstant/advance e conserva precisão nativa; é restaurado antes de cada cenário futuro e no fechamento. Não há contador de referência de negócio nesta etapa. O JWT existente continua emitido/validado pelos beans reais de produção; atualmente JwtTokenService usa Instant.now, não o Clock injetado de negócio. Nenhum decoder, encoder, filtro ou serviço foi substituído.
+
+Uso futuro: cada classe concreta de HTTP deverá estender o suporte, aplicar explicitamente `@PaymentRegistrationTestConfig.RootHttpContext` ou `@PaymentRegistrationTestConfig.ApiHttpContext` e declarar expectedContextPath como vazio ou `/api`, respectivamente. O suporte verificará identidade/path, porta, URL H2, perfil de inicialização e isolamento observado. O helper realHttpLogin recebe ID/nome/senha de uma conta já commitada pela fixture do cenário, envia POST /login pela rede local, exige 200/Bearer e verifica o subject pelo JwtDecoder real. Não cria contas, não usa o login MockMvc da fixture histórica e não registra credenciais. Cada cenário deve assertar seu próprio status/corpo; o helper send retorna a resposta real e propaga falhas de transporte, sem convertê-las em sucesso.
+
+O cliente usa timeout de conexão de 10 segundos, requests JSON com timeout de 30 segundos e nenhum redirecionamento automático. É fechado em @AfterAll, inclusive após falha de preparação; o finally restaura o Clock. Conexões do setup são encerradas por try-with-resources. openIndependentConnection usa DriverManager para uma conexão física separada, fecha-a se a própria preparação falhar e exige que o chamador a encerre com try-with-resources quando retornada. Não há linhas próprias criadas nesta T003 para apagar; a limpeza seletiva Payment→itens→pedidos→demais linhas e o probe de oito tabelas continuam em T004, sem alteração das fixtures/probes históricos.
+
+### Asserções preparadas e limites da observação
+
+- assertPaymentConnection compara a URL real via metadata e exige Connection.TRANSACTION_READ_COMMITTED em conexões pooled, independentes ou de negócio observadas; não muda o isolamento para fazer a asserção passar.
+- assertNoExternalTransaction exige ausência de transação, sincronização e recurso DataSource vinculado na thread corrente. Antes/depois de send, verifica somente a thread do chamador de teste. Para a entrada do request, a instrumentação futura precisa invocá-la na thread do servidor antes do interceptor transacional.
+- requirePaymentServiceProxy busca obrigatoriamente o futuro bean paymentRegistrationService, exige a classe-alvo real, proxy AOP/Advised e TransactionInterceptor. Não é chamado no setup da fundação; quando usado, serviço ausente causa falha, sem lookup opcional, bean falso ou teste omitido. A forma do proxy não comprova transação física ou commit.
+- assertOwnedPaymentTransaction deverá ser chamada pela observação futura dentro do interceptor na thread do request: exige transação/sincronização ativas, isNewTransaction, conexão vinculada ao DataSource, autoCommit=false e READ_COMMITTED. Não foi instalada nem exercitada instrumentação nesta etapa; retorno do proxy e commit ainda precisam das provas posteriores.
+
+Esses métodos são preparação de asserções, não resultados observados de banco/HTTP. Nenhuma conexão foi aberta, nenhum contexto Spring foi iniciado, nenhum login ou POST de pagamento foi enviado por esta execução da T003. Não há mocks, persistência exercitada, MockMvc ou HTTP real executados nesta entrega. Não se inferem isolamento efetivo, schema Payment, segurança, transação dona, commit, rollback, concorrência ou gates V01–V10 somente pela autoria do suporte.
+
+### Revisão e conclusão
+
+Revisão estática dos arquivos novos e suas referências às APIs já usadas no projeto. Comandos de whitespace executados: `git diff --check` sem diagnósticos, exit0; `git diff --no-index --check -- /dev/null <cada arquivo Java novo>` sem diagnósticos de whitespace, exit1 em cada chamada por serem arquivos novos diferentes de /dev/null. Os avisos de conversão futura LF→CRLF são da configuração Git existente. Compilação e testes não foram executados nesta tarefa de escrita; não há novo resultado Surefire, contagem JUnit ou console Maven a conciliar. A BASE de 391 testes em sete classes permanece a evidência anterior da T002, sem repetição ou aprovação retroativa destes arquivos novos.
+
+Critérios de preparação da T003 atendidos, sem impedimento de escrita; somente T003 é acrescentada às concluídas. T001–T002 preservadas, T004–T036 abertas: **3 concluídas e 33 abertas**. Alterações limitadas aos dois suportes de teste novos, a esta seção e à checkbox T003. Produção, testes/asserções preexistentes, perfil/seed globais, contratos, seleção local e relatórios anteriores permanecem preservados. Não houve inventário global de target/, stage, commit, push, merge ou alteração de main. A conferência final de referências, preservação do prefixo, diff, arquivos novos, whitespace e Git é registrada no fechamento abaixo.
+
+Fechamento observado: diff completo e conteúdo dos dois Java novos revisados. Conferência documental via script em stdin com `& 'C:/Users/ronal/AppData/Local/uv/cache/archive-v0/In_Ay6QzfEkllxlV/Scripts/python.exe' -B -I -X utf8 -`, exit0: prefixo de 32.753 bytes do quickstart igual ao HEAD, tasks.md alterado somente em T003, cinco links locais novos existentes, três tarefas concluídas e 33 abertas, nenhum método @Test/@ParameterizedTest/@Nested/@Disabled novo e whitespace sem diagnósticos. Git final com quickstart.md/tasks.md modificados e somente os dois Java previstos não rastreados; índice vazio. Branch/HEAD/main e seleção 008 preservados. `.specify/extensions.yml` ausente também no fechamento; nenhum hook after_implement registrado. Nenhum resultado de execução da aplicação é alegado por essa revisão documental.
+
+## T004 — Preparação de fixture e probe em 2026-10-21
+
+**Escopo realizado**: exclusivamente a escrita prevista em [T004](tasks.md), dependente da BASE/T002 já registrada: 391 testes em sete classes, zero falhas/erros/ignorados e exit0. Essa evidência anterior não aprova os suportes novos. **Os dois arquivos recebidos da T003 continuam sem compilação ou execução**, preservados integralmente; T001–T003 e seus limites permanecem como prefixo deste quickstart. Não se declara comportamento funcional da 008 por esta preparação.
+
+### Estado inicial e fontes
+
+`git rev-parse --show-toplevel`, `git branch --show-current`, `git rev-parse HEAD`, `git status --short --untracked-files=all` e `git diff --cached --name-only` confirmaram a raiz `C:/Users/ronal/dscommerce-speckit`, branch `008-registrar-pagamento`, HEAD `3d8d1a4a99cfa3ea28e9aa7acff19e1d0008c279`, somente quickstart.md/tasks.md da 008 modificados, os dois Java da T003 não rastreados e nada staged. `.specify/feature.json` continua selecionando a 008. O script `.\.specify\scripts\powershell\check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks` retornou exit0, FEATURE_DIR absoluto da 008 e os artefatos esperados. Checklist requirements.md: 16/16 marcados, zero abertos, PASS documental; marcadores preservados.
+
+Foram lidos T004 integral e sua dependência, as restrições de progressão até T007/T008 e os artefatos pertinentes: plano, pesquisa R8/R9, modelo, contratos e procedimentos de preparação/observação deste quickstart. A composição considerou as implementações existentes da fixture/probe007, da fixture de catálogo e do inicializador H2, além do suporte recebido da T003. Constituição e harness permanecem as fontes de governança. `.gitignore` Java já cobre target/; nenhuma mudança de ignore ou infraestrutura. `.specify/extensions.yml` ausente na conferência anterior; nenhum hook before_implement registrado.
+
+### Arquivos escritos e procedimentos futuros
+
+| Arquivo novo | Preparação realizada, sem execução |
+| --- | --- |
+| [PaymentRegistrationTestFixture.java](../../src/test/java/com/devsuperior/dscommerce/fixtures/PaymentRegistrationTestFixture.java) | AutoCloseable, sem inserts no construtor. Reutiliza contas/perfis/catálogo da fixture aprovada e os manifests da 007; prepara pedidos completos WAITING_PAYMENT, rastreia IDs próprios e acrescenta a limpeza de Payment antes dos demais dados. |
+| [PaymentRegistrationDatabaseProbe.java](../../src/test/java/com/devsuperior/dscommerce/fixtures/PaymentRegistrationDatabaseProbe.java) | Compõe [OwnOrderQueryDatabaseProbe](../../src/test/java/com/devsuperior/dscommerce/fixtures/OwnOrderQueryDatabaseProbe.java), acrescentando leitura obrigatória e comparação de tb_payment. Nenhuma entidade produtiva futura, schema artificial ou observador de T005 é instalado. |
+
+A fixture reutiliza [AdminProductTestFixture](../../src/test/java/com/devsuperior/dscommerce/fixtures/AdminProductTestFixture.java) sem alterá-la, incluindo suas verificações de perfil/inicializador/URL H2 exclusiva e seu setup REQUIRES_NEW de contas/perfis e catálogo. O novo código rejeita transação/sincronização externa ao setup/cleanup. A criação do pedido usa sua própria transação REQUIRES_NEW/READ_COMMITTED; só registra os IDs do pedido e dos itens depois do retorno commitado. Comprador e produtos precisam pertencer à fixture. Quantidades, preços históricos, subtotais e total esperados vêm do cenário, sem derivação pelo serviço/mapper de produção ou preço atual. Não é criado pagamento de setup nem alterado o estado inicial para PAID.
+
+Uso futuro: atribuir a fixture antes de iniciar a preparação e mantê-la alcançável por finally, @AfterEach ou @AfterAll; em teste local, também pode ser encerrada por try-with-resources. Criar contas/perfis e pedido antes do request, aguardar o término de todos os escritores e fotografar antes da limpeza. O login HTTP real continua no suporte da T003; esta fixture não expõe nem executa o login MockMvc da fixture interna. Construir esse suporte histórico instala seus objetos de apoio, mas não dispara requests. Nenhuma preparação descrita neste parágrafo foi executada nesta T004.
+
+A limpeza escrita usa DELETEs parametrizados na ordem Payment→itens→pedidos→vínculos de perfil das contas próprias, depois delega produtos/categorias/demais linhas próprias à fixture aprovada. Os pagamentos são removidos pelos IDs dos pedidos rastreados, inclusive se forem criados posteriormente pelo endpoint; itens usam ID e order_id. Vínculos de perfil usam somente IDs de contas próprias para tolerar concessões/revogações feitas pelo cenário, sem apagar vínculos de outras contas. Não há TRUNCATE, limpeza de tabela inteira ou exclusão de compras de outro proprietário de fixture.
+
+Payment, itens, pedidos e vínculos de perfil são limpos na primeira transação. Os IDs dos pedidos só são liberados após seu commit; falha nessa fase conserva o rastreamento para nova tentativa. A limpeza de catálogo é uma fase commitada separada e conserva seu próprio rastreamento em caso de falha; não se promete atomicidade entre as duas fases. Contas/produtos do wrapper só são liberados depois do sucesso dessa delegação. As exceções propagam; limpeza não transforma falha de cenário em aprovação. ResultSets/Statements de metadata e leitura usam try-with-resources; JdbcTemplate/TransactionTemplate gerenciam as conexões vinculadas.
+
+### Schema ausente, snapshots e limites
+
+A única tolerância à ausência de tb_payment está no método privado paymentTableExistsForCleanup: consulta metadata PUBLIC/TB_PAYMENT durante a limpeza, antes de T008 disponibilizar a tabela. Ausência permite remover o restante dos dados próprios anteriores ao schema. Erro de metadata ou DELETE quando a tabela existe propaga, sem fallback silencioso. O código não cria DDL para fazer testes passarem.
+
+O snapshot funcional sempre executa `select order_id, occurred_at from tb_payment order by order_id`. Se a tabela/colunas estiverem ausentes ou não puderem ser lidas, lança IllegalStateException explícita exigindo o schema real, sem retornar lista vazia ou omitir Payment. Lista vazia só é resultado válido da consulta executada com sucesso sobre tabela existente. A ocorrência é lida como OffsetDateTime e convertida a Instant, sem arredondamento. O snapshot contém listas imutáveis e inclui o snapshot007 integral, com contas/perfis e as sete tabelas anteriores. Credenciais permanecem opacas no probe007; toString expõe somente contagens e redação de credenciais, e os diagnósticos de comparação identificam tabelas, sem valores de conta, hashes ou causa SQL sensível.
+
+As conexões do probe são físicas e independentes, delegadas ao mecanismo aprovado. A nova leitura Payment exige READ_COMMITTED observado e tem commit/rollback e fechamento; o probe007 conserva suas próprias transações de leitura REPEATABLE_READ. A composição usa várias leituras/conexões: **não é um snapshot global atômico sob escritores concorrentes**. Chamadores precisam encerrar os escritores e manter setup/login/limpeza fora da janela. Fotografias iguais também não provam ausência de toda mutação transitória revertida. Não foi acrescentada observação SQL de Hibernate nem observação de JDBC/threads de T005.
+
+No primeiro RED de rota, o cenário futuro deve assertar o resultado HTTP esperado antes de solicitar o snapshot que exige oito tabelas. Ausência de tb_payment não pode substituir a asserção da operação ausente por falha de preparação, nem ser aceita como ausência funcional comprovada por lista vazia. A sensibilidade do probe a mudanças de Payment e das sete tabelas anteriores, e a limpeza após falha de teste, permanecem provas de T007/T013; a escrita dos métodos não as executa.
+
+### Validações e conclusão
+
+Revisão estática de conteúdo, APIs e referências dos dois arquivos novos. `git diff --check` retornou exit0 sem diagnósticos de whitespace; `git diff --no-index --check -- /dev/null <cada Java da T004>` retornou exit1 em cada chamada, sem diagnóstico de whitespace, por comparar arquivo novo com /dev/null. Os avisos LF→CRLF decorrem da configuração Git existente. Foram registrados hashes dos dois Java da T003 para conferir sua preservação, sem inventário global de target/.
+
+Não houve Maven, javac, compilação, servidor, persistência executada, mocks, MockMvc, HTTP real ou novo relatório Surefire. Não se fabricou RED nem se classificou preparação/compilação como falha funcional. A T004 é de escrita; as execuções previstas começam nos cenários posteriores. T003 e T004 continuam sem comprovação executável, com os limites explicitados, e a BASE não foi repetida. Produção, testes/asserções históricos, perfil/seed global, contratos e relatórios anteriores permanecem intactos.
+
+Critérios de autoria da T004 atendidos, sem impedimento de escrita. Somente T004 acrescentada às concluídas nesta execução; T001–T003 preservadas e T005–T036 abertas: **4 concluídas e 32 abertas**. Alterações desta tarefa limitadas aos dois Java novos acima, à seção acrescentada neste quickstart e à checkbox T004. Nada de T005+ foi executado. Sem stage, commit, push, merge ou alteração de main; estado final, preservações e referências são conferidos no fechamento abaixo.
+
+Fechamento observado: diff e arquivos novos revisados. A conferência documental em stdin por `& 'C:/Users/ronal/AppData/Local/uv/cache/archive-v0/In_Ay6QzfEkllxlV/Scripts/python.exe' -B -I -X utf8 -` retornou exit0: prefixo inicial de 42.438 bytes do quickstart preservado por SHA-256, dois Java da T003 com hashes iniciais idênticos, tasks.md diferente do recebido somente pelo marcador T004, cinco links novos existentes, quatro tarefas concluídas e 32 abertas, nenhum método de teste executável acrescentado e whitespace sem diagnósticos. Git final: quickstart.md/tasks.md modificados; quatro Java não rastreados, sendo os dois recebidos da T003 e os dois criados nesta T004; nada staged. HEAD, branch, main e seleção 008 preservados. `.specify/extensions.yml` ausente também na conferência posterior: nenhum hook after_implement registrado. Compilação e execução dos suportes da T003/T004 continuam pendentes das etapas aprovadas, sem nova prova funcional.
+
+## T005 — Preparação de observação e coordenação em 2026-10-21
+
+**Escopo realizado**: somente a escrita prevista em [T005](tasks.md), dependente de T003–T004. Os quatro suportes recebidos permanecem intactos e **ainda não foram compilados ou executados**. A BASE/T002 continua sendo evidência anterior de 391 testes em sete classes, zero falhas/erros/ignorados e exit0; não aprova estes suportes novos. Esta seção preserva o prefixo T001–T004 e não afirma entrega funcional da 008.
+
+### Estado inicial e fontes
+
+`git rev-parse --show-toplevel`, `git branch --show-current` e `git rev-parse HEAD` confirmaram `C:/Users/ronal/dscommerce-speckit`, `008-registrar-pagamento` e `3d8d1a4a99cfa3ea28e9aa7acff19e1d0008c279`. `git status --short --untracked-files=all` mostrou somente quickstart.md/tasks.md da 008 modificados e estes quatro Java não rastreados, com caminhos completos conferidos:
+
+- `src/test/java/com/devsuperior/dscommerce/config/PaymentRegistrationTestConfig.java`
+- `src/test/java/com/devsuperior/dscommerce/controllers/PaymentRegistrationHttpTestSupport.java`
+- `src/test/java/com/devsuperior/dscommerce/fixtures/PaymentRegistrationTestFixture.java`
+- `src/test/java/com/devsuperior/dscommerce/fixtures/PaymentRegistrationDatabaseProbe.java`
+
+`git diff --cached --name-only` teve saída vazia. Seleção local em `.specify/feature.json`: Feature 008. O comando `.\.specify\scripts\powershell\check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks` retornou exit0, FEATURE_DIR absoluto da 008 e os documentos esperados. Checklist requirements.md: 16/16 marcados, zero abertos, PASS documental, sem alterar marcadores. `.specify/extensions.yml` ausente antes da escrita; nenhum hook before_implement registrado. Ignore Java existente adequado, sem alteração.
+
+Foram considerados T005 integral, suas dependências T003/T004, os limites e seleções de tarefas, plano, pesquisa R3/R5/R6/R8/R9, modelo, contratos e procedimentos pertinentes deste quickstart, sob a constituição e o harness. Foram lidas as referências existentes de observação/falhas 005/007 e o Clock controlável aprovado. T005 prepara a instrumentação; os cenários e seleções executáveis pertencem a T006+. Não se executou Maven, javac, servidor, teste ou validação OpenAPI, nem se iniciou inventário global de target/.
+
+### Configuração escrita e ativação futura
+
+Novo arquivo: [PaymentRegistrationObservationConfig.java](../../src/test/java/com/devsuperior/dscommerce/config/PaymentRegistrationObservationConfig.java), @TestConfiguration com perfil test e ativação somente por import explícito. O consumidor futuro deverá acrescentar `@Import(PaymentRegistrationObservationConfig.class)` ao contexto isolado que já seleciona [PaymentRegistrationTestConfig](../../src/test/java/com/devsuperior/dscommerce/config/PaymentRegistrationTestConfig.java). Não foram alterados esses suportes recebidos, configurações produtivas, perfil/seed globais, filtros de segurança, repositórios ou serviços. Nenhum bean de pagamento foi criado para simular uma implementação ausente.
+
+A configuração mantém o ControlledClock original, inclusive sua injeção concreta no suporte T003 e seus métodos setInstant/advance. Somente no contexto que importar esta configuração, um BeanFactoryPostProcessor retira o atributo primary do bean de teste paymentTestClock; um novo Clock @Primary delega ao mesmo objeto controlável e observa o valor exato de instant(), sem nova leitura, truncamento ou arredondamento. Isso não altera o arquivo da T003 nem o bean produtivo OrderClockConfig. O contador só avança durante o corpo do serviço de pagamento observado na thread do request; chamadas de filtro/JWT, fixture e outros serviços fora desse corpo não contam como referência de negócio. Atualmente JwtTokenService usa Instant.now, mas mesmo uma chamada ao Clock na fase de filtro ficaria fora dessa contagem.
+
+Uma propriedade apenas desse contexto configura `spring.datasource.hikari.connection-init-sql=set lock_timeout 20000` para as novas conexões Hikari do H2 isolado. Configuração de init SQL conflitante é rejeitada. URL, segredo, seed, create-drop e os contextos históricos não são alterados; não se usa DB_CLOSE_DELAY como garantia contra DROP alheio. A aplicação efetiva dessa configuração ainda não foi executada nem verificada em banco.
+
+### Janelas, SQL e proxy real
+
+Uso futuro: concluir setup/login, abrir `observation.openWindow(Duration)` em try-with-resources, criar um Attempt por `window.newRequest()` e marcar somente o request desejado com `X-Feature008-Observation: attempt.id()`. Não registrar esse identificador, credenciais ou JWTs em logs. Um filtro de teste associa a tentativa à thread do request e remove o ThreadLocal em finally; também sinaliza o fim da passagem pelo filtro. Requests não marcados ou fora da janela continuam pela cadeia normal sem serem capturados. Uma tentativa não pode ser reutilizada para dois requests.
+
+O StatementInspector retorna o SQL sem modificá-lo e registra somente SQL de requests marcados, com thread, estado transacional e fase OUTSIDE_SERVICE, SERVICE_BODY ou PROXY_BOUNDARY. Não observa bind values nem JDBC direto, inclusive as conexões auxiliares. O toString dos eventos não imprime SQL e o da tentativa não imprime resultado. Conflito já presente na propriedade do inspector é rejeitado em vez de substituir silenciosamente outro observador. O isolamento entre observadores e a passagem dos requests ainda precisam de execução nos contextos concretos.
+
+O BeanPostProcessor seleciona somente paymentRegistrationService, exige a classe-alvo planejada e o proxy Spring/Advised real com um TransactionInterceptor único. Acrescenta observação imediatamente antes e depois desse interceptor original; não cria proxy substituto nem chama o alvo diretamente. Na thread do servidor, registra ausência de transação/sincronização/recurso DataSource externo na entrada/saída, entrada no corpo, transação ativa e nova, readOnly, conexão efetivamente vinculada, autoCommit e isolamento JDBC. A conexão vinculada é obtida/liberada por DataSourceUtils; sua obtenção pode antecipar a aquisição física durante a instrumentação, antes da primeira instrução do corpo. Isso não mede latência de pool nem prova ausência de espera de infraestrutura.
+
+Retorno e falha do proxy são registrados separadamente, sem guardar DTO ou exceção sensível. `attempt.assertOwnedTransactionObserved()` exige serviço instalado, uma entrada de proxy/corpo, término do proxy, ausência externa, transação dona READ_COMMITTED, conexão vinculada/autoCommit=false e exatamente uma leitura do Clock com referência não nula. Serviço ausente, nenhuma entrada ou nenhuma leitura não viram PASS. A forma do proxy, um retorno ou o encerramento do filtro **não são prova isolada de commit efetivo ou entrega da resposta**; essas provas permanecem posteriores.
+
+Abrir uma janela não exige antecipadamente o serviço ainda inexistente, permitindo que o futuro primeiro RED compare o status HTTP da rota. O cenário deverá assertar primeiro o resultado HTTP esperado e só então as provas específicas de serviço/schema aplicáveis. Espera por fase não alcançada falha por timeout, e a asserção transacional falha explicitamente se o serviço não existir. Nenhuma seleção vazia ou observação sem invocação é tomada como comprovação funcional.
+
+### Coordenação e recursos independentes
+
+Cada tentativa pode instalar um Gate, antes de submeter o request, em PROXY_ENTRY, BODY_ENTRY, REFERENCE_READ, ORDER_LOCK_SQL ou PROXY_RETURN. A API usa CountDownLatch para awaitReached/release; não há sleeps arbitrários. Em REFERENCE_READ, o valor já foi lido do Clock e será devolvido sem recaptura após a liberação; não se afirma que a variável local do serviço já tenha sido atribuída durante a pausa. ORDER_LOCK_SQL é reconhecimento de `tb_order ... for update` no inspector **antes da execução**: não confirma aquisição, espera física ou lock retido. PROXY_RETURN é posterior ao retorno do interceptor original; timeout nessa fase não autoriza inferir rollback de um possível commit já efetivado.
+
+Uma janela tem um proprietário para seu ciclo de vida e permite múltiplos requests/trabalhos concorrentes por executor de virtual threads Java 21. A restrição de uma janela ativa por observador é apenas controle do teste; não é mutex de negócio nem serializa os requests dentro dela. O estado é de instância/contexto, sem registradores estáticos mutáveis ou mudança em outros contextos. O escopo preparado acompanha a thread servlet síncrona; não promete propagação automática a processamento assíncrono da aplicação.
+
+`window.independentTransaction(probe)` reutiliza [PaymentRegistrationDatabaseProbe](../../src/test/java/com/devsuperior/dscommerce/fixtures/PaymentRegistrationDatabaseProbe.java) para uma conexão física DriverManager, fora do pool e da transação vinculada da aplicação. Exige ausência de transação/sincronização no chamador e READ_COMMITTED observado; configura somente essa sessão H2 com lock_timeout=10000, autoCommit=false e statements preparados com queryTimeout de 10 segundos. Não monta SQL de pagamento/lock produtivo nem executa DDL. Chamadores futuros devem fechar statements/resultsets por try-with-resources e efetivar ou reverter explicitamente sua preparação auxiliar; close reverte a transação ainda pendente e fecha a conexão em finally.
+
+Timeouts de gates, resultado de Future e conclusão de request usam a duração positiva da janela, limitada a 10 segundos; a espera de término de workers pode ter duas tentativas limitadas. `awaitResult` propaga falhas do trabalho e cancela por timeout. O fechamento libera gates e conexões/locks auxiliares antes de aguardar trabalhos, interrompe/cancela se necessário, confere também exceções dos Futures e término do filtro e desarma a janela em finally. Erros de limpeza são propagados/agregados, sem convertê-los em resultado aprovado. Fechar a janela antes da fixture, preferencialmente depois de aguardar explicitamente todos os requests; se faltar término, a limpeza falha em vez de presumir sucesso. Esses limites são de instrumentação/teste, não SLA ou garantia de concorrência da aplicação.
+
+### Validações e conclusão
+
+Conteúdo do Java novo e suas referências revistos estaticamente. `git diff --check` retornou exit0 sem diagnóstico de whitespace; `git diff --no-index --check -- /dev/null src/test/java/com/devsuperior/dscommerce/config/PaymentRegistrationObservationConfig.java` retornou exit1, sem diagnóstico de whitespace, por ser arquivo novo diferente de /dev/null. Avisos LF→CRLF são da configuração Git existente. Os quatro arquivos recebidos tiveram comprimento/SHA-256 registrados para a conferência de preservação, sem varrer target/.
+
+**Sem compilação ou execução de T003–T005 nesta tarefa de escrita.** Nenhum contexto Spring, Clock decorado, filtro, SQL, transação, gate, worker, conexão, MockMvc ou HTTP foi exercitado. Não há console Maven/Surefire novo nem casos aninhados executados a conciliar; as classes aninhadas do novo arquivo são suporte, não cenários JUnit. Revisão estática não aprova bootstrap, wiring AOP/Clock/Hikari, precisão, ausência de vazamento, locks, commit, rollback ou segurança. Eventuais erros futuros de compilação/preparação deverão ser classificados separadamente de RED funcional, sem enfraquecer asserções. Baseline e suíte completa não foram repetidas; relatórios anteriores preservados.
+
+Critérios de autoria da T005 atendidos, sem impedimento de escrita. Somente T005 acrescentada às concluídas nesta execução: **T001–T005 concluídas, T006–T036 abertas (5/31)**. Não foram escritos cenários T006+, modelo, serviço ou endpoint de pagamento, nem os failpoints de T023. Alterações limitadas ao Java novo acima, à seção acrescentada neste quickstart e à checkbox T005; quatro Java recebidos e evidências anteriores preservados. Sem stage, commit, push, merge ou alteração de main. Referências, diff, arquivos novos, preservações e estado final do Git são conferidos no fechamento abaixo.
+
+Fechamento observado: revisão estática e conferência documental via stdin com `& 'C:/Users/ronal/AppData/Local/uv/cache/archive-v0/In_Ay6QzfEkllxlV/Scripts/python.exe' -B -I -X utf8 -`, exit0. Prefixo inicial de 52.852 bytes do quickstart preservado por SHA-256; quatro Java recebidos com hashes iniciais idênticos; tasks.md diferente do recebido somente pela checkbox T005; quatro links novos existentes; cinco tarefas concluídas e 31 abertas; nenhum método @Test/@ParameterizedTest/@Nested/@Disabled acrescentado; whitespace sem diagnósticos. Diff e conteúdo completo do arquivo novo revisados. Git final: dois documentos modificados, cinco Java não rastreados (quatro recebidos e somente PaymentRegistrationObservationConfig.java novo nesta tarefa), índice vazio; HEAD/branch/main e seleção 008 preservados. `.specify/extensions.yml` ausente também no fechamento, sem hook after_implement registrado. Sem nova evidência executável de aplicação, compilação, Maven ou Surefire.
+
+## Execução T006 — testes HTTP US1 e S1-RED (2026-10-21)
+
+### Estado recebido, escopo e preservação
+
+Uso de `speckit-implement` limitado à T006. Conferência inicial: raiz `C:/Users/ronal/dscommerce-speckit`, branch real `008-registrar-pagamento`, HEAD `3d8d1a4a99cfa3ea28e9aa7acff19e1d0008c279` e seleção local Feature 008 em `.specify/feature.json`. Somente este quickstart e tasks.md estavam modificados; índice vazio. Os cinco Java não rastreados recebidos eram:
+
+- `src/test/java/com/devsuperior/dscommerce/config/PaymentRegistrationTestConfig.java`
+- `src/test/java/com/devsuperior/dscommerce/controllers/PaymentRegistrationHttpTestSupport.java`
+- `src/test/java/com/devsuperior/dscommerce/fixtures/PaymentRegistrationTestFixture.java`
+- `src/test/java/com/devsuperior/dscommerce/fixtures/PaymentRegistrationDatabaseProbe.java`
+- `src/test/java/com/devsuperior/dscommerce/config/PaymentRegistrationObservationConfig.java`
+
+As execuções T003–T005 preservam seu alcance histórico de **autoria e revisão estática, sem compilação ou execução naquela ocasião**. A compilação e o uso parcial desses suportes descritos abaixo são evidência nova, exclusivamente desta T006, sem aprovação retroativa de todas as suas capacidades. Os cinco arquivos recebidos foram preservados sem alterações; comprimentos e SHA-256 iniciais registrados para conferência final. T001–T002 e seus limites, inclusive o inventário opcional incompleto da T001, permanecem intactos. A BASE histórica de 391 testes em sete classes, exit0, não foi repetida e não comprova a funcionalidade008.
+
+Foram lidos T006 integralmente, dependências T003–T005, condições de S1-RED, spec/US1, plano, pesquisa, modelo e contrato POST008 pertinentes, sob constituição, AGENTS.md e harness. Pré-requisitos do Spec Kit confirmaram o diretório absoluto008; requirements.md permaneceu 16/16 marcado, zero aberto, PASS documental. Nenhum hook registrado: `.specify/extensions.yml` ausente antes da execução. Ignore Java adequado, sem alteração. Antes do Maven, a consulta de processos Java/Maven/Surefire não encontrou execução ativa; não havia evidência de execução anterior T006 no diretório de evidências. Não se refez inventário global de target/.
+
+### Testes escritos e fronteiras de prova
+
+Novos arquivos [PaymentRegistrationHttpIntegrationTest.java](../../src/test/java/com/devsuperior/dscommerce/controllers/PaymentRegistrationHttpIntegrationTest.java) e [PaymentRegistrationApiHttpIntegrationTest.java](../../src/test/java/com/devsuperior/dscommerce/controllers/PaymentRegistrationApiHttpIntegrationTest.java). O suporte de cenários está no primeiro arquivo, com herança dos mesmos 11 métodos em cada classe concreta, sem @Nested, @Disabled, mocks de pagamento ou import de tipos produtivos ainda inexistentes. Parâmetros expandem cada classe para 16 invocações. A matriz abaixo foi conciliada com os testcase XML, não inferida somente pelo seletor.
+
+| Cenário / fronteira | Método herdado em ROOT e Api | Invocações por contexto |
+| --- | --- | --- |
+| US1.1: ADMIN isolado paga pedido alheio, histórico42,50 | us11AdminSettlesForeignOrderWithExactlyThreeConfirmationFieldsAndHistorical4250 | 1 |
+| US1.2: próprio/alheio, ADMIN sem CLIENT e ambos os perfis | us12OwnAdminWithoutClientAndBothProfilesUseTheSameSettlementRules | 3: ADMIN/próprio, BOTH/próprio, BOTH/alheio |
+| US1.3: preço atual12 não substitui histórico20 | us13CatalogPriceTwelveDoesNotReplaceHistoricalTwentyOrOrderData | 1 |
+| US1.4: ocorrência anterior à referência, offset+03:00 e nove dígitos exatos em ms | us14EquivalentOffsetWithExtraZerosPreservesOccurrenceRatherThanBusinessReference | 1 |
+| US1.5: igualdade à criação | us15OccurrenceEqualToCreationIsAccepted | 1 |
+| US1.6: igualdade à referência inicial, avanço posterior do Clock | us16OccurrenceEqualToInitialReferenceSurvivesClockAdvanceBeforeCompletion | 1 |
+| Credencial ausente e Bearer malformado:401 | basicAuthenticationRejectsMissingAndMalformedBearerWithSafePaymentEnvelope | 2 |
+| CLIENT e conta sem perfil:403 | basicAuthorizationRejectsClientAndNoProfileWithoutDisclosingOrderData | 2 |
+| Campo amount adicional:400 | basicClosedRequestRejectsAnAttemptToSupplyAmount | 1 |
+| Criação−1ms e referência+1ms:400 | basicWindowRejectsInstantsOutsideInclusiveBoundsWithoutChangingHistoricalTables | 2 |
+| Nova tentativa por outro ADMIN após aceitação:409, sem substituir quitação | basicNewAttemptAfterAcceptanceReturns409AndPreservesTheFirstPayment | 1 |
+
+As expectativas são 201 com exatamente orderId/occurredAt/status, número integral para o ID, PAID e UTC.SSS preservando o instante, sem Location/valor/comprador; rejeições exigem seu próprio status, envelope fechado de quatro campos, mensagem/path contratuais e Bearer somente no 401. Após um 201, o código exige observação do proxy real, transação dona READ_COMMITTED e única leitura da referência; probe JDBC estrito exige Payment e alteração exclusiva do status do pedido alvo, preservando catálogo, contas, perfis, pedidos e itens, inclusive montante histórico. A repetição exige 409 e snapshot de oito tabelas inalterado. **Essas asserções posteriores ao 201 estão escritas, mas não foram alcançadas neste RED.**
+
+Setup usa fixtures commitadas e registros próprios, com canário de pedido não alvo; AfterEach fecha a fixture após as janelas, inclusive em falha. A ordem de limpeza recebida não foi alterada. Login e requisições usam HttpClient contra servidor real em porta aleatória; os controles GET administrativos existentes precisam retornar 200 com credenciais ADMIN/BOTH antes dos POSTs. A composição histórica da fixture constrói internamente suporte MockMvc, mas os logins/controles/POSTs desta T006 são HTTP real, sem perform de MockMvc nem stub do serviço008. Preparação JDBC e controles de login não equivalem a registro de pagamento.
+
+Para compatibilizar JWTs reais emitidos pelo relógio de parede com o conversor existente, o cenário fixa o ControlledClock em Instant.now truncado a ms **após** os quatro logins e antes dos controles/POSTs; criação e ocorrência são anteriores a essa referência. Não se alterou o suporte recebido nem o relógio/configuração produtiva. O cenário US1.6 instala gate em REFERENCE_READ, avança o Clock somente se alcançar a fase e então aguarda o resultado. Sem serviço/rota, o gate expira em 10s; o teste recupera a resposta real e compara 201 antes de relatar o timeout como informação suprimida. Se houvesse 201 sem observação, a falha de instrumentação continuaria explícita. Não há sleep nem sucesso presumido por ausência de eventos.
+
+Conforme a progressão aprovada, antes dos POSTs ainda não há snapshot que exija tb_payment inexistente: fotografias das rejeições básicas cobrem as sete tabelas históricas. Snapshot estrito de oito tabelas só ocorre após o 201 e na repetição subsequente. Completar as fotografias das rejeições após T008 continua pendente para S1-GREEN; não se usa metadata condicional para transformar Payment ausente em lista vazia. Nenhum 404 inicial aprova as guardas individuais, nenhum snapshot igual prova ausência de mutação transitória e nenhuma observação de H2 prova outro banco ou rede de produção.
+
+### Comando e evidências da única execução
+
+Identificador: `S1-RED-T006-20261021T182253894`. Ambiente: Windows/PowerShell, Java Zulu 21.0.12.1+1-LTS; Wrapper configurado para Maven 3.9.16. Metadados iniciados às 18:22:59−03:00; término às 18:25:22−03:00, em 2026-10-21; Maven informou duração 02:11. HEAD acima e diff não commitado recebido, acrescido dos dois testes novos. Nenhuma implementação produtiva foi modificada.
+
+A linha S1-RED/T006–T007 manda selecionar classes somente quando escritas. Portanto, a execução T006 incluiu **exatamente as duas classes HTTP existentes**, sem antecipar os dois testes de persistência/probe pertencentes à T007:
+
+```powershell
+.\mvnw.cmd "-Dtest=PaymentRegistrationHttpIntegrationTest,PaymentRegistrationApiHttpIntegrationTest" "-Dsurefire.reportNameSuffix=S1-RED-T006-20261021T182253894" test
+```
+
+Console capturado com Tee-Object, preservando o LASTEXITCODE imediatamente após a chamada; `exit.json` registra **1**. Diretório exclusivo ignorado pelo Git: `target/feature008-evidence/S1-RED-T006-20261021T182253894/`:
+
+- `console.log`: console completo em UTF-16LE; `run.json` e `run-normalized.json`: comando, horário, ambiente, branch/HEAD; o segundo normaliza a serialização de propriedades PowerShell, sem substituir o original. `git-status-before.txt` e `tracked-diff-before.patch`: estado recebido.
+- `previous-surefire/` e `previous-report-hashes.json`: cópia anterior e SHA-256 dos 232 arquivos diretamente em target/surefire-reports. É uma preservação proporcional de relatórios, não inventário global de target/ nem correção retroativa do inventário T001.
+- `new-surefire/`: somente os quatro arquivos novos (XML+TXT de cada classe), com sufixo exclusivo; os mesmos resultados permanecem em target/surefire-reports, sem sobrescrever os anteriores.
+- `reconcile.py` e `reconciliation.json`: conferência estática do console/XML, classes, identidades de testcase, multiplicidades, falhas e hashes dos relatórios. A primeira conferência identificou que o sufixo Surefire também integra name/classname no XML; a conferência foi corrigida para remover apenas esse sufixo conhecido, sem alterar testes ou reexecutar Maven. A execução final da conferência retornou exit0.
+
+| Classe efetivamente executada | Testes | Falhas | Erros | Ignorados |
+| --- | ---: | ---: | ---: | ---: |
+| PaymentRegistrationApiHttpIntegrationTest | 16 | 16 | 0 | 0 |
+| PaymentRegistrationHttpIntegrationTest | 16 | 16 | 0 | 0 |
+| Total conciliado com console | **32** | **32** | **0** | **0** |
+
+Os 11 métodos e suas multiplicidades acima constam uma vez por identidade de invocação em cada contexto; nenhuma classe adicional, omissão ou duplicata. Não há cenários @Nested previstos nestes dois arquivos. A reconciliação também confirmou que todos os 232 relatórios anteriores conservam SHA-256 idêntico. Foram gerados somente quatro relatórios com o novo sufixo. BASE e suíte completa não foram repetidas; nenhum outro Maven foi iniciado.
+
+### Diagnóstico e alcance do RED
+
+A compilação das 124 fontes de teste passou, inclusive dos cinco suportes recebidos e dos dois cenários novos. Os contextos ROOT e /api iniciaram com H2s exclusivos diferentes; testes passaram pela preparação de contas/pedidos, logins reais e controles 200. Não houve erro de compilação, bootstrap, fixture, SQL de tabela ausente ou limpeza substituindo a asserção HTTP. Avisos de depreciação SecurityManager, Byte Buddy/CDS e H2Dialect foram preservados no console; não foram classificados como falhas funcionais nem corrigidos fora do escopo.
+
+Em cada contexto houve nove comparações 201→404 (incluindo a primeira tentativa do teste de repetição), três 400→404, duas 401→401 e duas 403→403. Total: **24 falhas pelo status 404 da operação ausente e oito pelo envelope 401/403 com chave extra errors**, contrário ao objeto fechado POST008. Nos oito últimos casos o status e os headers anteriores à comparação de campos passaram; a mensagem/path exatos ficam depois da asserção de campos e não foram comprovados. O diagnóstico não infere mensagens corretas nem prova que todas as regras de autenticação estejam atendidas.
+
+Em US1.6, o timeout de gate aparece suprimido em cada contexto: sem entrada no serviço ausente, não houve leitura da referência de negócio. A falha primária registrada é 201 esperado versus 404 observado. Isso **não comprova** igualdade temporal sob espera, leitura única do Clock ou comportamento transacional. Do mesmo modo, não se alcançaram o 409 da nova tentativa,201 fechado, Payment persistido, PAID, precisão armazenada, snapshots de sucesso ou oito tabelas, commit/rollback, locks ou sensibilidade/limpeza do probe. O RED demonstra ausência da operação e incompatibilidade atual do envelope seguro; futuras execuções deverão isolar cada regra com a rota existente.
+
+### Conclusão limitada à tarefa
+
+T006 cumpriu autoria compilável, cobertura escrita e execução S1-RED funcional exigida; **não houve GREEN da Feature008**. Somente T006 é acrescentada às concluídas: **T001–T006 [X], T007–T036 abertas (6/30)**. T007 e implementação T008+ continuam pendentes. Não foi fabricada falha, modificado suporte recebido, alterada produção/teste histórico ou enfraquecida asserção para aprovação. Não há impedimento de compilação/preparação nesta execução; as lacunas funcionais observadas são esperadas para o incremento ainda não implementado.
+
+Alterações desta T006 limitadas aos dois Java novos, a esta seção e à checkbox T006. Revisão final de conteúdo/diff, referências, links, whitespace e preservação dos arquivos recebidos registrada no fechamento. Nenhum stage, commit, push, merge ou alteração de main autorizado/executado.
+
+Fechamento observado: conferencia estatica via stdin com o Python ja usado nas tarefas anteriores, exit0; `final-static-review.json` e `source-hashes.json` no diretorio desta execucao registram o resultado. Prefixo recebido de 66.141 bytes do quickstart preservado por SHA-256; os cinco Java recebidos conservaram comprimento/hash; tasks.md difere do recebido somente pela checkbox T006. Dois links novos existentes, seis tarefas concluidas e 30 abertas. Conteudo completo dos dois testes novos e diff revistos. `git diff --check`: exit0, sem diagnostico de whitespace; `git diff --no-index --check -- /dev/null <cada Java nao rastreado>`: exit1 em cada um dos sete arquivos, por serem novos, sem diagnostico de whitespace. Avisos LF/CRLF decorrem da configuracao Git existente. O console confirmou Api na porta49518 e ROOT na49525 com URLs H2 distintas; nao ha Maven/Surefire ativo no fechamento. Git final: somente os dois documentos modificados e sete Java nao rastreados (cinco recebidos, dois novos desta T006), nada staged; branch/HEAD/main e selecao008 preservados. `.specify/extensions.yml` ausente tambem apos a execucao, sem hook after_implement. Sem stage, commit, push ou alteracao de main.
+
+## Execução T007 — modelo/probe, metadata e JDBC antes da implementação (2026-10-21)
+
+### Conferência inicial e escopo preservado
+
+Skill speckit-implement aplicada somente à T007. Confirmados raiz `C:/Users/ronal/dscommerce-speckit`, branch real `008-registrar-pagamento`, HEAD `3d8d1a4a99cfa3ea28e9aa7acff19e1d0008c279` e seleção local Feature 008. Somente quickstart.md/tasks.md estavam modificados; nada staged. Os sete Java não rastreados recebidos, todos preservados por comprimento/SHA-256, eram:
+
+- `src/test/java/com/devsuperior/dscommerce/config/PaymentRegistrationTestConfig.java`
+- `src/test/java/com/devsuperior/dscommerce/config/PaymentRegistrationObservationConfig.java`
+- `src/test/java/com/devsuperior/dscommerce/controllers/PaymentRegistrationHttpTestSupport.java`
+- `src/test/java/com/devsuperior/dscommerce/controllers/PaymentRegistrationHttpIntegrationTest.java`
+- `src/test/java/com/devsuperior/dscommerce/controllers/PaymentRegistrationApiHttpIntegrationTest.java`
+- `src/test/java/com/devsuperior/dscommerce/fixtures/PaymentRegistrationTestFixture.java`
+- `src/test/java/com/devsuperior/dscommerce/fixtures/PaymentRegistrationDatabaseProbe.java`
+
+Lidos T007 integralmente, dependências T005/T003/T004, progressão tests-first e seleções focais, constituição, AGENTS.md, harness e artefatos pertinentes: spec, plano, pesquisa R3/R4/R8/R9, modelo, contratos e procedimentos/evidências deste guia. Check-prerequisites com -Json -RequireTasks -IncludeTasks retornou exit0 e FEATURE_DIR absoluto 008; checklist requirements.md 16/16, zero aberto, PASS documental, sem alterar marcadores. Ignore Java existente adequado; extensions.yml ausente antes da execução, sem hook registrado.
+
+Antes de iniciar, a consulta de processos Java/Maven/Surefire não encontrou Maven ativo; o diretório de evidências continha somente BASE e S1-RED-T006, sem execução anterior T007. Não houve inventário global de target/. T001–T006, asserções e suportes recebidos, produção, perfis/seed/configuração globais e contratos001–007 foram preservados. T003–T005 continuam historicamente limitadas à revisão estática naquela ocasião; compilação/uso parcial novos pertencem à T006 e à execução atual.
+
+Os **dois motivos históricos do S1-RED HTTP permanecem distintos**: em T006, 24 falhas pelo POST ausente, retornando 404, e oito pelo envelope 401/403 contendo a chave extra errors. Esta T007 não executa novamente essas classes, não corrige segurança/handlers e não atribui o segundo motivo ao roteamento. A BASE histórica 391/7 classes/exit0 também não foi repetida nem aprova pagamento.
+
+### Autoria realizada e alcance dos instrumentos
+
+Novos arquivos: [PaymentPersistenceIntegrationTest.java](../../src/test/java/com/devsuperior/dscommerce/repositories/PaymentPersistenceIntegrationTest.java) e [PaymentRegistrationDatabaseProbeTest.java](../../src/test/java/com/devsuperior/dscommerce/config/PaymentRegistrationDatabaseProbeTest.java). O primeiro contém o helper Database/records reutilizados somente pelos dois testes T007. Esses tipos aninhados são suporte, não classes @Nested JUnit. Não há @Disabled, assumptions, seleção vazia, imports de Payment/APIs ainda inexistentes ou DDL artificial.
+
+Cada classe usa contexto Spring Boot web MOCK próprio, perfil test e imports explícitos de PaymentRegistrationTestConfig/AdminProductTestConfig, com chave de contexto distinta (persistence-t007/probe-t007). O inicializador cria URL H2 exclusiva e estável, create-drop, SQL init never e import Hibernate vazio. O setup confere ausência de transação externa e duas conexões físicas DriverManager distintas, READ_COMMITTED e autoCommit=true. As mutações de teste têm transação JDBC própria, commit/rollback explícitos e statements com timeout 10s; recursos fecham por try-with-resources. Não se instalou bean produtivo falso nem se importou o observador do serviço008.
+
+Os cenários compõem as fixtures/probes aprovados. Preparação de contas/produtos/pedidos é commitada; operações sensíveis exigem primeiro asserção explícita de existência da tabela **real** PUBLIC.TB_PAYMENT gerada pelo mapeamento produtivo. Ausência falha como AssertionError antes da fixture/SQL/probe, sem tabela ausente escondendo o diagnóstico. O controle negativo de probe usa outro H2 vazio, sem DDL e sem substituir o schema da aplicação: exige a exceção segura por schema ilegível, nunca snapshot vazio aprovado.
+
+Os testes de limpeza guardam duas fixtures independentes e lançam uma AssertionError deliberada dentro de try-with-resources. Essa falha interna é o estímulo do teste de infraestrutura, capturado e conferido; não é RED fabricado da operação de pagamento. O oráculo exige que nenhuma falha de limpeza seja suprimida, os IDs próprios sejam liberados, close repetido seja seguro e o snapshot da fixture canário continue igual. Há variantes sem Payment e com Payment/PAID; somente a primeira foi alcançada nesta execução.
+
+Nenhum login, perform MockMvc, POST ou HTTP real foi executado nesta seleção; a fixture histórica apenas constrói seu suporte MockMvc interno. Nenhum servidor em porta aleatória foi iniciado. JDBC explícito nesta T007 prepara/examina persistência e falhas de integridade; não comprova a operação administrativa, autorização, referência de negócio, lock/refresh, atomicidade do serviço ou confirmação HTTP. Os cenários SQL podem criar Payment com WAITING_PAYMENT para isolar o schema, pois a equivalência entre tabelas é regra futura do serviço, não CHECK universal do banco.
+
+### Matriz escrita e invocações efetivamente conciliadas
+
+| Classe / método | Invocações | Resultado atual / limite |
+| --- | ---: | --- |
+| PaymentPersistenceIntegrationTest.generatedPaymentSchemaHasOnlySharedPrimaryForeignKeyAndRequiredMillisecondOccurrence | 1 | RED: tabela ausente antes de inspecionar duas colunas, PK/FK nomeada, NOT NULL, ausência de ID independente/amount e precisão3. |
+| orderKeepsItsFourOriginalRequiredColumnsWithoutPaymentOrVersionColumns | 1 | GREEN: quatro colunas, nullability e tipos/identidade atuais preservados. |
+| domainStatusContainsExactlyWaitingPaymentAndPaid | 1 | RED: enum Java ainda sem PAID. |
+| paymentIsRegisteredInTheRealJpaMetamodel | 1 | RED: Payment ausente do metamodel JPA real. |
+| generatedOrderStatusConstraintAcceptsPaidAndRejectsUnknownWithoutChangingOtherColumns | 1 | RED: schema gerado rejeita PAID; rejeição do estado desconhecido/inspeção completa ficam depois dessa asserção. |
+| realPaymentRoundTripsAcceptedMillisecondsAcrossIndependentConnections | 3 | RED por tabela ausente; escritos instantes nos anos 0001/2026/9999 e frações .000/.123/.999, leitura OffsetDateTime→Instant por conexão distinta. |
+| duplicatePrimaryKeyIsRejectedByJdbcAndPreservesTheOriginalOccurrence | 1 | RED por tabela ausente; SQLState 23505 e preservação do primeiro pagamento não alcançados. |
+| unknownOrderIsRejectedByTheNamedForeignKeyWithoutCreatingAnyPayment | 1 | RED por tabela ausente; SQLState 23506/FK nomeada não alcançados. |
+| requiredPaymentColumnsRejectNullInTheDatabase | 2 | RED por tabela ausente; order_id/occurred_at e SQLState 23502 não alcançados. |
+| deletingTheReferencedOrderCannotCascadeAwayItsPayment | 1 | RED por tabela ausente; teste retira os itens próprios antes de tentar remover pedido para isolar a FK de Payment; SQLState 23503 não alcançado. |
+| PaymentRegistrationDatabaseProbeTest.missingSchemaNegativeControlFailsClosedInsteadOfReturningAnEmptyPaymentSnapshot | 1 | GREEN somente do controle negativo sem schema; não aprova mapeamento. |
+| realSnapshotIncludesCommittedPaymentAndTheUnchangedSevenHistoricalTables | 1 | RED por tabela ausente; snapshot completo e imutabilidade de Payment ainda não exercitados. |
+| detectsAControlledPaymentOccurrenceChangeWithoutAttributingItToTheOtherTables | 1 | RED por tabela ausente; sensibilidade Payment e restauração posterior não alcançadas. |
+| composedProbeStillDetectsEachOfTheSevenHistoricalTables | 7 | RED por tabela ausente; uma invocação por produto, categoria, associação, conta/hash, perfil, pedido e item. |
+| cleanupAfterAnAssertionFailureWithoutPaymentPreservesUnrelatedHistoricalRows | 1 | GREEN: setup commitado, falha interna controlada, limpeza seletiva/idempotente e canário preservado nas sete tabelas históricas. |
+| cleanupAfterAnAssertionFailureRemovesOnlyOwnedPaymentBeforeItsOrder | 1 | RED por tabela ausente; variante com Payment/PAID e canário de oito tabelas não alcançada. |
+
+A futura inspeção do enum consulta ENUM_VALUES quando o tipo é ENUM nativo; para VARCHAR exige o CHECK gerado. Não aceitar qualquer erro como rejeição válida: os SQLStates esperados são específicos (22030 no ENUM nativo ou 23513 no CHECK), assim como os de PK/FK/NOT NULL. Os corpos posteriores ao schema guardado e à aceitação de PAID estão compilados e revistos estaticamente, **mas ainda não executados nem aprovados**.
+
+### Única execução focal e preservação de relatórios
+
+Identificador `S1-RED-T007-20261021T183748334`. Metadados iniciados em 2026-10-21 às 18:37:56−03:00; término às 18:39:18−03:00; duração informada pelo Maven 01:11. Ambiente observado Java Zulu 21.0.12.1+1-LTS, Windows/PowerShell e Wrapper configurado para Maven 3.9.16. Base HEAD acima com alterações recebidas e os dois novos testes, sem mudanças produtivas.
+
+Seleção exigida para a parte nova T007 de S1-RED; as classes HTTP já executadas em T006 foram excluídas para não repetir aquele checkpoint:
+
+~~~powershell
+.\mvnw.cmd "-Dtest=PaymentPersistenceIntegrationTest,PaymentRegistrationDatabaseProbeTest" "-Dsurefire.reportNameSuffix=S1-RED-T007-20261021T183748334" test
+~~~
+
+A chamada foi sequencial e única. Console capturado com Tee-Object em UTF-16LE; LASTEXITCODE capturado imediatamente após o Wrapper. Resultado: **BUILD FAILURE, exit1**, por falhas de asserção.
+
+| Classe observada no console e XML/TXT | Testes | Falhas | Erros | Ignorados |
+| --- | ---: | ---: | ---: | ---: |
+| PaymentRegistrationDatabaseProbeTest | 12 | 10 | 0 | 0 |
+| PaymentPersistenceIntegrationTest | 13 | 12 | 0 | 0 |
+| Total | **25** | **22** | **0** | **0** |
+
+Diretório ignorado e exclusivo `target/feature008-evidence/S1-RED-T007-20261021T183748334/`:
+
+- run.json/exit.json registram comando, horário, branch/HEAD, Java/Wrapper e exit; git-status-before.txt/tracked-diff-before.patch identificam o estado recebido.
+- previous-surefire/ preserva os 236 arquivos diretamente presentes em target/surefire-reports antes da chamada; previous-report-hashes.json registra os hashes. Inclui resultados BASE/T006; não é inventário global de target/ nem substitui os limites da T001.
+- new-sources/ conserva os dois Java executados; source-hashes-before.json registra todos os nove Java recebidos/novos antes da compilação. received-file-hashes.json registra também o estado inicial dos documentos.
+- new-surefire/ contém somente quatro arquivos novos (XML+TXT de cada classe), também mantidos com sufixo exclusivo em target/surefire-reports.
+- reconcile.py/reconciliation.json conciliam console, classes, nomes/multiplicidades e identidades únicas de testcase, resultados, causas e hashes. Conferência documental executada com o Python externo já utilizado, exit0; considera o sufixo acrescentado pelo Surefire a name/classname.
+
+Foram confirmados exatamente 16 métodos (10+6), expandidos para 25 invocações, sem omissões, duplicatas, ignorados ou classe adicional/aninhada JUnit. Os 236 relatórios anteriores e os nove Java conservaram SHA-256 idêntico ao início da chamada. Compilação das 126 fontes de teste passou; contagem de compilação não foi tratada como GREEN de execução. Os dois contextos iniciaram com H2s exclusivos distintos, sem interferência de create-drop. Nenhuma suíte completa, BASE, HTTP T006 ou outro grupo foi executado.
+
+### Diagnóstico observado e pendências reais
+
+As 22 falhas se repartem em **19 asserções de PUBLIC.TB_PAYMENT ausente**, uma de Payment ausente no metamodel JPA, uma do enum Java sem PAID e uma da aceitação de PAID pelo schema gerado. Nesta última, H2 retornou SQLState 22030; a operação sob teste é a aceitação do novo estado e a asserção doesNotThrowAnyException a classifica como falha funcional. Não é exceção SQL não tratada na preparação, nem demonstração isolada de integridade de Payment. Não houve erro de compilação/bootstrap/fixture ou limpeza substituindo o RED. Avisos históricos de compilação/SecurityManager, Byte Buddy/CDS e H2Dialect foram preservados, sem correções fora do escopo.
+
+Os três GREEN têm alcance estrito: colunas atuais de Order, controle negativo do probe vazio e limpeza após falha **sem** pagamento. Não demonstram PK/FK/NOT NULL de Payment, precisão armazenada, sensibilidade positiva do probe de oito tabelas ou limpeza de pagamento antes do pedido. As 19 falhas na guarda de schema impedem alcançar essas asserções; não devem ser contadas como 19 regras de integridade individualmente reproduzidas.
+
+Continuam pendentes o modelo real de T008, testes específicos das APIs Java (construção, @MapsId, relação/LAZY/cascades, persist/round-trip JPA e transição restrita) assim que compiláveis **antes dos respectivos corpos produtivos**, e posterior execução das provas escritas de constraints/precisão/probe/limpeza. Não foram usados reflexão construtiva, tipos fictícios ou schema manual para fingir essas APIs. JDBC round-trip futuro não substitui round-trip ORM; nenhum resultado desta T007 aprova commit HTTP, rollback do serviço ou outro banco/durabilidade.
+
+**T007 permanece [ ]**: autoria compilável e RED inicial concluídos, mas seus critérios de comprovação positiva de sensibilidade/limpeza com Payment real ainda não foram atendidos. Esta seção não declara aprovação integral da tarefa ou do incremento. T001–T006 [X] preservadas; **T007–T036 abertas (6/30)**, sem qualquer checkbox modificada nesta execução. O RED pertinente ao início planejado de T008 está identificado; iniciar T008 exige autorização separada e não ocorreu aqui.
+
+Alterações desta execução: somente dois Java novos e esta seção acrescentada ao quickstart. tasks.md mantém exatamente o conteúdo recebido, ainda modificado por tarefas anteriores. Nenhuma produção, suporte, teste/asserção histórica, segurança ou contrato foi alterado; nada staged, sem commit/push/merge ou alteração de main.
+
+Fechamento observado: diff incremental do quickstart e conteúdo completo dos dois Java novos revistos; conferência estática via Python externo, exit0, registrada em final-static-review.json. Prefixo recebido de 80.494 bytes do quickstart e sete Java recebidos preservados por comprimento/SHA-256; todos os nove Java continuam idênticos aos executados, segundo source-hashes-before.json. tasks.md preservado integralmente, sem checkbox alterada; seis tarefas marcadas e 30 abertas. Dois links novos existentes. git diff --check retornou exit0; git diff --no-index --check contra /dev/null dos nove Java não rastreados retornou exit1 por arquivos novos, sem diagnóstico de whitespace; avisos LF→CRLF decorrem da configuração existente. Relatórios anteriores preservados e novos resultados arquivados separadamente. Git final: dois documentos modificados (tasks.md já recebido assim), nove Java não rastreados (sete recebidos e dois novos), índice vazio; branch/HEAD/main e seleção008 preservados. Nenhum Maven/Surefire ativo; extensions.yml ausente também após a execução, sem hook after_implement. Sem stage, commit, push, merge ou alteração de main.
+
+## Execução T008 — modelo Payment, estado PAID e transição restrita (2026-10-21)
+
+### Contexto confirmado e preservações
+
+Skill speckit-implement aplicada exclusivamente à T008. Estado inicial: raiz `C:/Users/ronal/dscommerce-speckit`, branch real `008-registrar-pagamento`, HEAD `3d8d1a4a99cfa3ea28e9aa7acff19e1d0008c279`, seleção local Feature 008; somente quickstart.md/tasks.md modificados, índice vazio. Os nove Java recebidos de T003–T007 eram:
+
+- `src/test/java/com/devsuperior/dscommerce/config/PaymentRegistrationDatabaseProbeTest.java`
+- `src/test/java/com/devsuperior/dscommerce/config/PaymentRegistrationObservationConfig.java`
+- `src/test/java/com/devsuperior/dscommerce/config/PaymentRegistrationTestConfig.java`
+- `src/test/java/com/devsuperior/dscommerce/controllers/PaymentRegistrationApiHttpIntegrationTest.java`
+- `src/test/java/com/devsuperior/dscommerce/controllers/PaymentRegistrationHttpIntegrationTest.java`
+- `src/test/java/com/devsuperior/dscommerce/controllers/PaymentRegistrationHttpTestSupport.java`
+- `src/test/java/com/devsuperior/dscommerce/fixtures/PaymentRegistrationDatabaseProbe.java`
+- `src/test/java/com/devsuperior/dscommerce/fixtures/PaymentRegistrationTestFixture.java`
+- `src/test/java/com/devsuperior/dscommerce/repositories/PaymentPersistenceIntegrationTest.java`
+
+Esses nove arquivos, suas asserções e os registros anteriores foram preservados integralmente por comprimento/SHA-256. T007 permaneceu aberta: seu RED pertinente autoriza a etapa de modelo, sem exigir GREEN antecipado do componente ausente. Foram lidas integralmente T007/T008 e as condições da fase, sob constituição, AGENTS.md, harness, spec, plano, pesquisa/modelo e contratos pertinentes. Check-prerequisites -Json -RequireTasks -IncludeTasks retornou exit0, diretório absoluto 008; requirements.md 16/16, zero aberto, PASS documental sem modificar checklist. Ignore Java adequado; extensions.yml ausente antes da execução.
+
+Antes do Maven, consulta de processos Java/Maven/Surefire não encontrou execução ativa e não havia evidência anterior T008; estavam presentes BASE, S1-RED-T006 e S1-RED-T007. Não se refez inventário global de target/. A BASE histórica 391/7 classes/exit0 permanece histórica. O RED HTTP de T006 continua com causas separadas: POST ausente 404 e envelope 401/403 com errors. O RED original de T007 continua registrado como 25 testes, três aprovados/22 falhas/zero erros ou ignorados/exit1; seus relatórios não foram substituídos pela execução abaixo.
+
+### Implementação limitada ao modelo
+
+Novo [Payment.java](../../src/main/java/com/devsuperior/dscommerce/entities/Payment.java): entidade tb_payment com somente orderId/order/occurredAt; order_id é chave compartilhada @Id/@MapsId e FK nomeada fk_payment_order. Relação @OneToOne LAZY, obrigatória, sem cascades. occurred_at é obrigatório, TIMESTAMP(3) WITH TIME ZONE e @FractionalSeconds(3). Construtor exige pedido/ocorrência não nulos, conserva o Instant fornecido e não altera estado do pedido; identidade é derivada pelo Hibernate na persistência. Nenhum ID gerado independente, amount, comprador duplicado, setter de quitação, associação inversa ou version foi introduzido.
+
+[OrderStatus.java](../../src/main/java/com/devsuperior/dscommerce/entities/OrderStatus.java) acrescenta somente PAID. [Order.java](../../src/main/java/com/devsuperior/dscommerce/entities/Order.java) conserva campos/mapeamento/construtor/coleção e a criação WAITING_PAYMENT; markPaid só permite WAITING_PAYMENT→PAID, rejeitando estado incompatível por IllegalStateException e modificando somente status. Não verifica ADMIN, relógio, Payment anterior ou janela temporal; essas decisões e a classificação HTTP pertencem ao serviço futuro. Criar Payment ou chamar markPaid isoladamente não constitui a operação008 completa nem garante equivalência entre tabelas.
+
+Não foram criados repository/fragmento, lock, serviço, DTO, parser, controller, cadeia de segurança, handler ou endpoint de T009+. Configuração global, seed, contratos001–007 e a exceção histórica do GateIV005 permanecem intactos. Nenhuma vigência contratual foi publicada.
+
+### Testes das APIs e estratégia de validação
+
+Antes dos corpos produtivos, foram escritos em arquivos novos [PaymentModelTest.java](../../src/test/java/com/devsuperior/dscommerce/entities/PaymentModelTest.java) e [PaymentModelJpaIntegrationTest.java](../../src/test/java/com/devsuperior/dscommerce/repositories/PaymentModelJpaIntegrationTest.java). Os testes tipados passaram a compilar com o modelo real, sem introduzir stubs produtivos para fabricar RED. O RED anterior confiável de metadata/metamodel/enum da T007 foi reutilizado; não se executou uma tentativa de compilação inválida para rotulá-la como falha funcional, nem se repetiu o antigo RED HTTP.
+
+PaymentModelTest é unitário puro: quatro métodos, cinco invocações; verifica construção sem transição implícita, dois argumentos obrigatórios, transição alterando só status e rejeição de nova transição. Preserva comprador, criação, ordem/referências das duas linhas e produtos, quantidades/preços e total histórico 42,50 mesmo com preços atuais 12/99.
+
+PaymentModelJpaIntegrationTest usa contexto MOCK separado, H2 exclusivo e imports explícitos dos suportes aprovados. Reutiliza somente o helper Database da T007; não o modifica. Três métodos/cinco invocações: três round-trips com anos 0001/2026/9999 e frações .000/.123/.999; uma transação explícita insere Payment/marca PAID, preservando outro pedido e histórico; uma remoção JPA de Payment não remove pedido/itens. As transações de teste são REQUIRES_NEW/READ_COMMITTED explícitas, terminam antes da leitura por probe JDBC independente e da limpeza. Há flush, clear, reload e conferência real de LAZY e relação obrigatória; getId do proxy de Order não o inicializa.
+
+Os instantes extremos são oráculos de armazenamento exato pelo JDBC/ORM, não pedidos temporalmente elegíveis ao serviço. A transação explicitamente controlada pelo teste demonstra o mapeamento e seu commit observado no H2; **não comprova proxy do futuro serviço, commit na entrada HTTP ou atomicidade sob falhas da operação administrativa**. Não há @Transactional externo envolvendo a suíte, @Nested, @Disabled, assumptions ou mocks de pagamento.
+
+### Comando e resultados da única execução
+
+Identificador `MODEL-T008-20261021T185237831`. Metadados iniciados em 2026-10-21 às 18:52:40−03:00; término às 18:54:21−03:00; Maven informou 01:29. Ambiente: Windows/PowerShell, Java Zulu 21.0.12.1+1-LTS e Wrapper configurado para Maven 3.9.16. Revisão: HEAD acima, diff recebido mais modelo/testes novos, sem commit.
+
+Seleção focal do modelo T008 e dos testes existentes de metadata/probe afetados; os grupos HTTP, BASE e suíte completa não foram executados:
+
+~~~powershell
+.\mvnw.cmd "-Dtest=PaymentModelTest,PaymentModelJpaIntegrationTest,PaymentPersistenceIntegrationTest,PaymentRegistrationDatabaseProbeTest" "-Dsurefire.reportNameSuffix=MODEL-T008-20261021T185237831" test
+~~~
+
+| Classe efetivamente observada no console/XML/TXT | Testes | Falhas | Erros | Ignorados |
+| --- | ---: | ---: | ---: | ---: |
+| PaymentModelTest | 5 | 0 | 0 | 0 |
+| PaymentModelJpaIntegrationTest | 5 | 0 | 0 | 0 |
+| PaymentPersistenceIntegrationTest | 13 | 0 | 0 | 0 |
+| PaymentRegistrationDatabaseProbeTest | 12 | 0 | 0 | 0 |
+| Total | **35** | **0** | **0** | **0** |
+
+**BUILD SUCCESS, exit0**, com LASTEXITCODE capturado imediatamente após o Wrapper/Tee-Object. Compilaram 88 fontes produtivas e 128 fontes de teste; essas contagens não foram confundidas com número de testes. Nenhum impedimento de compilação, bootstrap, fixture, SQL, limpeza ou asserção foi observado. Avisos históricos SecurityManager/Byte Buddy/CDS/H2Dialect foram preservados sem alterações fora do escopo.
+
+Conciliação estática por reconcile.py, exit0: exatamente quatro classes, 23 métodos e 35 identidades de testcase, sem duplicação, omissão ou classe aninhada JUnit. Multiplicidades: dois argumentos nulos no unitário, três instantes JPA, três instantes JDBC, duas colunas NOT NULL e sete tabelas de sensibilidade. A matriz/métodos recebidos da T007 foram comparados ao reconciliation.json histórico, não somente ao nome do seletor. Foram confirmados três contextos de aplicação H2 distintos; nenhum servidor em porta aleatória, login, perform MockMvc ou HTTP real foi usado. A fixture histórica constrói seu suporte MockMvc interno sem despachar requisições.
+
+### Critérios da T007 agora comprovados e fronteiras restantes
+
+| Critério recebido | Evidência atual |
+| --- | --- |
+| Schema real, PK/FK/NOT NULL, sem ID independente/amount; precisão3 | Metadata JDBC em PaymentPersistenceIntegrationTest: somente order_id/occurred_at, PK compartilhada, FK fk_payment_order sem DELETE CASCADE, nullability, tipo temporal e escala3. Metamodel JPA inclui Payment. |
+| Colunas de Order preservadas e enum ampliado | As quatro colunas antigas permanecem; enum Java exatamente WAITING_PAYMENT/PAID. PAID é aceito no H2; estado desconhecido é rejeitado por 22030; ENUM_VALUES foi inspecionado. |
+| Round-trip exato | Três instantes JDBC e três JPA preservados por reload e conexão independente após commit. @MapsId atribuiu exatamente o ID do pedido existente; associação permaneceu LAZY e obrigatória. |
+| Constraints físicas | Duplicidade 23505, órfão 23506 pela FK nomeada, ocorrência/ID nulos 23502 e remoção de pedido referenciado 23503 rejeitados; snapshots confirmam preservação do estado anterior. Itens são retirados somente no teste de remoção para isolar a FK de Payment. |
+| Sensibilidade positiva do probe | Alteração controlada de occurredAt detectada como tb_payment; sete invocações detectam cada tabela histórica, inclusive hash de conta, com diagnóstico seguro/sem credenciais. Alterações de estímulo restauradas em finally; nenhuma mudança nos probes recebidos. |
+| Limpeza após cenário falho | Variantes sem/com Payment passaram, inclusive canário Payment/PAID de outra fixture preservado, ausência de exceção suprimida de cleanup e close repetido seguro. A AssertionError interna é estímulo capturado, não RED artificial da operação. |
+| APIs disponíveis nesta etapa | Construção real, transição restrita, persist/clear/reload, identidade derivada, LAZY e ausência de cascata de remoção comprovadas nos dez testes novos. |
+
+Todos os 25 testes recebidos da T007 estão GREEN **nesta revisão local do modelo**, sem alterar qualquer byte de seus arquivos. O antigo resultado 3/22 continua histórico e rastreável. **O marcador T007 permanece aberto por instrução expressa deste checkpoint**, mesmo com essas provas positivas. Permanecem futuras as provas específicas das APIs de inserção/lock da T009 (persist explícito no fragmento real, ausência de merge/save e refresh/lock); elas devem preceder os respectivos corpos quando compiláveis. As provas atuais não os substituem.
+
+Também não estão comprovados parser/validação temporal da entrada, referência única, autorização atual, guards, serviço/rollback, concorrência de requests, entrega 201/erros ou consultas PAID007. Não completar fotografias HTTP/reexecutar S1-GREEN nesta etapa; isso exige os componentes e escopos posteriores. O modelo/constraints não impedem sozinho SQL arbitrário incoerente e não demonstram outro banco, crash recovery ou rede de produção.
+
+### Relatórios, preservação e encerramento da tarefa
+
+Diretório exclusivo ignorado pelo Git: `target/feature008-evidence/MODEL-T008-20261021T185237831/`:
+
+- console.log UTF-16LE, run.json/exit.json: console, comando, ambiente, horários, HEAD/diff e exit; git-status-before.txt/tracked-diff-before.patch registram o estado testado.
+- previous-surefire/ e previous-report-hashes.json: cópia anterior e SHA-256 dos 240 arquivos diretamente em target/surefire-reports; todos preservados com hashes idênticos, inclusive relatórios RED/BASE. Essa conferência é proporcional aos relatórios, sem inventário global de target/.
+- new-sources/ registra os cinco Java desta implementação; source-hashes-before.json confere os 14 Java envolvidos, incluindo os nove recebidos, idênticos desde o início da execução. received-file-hashes.json registra comprimentos/hashes do estado recebido.
+- new-surefire/ contém somente oito arquivos novos (XML+TXT das quatro classes), também mantidos com sufixo exclusivo no diretório Surefire original. reconcile.py/reconciliation.json registram a conferência estática de classes/métodos/invocações e hashes.
+
+Critérios da **T008 atendidos** pelo código e validação focal: somente sua checkbox passa para [X]. T001–T006 preservadas; **T007 [ ], T008 [X], T009–T036 [ ]: sete concluídas/29 abertas**. Nenhuma aprovação integral da 008, alteração de vigência contratual, implementação de repository/serviço/endpoint ou fechamento de T007 foi antecipado.
+
+Arquivos desta tarefa: Payment.java, Order.java, OrderStatus.java, os dois novos testes de modelo, esta seção do quickstart e somente a checkbox T008 em tasks.md. Nove Java recebidos e prefixo documental/histórico preservados; sem enfraquecer asserções, DDL sintético ou contornar constraints. Sem stage, commit, push, merge ou alteração de main.
+
+Fechamento T008 observado: conteúdo dos cinco Java desta implementação e diff incremental revistos; review.py executado com Python externo, exit0, com resultado em final-static-review.json. Prefixo recebido de 96.234 bytes do quickstart e nove Java recebidos preservados por SHA-256; os 14 Java envolvidos permanecem idênticos à revisão executada. Order.java difere somente por markPaid e OrderStatus.java somente pela inclusão de PAID; tasks.md difere do recebido somente pela checkbox T008. Sete tarefas marcadas/29 abertas, com T007 aberta. Cinco links novos existentes; git diff --check exit0, sem diagnóstico de whitespace; conferência --no-index --check dos 12 Java não rastreados contra /dev/null retornou exit1 por arquivos novos, sem diagnóstico de whitespace. Avisos LF→CRLF são da configuração Git existente. Console/Surefire conciliados, 240 relatórios anteriores preservados e oito novos arquivados separadamente. Git final: quatro arquivos rastreados modificados e 12 Java não rastreados (nove recebidos, três novos), nada staged; branch/HEAD/main e seleção008 preservados. Maven/Surefire inativos; extensions.yml ausente após a execução, sem hook after_implement. Sem stage, commit, push, merge ou alteração de main.
+
+## Retomada documental da T007 — conclusão pelas evidências da T008
+
+Escopo desta retomada: conferir os critérios integrais da T007 e o registro da T008 usando somente evidências existentes. Estado confirmado: raiz `C:/Users/ronal/dscommerce-speckit`, branch real `008-registrar-pagamento`, HEAD `3d8d1a4a99cfa3ea28e9aa7acff19e1d0008c279`, seleção local Feature 008 e índice vazio. Os quatro rastreados modificados são este quickstart, tasks.md, src/main/java/com/devsuperior/dscommerce/entities/Order.java e OrderStatus.java. Os 12 Java não rastreados conferidos correspondem a Payment.java em src/main/java/com/devsuperior/dscommerce/entities/ e aos 11 testes/suportes da 008 já recebidos; nenhum caminho novo foi criado nesta retomada.
+
+**Nenhum Maven, teste, servidor, validador ou script de validação anterior foi reexecutado.** A conferência leu console/XML/TXT, metadados e manifestos de hashes existentes; não escreveu nos relatórios nem alterou código, testes ou asserções. A única execução reutilizada é `MODEL-T008-20261021T185237831`, concluída em 2026-10-21 às 18:54:21−03:00, com o comando já registrado na seção T008 e em run.json. Não se acrescenta uma segunda execução nem nova aprovação de aplicação à contagem histórica.
+
+### Evidência efetivamente conferida
+
+Diretório da execução: `target/feature008-evidence/MODEL-T008-20261021T185237831/`. Leitura direta de console.log, exit.json, run.json e dos quatro pares XML/TXT em new-surefire/:
+
+| Classe | Testes aprovados | Falhas | Erros | Ignorados |
+| --- | ---: | ---: | ---: | ---: |
+| PaymentPersistenceIntegrationTest — T007 | 13 | 0 | 0 | 0 |
+| PaymentRegistrationDatabaseProbeTest — T007 | 12 | 0 | 0 | 0 |
+| Subtotal das classes recebidas da T007 | **25** | **0** | **0** | **0** |
+| PaymentModelTest — APIs do modelo, acrescentado na T008 | 5 | 0 | 0 | 0 |
+| PaymentModelJpaIntegrationTest — ORM, acrescentado na T008 | 5 | 0 | 0 | 0 |
+| Total da execução única | **35** | **0** | **0** | **0** |
+
+Console informa BUILD SUCCESS; exit.json registra exitCode 0. Foram conferidas 35 identidades únicas de testcase e as quatro classes em Running, sem omissões/duplicatas, elementos failure/error/skipped ou classe JUnit aninhada prevista ausente. Os 16 métodos e as multiplicidades dos 25 casos T007 coincidem com a matriz histórica: três instantes JDBC, duas colunas NOT NULL e sete invocações de sensibilidade, além dos casos individuais. Os outros dez casos complementam a prova das APIs Java disponíveis nesta etapa, sem serem contados dentro dos 25.
+
+Hashes dos oito relatórios T008 arquivados coincidem com reconciliation.json; hashes dos 14 Java envolvidos coincidem com source-hashes-before.json. Também coincidem os hashes dos nove Java registrados na execução RED original T007, comprovando preservação das asserções recebidas. Essas leituras usam os manifestos já existentes; reconcile.py/review.py não foram executados novamente.
+
+### Critérios da T007 reconciliados
+
+| Critério integral da tarefa | Evidência suficiente já produzida |
+| --- | --- |
+| Começar por metadata/JDBC e RED de schema ausente, sem erro de preparação | Histórico S1-RED-T007: 25 testes, três aprovados/22 falhas, zero erros/ignorados, exit1; causas discriminadas na seção original. XML/TXT RED arquivados conservam os hashes registrados. |
+| Schema/mapeamento real, PK/FK/NOT NULL e ausência de ID independente/amount | generatedPaymentSchemaHasOnlySharedPrimaryForeignKeyAndRequiredMillisecondOccurrence e paymentIsRegisteredInTheRealJpaMetamodel aprovados: somente order_id/occurred_at, chave compartilhada, FK nomeada, nullability e tipo/precisão temporal reais. Nenhum DDL sintético usado como aprovação. |
+| Colunas antigas de Order e enum ampliado | orderKeepsItsFourOriginalRequiredColumnsWithoutPaymentOrVersionColumns, domainStatusContainsExactlyWaitingPaymentAndPaid e generatedOrderStatusConstraintAcceptsPaidAndRejectsUnknownWithoutChangingOtherColumns aprovados, incluindo inspeção do enum gerado e rejeição de estado desconhecido. |
+| Round-trip temporal exato | Três invocações realPaymentRoundTripsAcceptedMillisecondsAcrossIndependentConnections e três persistDerivesTheSharedIdentityAndReloadsLazyOrderAndExactOccurrence aprovadas: anos 0001/2026/9999, frações .000/.123/.999, leitura independente após commit e reload ORM. |
+| Duplicidade, órfão e ocorrência nula rejeitados pelo banco | duplicatePrimaryKeyIsRejectedByJdbcAndPreservesTheOriginalOccurrence, unknownOrderIsRejectedByTheNamedForeignKeyWithoutCreatingAnyPayment e requiredPaymentColumnsRejectNullInTheDatabase[1–2] aprovados, com SQLStates específicos e snapshots preservados; deletingTheReferencedOrderCannotCascadeAwayItsPayment também aprovado. |
+| Probe sensível a Payment e às sete tabelas anteriores | detectsAControlledPaymentOccurrenceChangeWithoutAttributingItToTheOtherTables e composedProbeStillDetectsEachOfTheSevenHistoricalTables[1–7] aprovados; restauração dos estímulos e diagnósticos sem credenciais. Probes históricos não foram alterados. |
+| Limpeza seletiva inclusive após teste falho | cleanupAfterAnAssertionFailureWithoutPaymentPreservesUnrelatedHistoricalRows e cleanupAfterAnAssertionFailureRemovesOnlyOwnedPaymentBeforeItsOrder aprovados, com canário de outra fixture preservado, close repetido e nenhuma falha de limpeza suprimida. |
+| Testes específicos das APIs Java quando compiláveis, antes dos corpos respectivos | Registro T008 documenta autoria prévia dos novos testes do modelo; seus dez casos aprovados cobrem construção, transição restrita/histórico, @MapsId por persist real, LAZY obrigatório, round-trip JPA e remoção sem cascata. Nenhum tipo produtivo fictício ou erro de compilação foi contado como RED. |
+
+**Todos os critérios da T007 relativos ao modelo e ao suporte agora disponível estão comprovados pela execução já realizada na T008.** A manutenção anterior de seu marcador aberto foi uma instrução específica daquele checkpoint, preservada como histórico; esta retomada autoriza seu fechamento documental. As provas futuras das APIs de inserção/lock, quando existirem, continuam exigidas antes dos corpos de T009; não são APIs disponíveis nem trabalho executado nesta retomada.
+
+Somente a checkbox T007 passa para [X]. Resultado conferido: **T001–T008 [X], T009–T036 abertas (8 concluídas/28 abertas)**. T008 e seu registro não foram reescritos. O RED original T007 permanece como evidência histórica 3/22, sem conversão retroativa para GREEN; o GREEN vem da execução T008 identificada acima. O RED HTTP T006, com POST 404 e envelope 401/403 contendo errors, também permanece preservado e não foi repetido.
+
+Não há lacuna remanescente para o fechamento solicitado da T007 neste checkpoint. A operação administrativa 008 completa, repositórios/lock/serviço/endpoint e demais provas de T009+ continuam pendentes; os 35 testes do modelo não equivalem a S1-GREEN HTTP, suíte completa, CI ou entrega da feature.
+
+Alterações desta retomada limitadas a esta seção acrescentada e à checkbox T007 em [tasks.md](tasks.md). Prefixo histórico do quickstart preservado; nenhum código, teste, relatório ou outra checkbox alterado. Revisão limitada ao diff documental, referência local e whitespace, sem stage, commit ou push.
+
+Fechamento desta retomada: diff documental incremental, referência tasks.md e preservação do prefixo recebido de 110.925 bytes conferidos; somente a checkbox T007 mudou. git diff --check limitado aos dois documentos retornou exit0, sem diagnóstico de whitespace; avisos LF→CRLF decorrem da configuração existente. Estado final conferido: T001–T008 marcadas, T009–T036 abertas; quatro rastreados modificados e 12 Java não rastreados nos mesmos caminhos recebidos, índice vazio, branch/HEAD/main e seleção008 preservados. Apenas quickstart.md/tasks.md foram alterados nesta retomada. Sem nova execução Maven/validadores, alteração de código/testes/relatórios, stage, commit, push ou avanço de T009+.
+
+## Execução T009 — repositórios de pagamento, lock/refresh e projeção histórica
+
+### Conferência inicial e limites do escopo
+
+Skill speckit-implement aplicada exclusivamente à T009. Confirmados raiz `C:/Users/ronal/dscommerce-speckit`, branch real `008-registrar-pagamento`, HEAD `3d8d1a4a99cfa3ea28e9aa7acff19e1d0008c279`, seleção local Feature 008 e índice vazio. Quatro rastreados já modificados: Order.java, OrderStatus.java, este quickstart e tasks.md, nos caminhos recebidos; doze Java não rastreados recebidos: Payment.java e os onze testes/suportes T003–T008. Caminhos completos, comprimentos e SHA-256 registrados em received-file-hashes.json da evidência GREEN; o modelo e esses testes não foram modificados.
+
+Foram lidos T009 integralmente, dependências T007/T008 e condições tests-first, plano/pesquisa R4/R5/R6, modelo, spec/contratos pertinentes e procedimentos/evidências anteriores, sob constituição, AGENTS.md e harness. Check-prerequisites -Json -RequireTasks -IncludeTasks retornou exit0 e FEATURE_DIR absoluto 008. requirements.md: 16/16, zero aberto, PASS documental sem alterar checklist. Ignore Java existente adequado; extensions.yml ausente antes da execução. Não havia Maven/Surefire ativo nem evidência anterior T009 antes de iniciar; as duas invocações abaixo foram sequenciais.
+
+T001–T008 e seus registros foram preservados. A execução MODEL-T008 de 35 aprovados não foi repetida, assim como BASE 391, grupos HTTP, S1-GREEN ou suíte completa. Permanecem os dois diagnósticos HTTP da T006: POST ausente 404 e envelope 401/403 contendo errors. Nenhuma mudança de segurança, handler, serviço, DTO, parser ou endpoint foi feita; T010+ não foi antecipada.
+
+### Código implementado
+
+Novos arquivos produtivos:
+
+- [PaymentRepository.java](../../src/main/java/com/devsuperior/dscommerce/repositories/PaymentRepository.java): interface Spring Data mínima Repository<Payment,Long>, lookup por chave compartilhada e composição do fragmento de inserção. Não expõe save/merge.
+- [PaymentInsertRepository.java](../../src/main/java/com/devsuperior/dscommerce/repositories/PaymentInsertRepository.java) e [PaymentInsertRepositoryImpl.java](../../src/main/java/com/devsuperior/dscommerce/repositories/PaymentInsertRepositoryImpl.java): insert chama somente EntityManager.persist. Sem flush/commit, merge, retry ou consulta de recuperação; falha propaga.
+- [OrderPaymentLockRepository.java](../../src/main/java/com/devsuperior/dscommerce/repositories/OrderPaymentLockRepository.java) e [OrderPaymentLockRepositoryImpl.java](../../src/main/java/com/devsuperior/dscommerce/repositories/OrderPaymentLockRepositoryImpl.java): find(Order,id,PESSIMISTIC_WRITE), retorno vazio se ausente; para raiz encontrada, refresh com o mesmo lock antes de devolver a entidade. Não consulta campos antes do refresh, coleções, Product, titular ou estado na aquisição.
+
+[OrderRepository.java](../../src/main/java/com/devsuperior/dscommerce/repositories/OrderRepository.java) compõe o novo fragmento e acrescenta findPaymentItemsByOrderId com PaymentItemView interna, somente productId/position/quantity/unitPrice ordenados por position. Projeção não retorna OrderItem/Product nem calcula montante; não há JOIN FETCH/DISTINCT. As três consultas próprias existentes, seus predicates, count e ordenação foram preservados.
+
+As novas operações públicas dos repositórios exigem transação do chamador por MANDATORY; não abrem uma transação própria que liberaria o lock antes das próximas decisões. Lookup/projeção usam readOnly nessa fronteira, sem substituir os atributos da transação já existente. A API não impõe por si só que toda chamada já tenha bloqueado a raiz: a ordem lock→lookup Payment→projeção foi exercitada pelo teste; sua orquestração produtiva é responsabilidade futura do serviço. READ_COMMITTED e retenção do lock até o término dependem da transação do chamador. Nenhuma regra de autorização/elegibilidade/tempo foi implementada no repository.
+
+Payment, PK/FK, precisão, markPaid e modelos anteriores continuam idênticos aos recebidos. Repositórios não marcam PAID nem concluem a operação administrativa; inserir por eles isoladamente não constitui quitação funcional.
+
+### Tests first e RED funcional observado
+
+Novo [PaymentRepositoriesIntegrationTest.java](../../src/test/java/com/devsuperior/dscommerce/repositories/PaymentRepositoriesIntegrationTest.java) começou com um teste executável de presença do bean paymentRepository, sem imports de APIs então ausentes. Execução `REPO-T009-RED-20261021T190656864`: metadados iniciados em 2026-10-21 às 19:06:59−03:00, término 19:08:17−03:00; duração Maven 01:07.
+
+~~~powershell
+.\mvnw.cmd "-Dtest=PaymentRepositoriesIntegrationTest#paymentRepositoryIsRegisteredInTheRealSpringContext" "-Dsurefire.reportNameSuffix=REPO-T009-RED-20261021T190656864" test
+~~~
+
+Console/Surefire conciliados: **1 teste, 1 falha, zero erros/ignorados, exit1**. Causa: asserção explícita de bean produtivo ausente após bootstrap real bem-sucedido. Não houve erro de compilação/preparação ou stub lançando erro para fabricar RED. Essa evidência demonstra ausência de registro do repository; não demonstra isoladamente falhas de refresh, projeção, unicidade ou transação.
+
+Após esse RED, foram escritos os cenários tipados das APIs e o novo [PaymentRepositoryFragmentsTest.java](../../src/test/java/com/devsuperior/dscommerce/repositories/PaymentRepositoryFragmentsTest.java), antes dos corpos produtivos. O teste inicial e sua asserção foram mantidos; os doze Java recebidos não foram editados. Os novos cenários passaram a compilar com os componentes reais, sem tipos produtivos fictícios ou compilação inválida apresentada como RED.
+
+### GREEN focal e conciliação
+
+Execução `REPO-T009-GREEN-20261021T191102143`: metadados iniciados em 2026-10-21 às 19:11:04−03:00, término 19:12:25−03:00; duração Maven 01:09. Ambiente de ambas: Windows/PowerShell, Java Zulu 21.0.12.1+1-LTS e Wrapper configurado para Maven 3.9.16; HEAD acima, com diff recebido e alterações desta T009.
+
+~~~powershell
+.\mvnw.cmd "-Dtest=PaymentRepositoryFragmentsTest,PaymentRepositoriesIntegrationTest" "-Dsurefire.reportNameSuffix=REPO-T009-GREEN-20261021T191102143" test
+~~~
+
+| Classe efetivamente executada | Testes | Falhas | Erros | Ignorados |
+| --- | ---: | ---: | ---: | ---: |
+| PaymentRepositoriesIntegrationTest | 11 | 0 | 0 | 0 |
+| PaymentRepositoryFragmentsTest | 5 | 0 | 0 | 0 |
+| Total GREEN | **16** | **0** | **0** | **0** |
+
+**BUILD SUCCESS, exit0**; LASTEXITCODE capturado imediatamente após o Wrapper/Tee-Object. Compilação GREEN: 93 fontes produtivas e 130 fontes de teste, sem confundir compilação com execução. reconcile.py conferiu console/XML, nomes de classes/métodos, parâmetros e identidades únicas, exit0: sete métodos de integração expandidos para 11 invocações e cinco métodos unitários. Sem omissões, duplicatas, ignorados ou classes @Nested previstas; os tipos aninhados de suporte/projeção não são cenários JUnit.
+
+| Cenário / método | Invocações GREEN | Prova e alcance |
+| --- | ---: | --- |
+| paymentRepositoryIsRegisteredInTheRealSpringContext | 1 | Bean real agora registrado; injeções dos repositories também concluídas. |
+| lockAndRefreshOnlyTheRequestedRootWithoutLoadingBuyerOrItems | 2 | WAITING_PAYMENT e PAID adquiridos sem filtro de estado/titular; dois SELECT da raiz com FOR UPDATE, entidade gerenciada com PESSIMISTIC_WRITE, buyer/items não carregados, oito tabelas preservadas. |
+| missingRootReturnsEmptyWithoutRefreshOrUnrelatedReads | 1 | Ausente retorna vazio; somente um SELECT de raiz, sem refresh/leituras alheias/DML. |
+| lookupThenScalarHistoricalProjectionFollowTheRootLocksWithoutReadingProductOrLoadingItems | 1 | Dois SELECT de lock/refresh, depois lookup Payment e projeção escalar; quatro statements nessa ordem. Histórico 2×10+3×7,50, posições 0/1 e productIds em ordem própria, mesmo com catálogo 12/99. Sem JOIN/Product/coleção carregada ou mudança de snapshots. |
+| explicitInsertCommitsOneRowAndDuplicateKeyCannotOverwriteTheOriginalOccurrence | 1 | Após lock/refresh, um INSERT sem SELECT de merge/UPDATE. Payment commitado visível no probe, leitura por chave com Order LAZY; nova inserção em outra transação falha 23505 e preserva ocorrência original e oito tabelas. |
+| paymentRepositoryOperationsRequireTheCallersTransaction | 4 | lock/items/lookup/insert fora da transação rejeitados por IllegalTransactionStateException, sem SQL ou mutação. |
+| existingOwnQueriesKeepTheirOwnerPredicatesAfterAddingThePaymentFragment | 1 | Página, batch e detalhe mantêm titularidade e exclusão do alheio após composição; snapshot preservado. É regressão focal dos métodos tocados, não repetição da BASE/HTTP007. |
+| findThenRefreshBothUsePessimisticWriteWithoutReadingAnyOrderFields | 1 | Mock de EntityManager confirma sequência exata e ausência de qualquer acesso a campos do Order antes do retorno. |
+| missingOrderDoesNotRefreshOrAttemptAnotherLookup | 1 | Mock confirma só find e retorno vazio, sem tentativa adicional. |
+| insertUsesOnlyPersistWithoutMergeSaveOrImplicitFlush | 1 | Mock confirma persist exato; nenhuma chamada merge/flush ou interação extra. |
+| refreshFailurePropagatesWithoutReadingTheRootOrContinuing | 1 | Falha controlada de refresh propaga, sem ler raiz/continuar. |
+| persistFailurePropagatesWithoutRetryMergeOrFallbackQueries | 1 | Falha controlada de persist propaga, sem retry, merge ou consulta posterior. |
+
+O log H2 SQLState 23505/PRIMARY KEY no console GREEN é o estímulo esperado de duplicidade, capturado pela asserção; Surefire registra zero erros e exit0. Não foi classificado como falha de preparação nem confundido com conflito 409 de domínio. SQL da janela foi capturado em memória pelo StatementInspector aprovado e assertado; os statements completos das janelas não foram exportados como log separado. As fontes executadas e seus hashes preservam as asserções desses formatos/contagens. JDBC direto de fixture/probe não é capturado por esse inspector.
+
+### Isolamento, preservação e limites da evidência
+
+Integração em contexto web MOCK, perfil test, imports explícitos PaymentRegistrationTestConfig/OwnOrderQueryTestObservationConfig e inicializador AdminProductTestConfig. URL H2 única por contexto, create-drop sem seed/import global, OSIV=false; cada execução usou seu contexto próprio e não houve sobreposição de Maven. Helper Database recebido confere conexões independentes READ_COMMITTED e ausência de transação externa; TransactionTemplate do teste exige nova transação READ_COMMITTED. Fixtures commitam antes da janela, snapshots por conexões independentes ocorrem após término e antes da limpeza seletiva Payment→itens→pedidos. Não se mudou o suporte, propriedade global ou seed para obter GREEN.
+
+Os cinco testes unitários usam Mockito/EntityManager para verificar chamadas e propagação; não provam SQL, lock físico ou commit. Os onze casos reais usam JPA/H2, proxies Spring dos repositories e transação explicitamente dona do teste; não usam mock de repository/serviço. Não houve perform MockMvc, login ou HTTP real; a fixture recebida apenas constrói suporte MockMvc interno.
+
+Não se coordenaram duas transações concorrentes, espera por lock ou contexto pré-carregado obsoleto. A sequência refresh foi comprovada por interação/SQL, não como prova de atualização sob corrida. As garantias de refresh diante de alteração concorrente, mesmo pedido/pedidos distintos e ausência de serialização global permanecem nos experimentos posteriores, sem antecipar T020. Tampouco se comprovou atomicidade de Payment+PAID, proxy do futuro serviço, guarda ADMIN/relógio, rollback sob failpoints, confirmação HTTP ou outro banco. Esses resultados não são S1-GREEN, FINAL, CI ou entrega da 008.
+
+Diretórios exclusivos ignorados sob target/feature008-evidence/:
+
+- `REPO-T009-RED-20261021T190656864/`: console.log UTF-16LE, run.json/exit.json, red-test.java da versão executável inicial, estado/diff imediatamente anterior, previous-surefire/ com 248 relatórios anteriores e seus hashes; new-surefire/ com somente XML+TXT RED.
+- `REPO-T009-GREEN-20261021T191102143/`: console/metadados/estado/diff, new-sources/ com os oito Java desta T009, source-hashes-before.json com 22 Java envolvidos, received-file-hashes.json do estado recebido; previous-surefire/ preserva 250 relatórios, incluindo RED desta tarefa, com SHA-256 idêntico.
+- new-surefire/ GREEN contém somente quatro arquivos novos XML+TXT, também mantidos com sufixo exclusivo em target/surefire-reports. reconcile.py/reconciliation.json registram conferência documental de contagens, casos e hashes. Não se refez inventário global de target/ nem se tratou o inventário opcional incompleto da T001 como prova.
+
+Critérios da **T009 atendidos** pelo código e pela validação focal: somente a checkbox T009 passa para [X]. **T001–T009 [X], T010–T036 abertas: 9 concluídas/27 abertas**. Nenhum impedimento de compilação/preparação ou falha não resolvida nesta seleção. Os diagnósticos HTTP históricos permanecem pendentes para seus componentes próprios.
+
+Alterações limitadas aos cinco novos arquivos de repository/fragmento, integração/projeção em OrderRepository.java, dois testes novos, esta seção e checkbox T009. Modelo, markPaid, testes/asserções recebidos, histórico de T001–T008 e consultas próprias anteriores preservados; sem stage, commit, push, merge ou alteração de main.
+
+Fechamento T009: revisão do diff produtivo/documental e dos Java novos concluída; os 119.033 bytes históricos do quickstart e os 14 Java recebidos (Order/OrderStatus e doze não rastreados) conservaram seus SHA-256. Removendo apenas as adições desta tarefa de OrderRepository, seu conteúdo coincide com HEAD: consultas próprias, predicates, count e ordenação preservados. Em tasks.md, a única mudança desta tarefa foi [ ]→[X] de T009; conferidos 36 marcadores, T001–T009 concluídas e T010–T036 abertas. Oito links novos resolvidos, 22 fontes idênticas às executadas no GREEN, 250 relatórios anteriores e quatro novos preservados; evidência em final-static-review.json. git diff --check e conferência --no-index --check dos 19 Java não rastreados sem diagnóstico de whitespace; avisos LF→CRLF refletem configuração existente. extensions.yml continua ausente, sem hooks após implementação. Estado final: cinco rastreados modificados e 19 Java não rastreados, nada staged; branch, HEAD, main e seleção008 preservados. Nenhuma execução Maven adicional após a conciliação GREEN, nem stage, commit ou push.
+
+## Execução T010 — DTOs e leitura estrita da ocorrência
+
+### Contexto confirmado e escopo autorizado
+
+Skill speckit-implement aplicada exclusivamente à [T010](tasks.md), após T009 e os testes prévios pertinentes T006–T007. Confirmados raiz `C:/Users/ronal/dscommerce-speckit`, branch real `008-registrar-pagamento`, HEAD `3d8d1a4a99cfa3ea28e9aa7acff19e1d0008c279` e seleção local Feature 008. Cinco rastreados já modificados: Order.java, OrderStatus.java, OrderRepository.java, este quickstart e tasks.md; 19 Java não rastreados nos caminhos recebidos, nada staged. received-file-hashes.json/received-status.txt guardam os 24 caminhos completos, comprimentos e SHA-256; nenhum dos 22 Java recebidos foi alterado nesta tarefa.
+
+Leituras pertinentes: critérios integrais T010, dependências e disciplina tests-first/checkpoints; constituição, AGENTS.md, harness, spec, plano, [pesquisa R2/R3](research.md), modelo e contrato POST008, procedimentos/evidências anteriores e leitores/DTOs existentes. Check-prerequisites -Json -RequireTasks -IncludeTasks retornou exit0 com FEATURE_DIR absoluto 008. requirements.md permaneceu 16/16 marcado, zero aberto, PASS documental; nenhum checklist alterado. Ignore Java existente adequado. extensions.yml ausente antes da execução; nenhum Maven/Surefire ativo ou evidência anterior T010 encontrada antes de iniciar.
+
+Preservados modelo Payment/PK-FK/precisão/markPaid, repositórios/lock-refresh/projeção/persist e todos os testes/asserções/evidências anteriores. BASE (391), MODEL-T008 (35), REPO-T009 (16), grupos HTTP, checkpoints conjuntos e suíte completa não foram repetidos. Permanecem os diagnósticos HTTP históricos T006: POST ausente 404 e envelope 401/403 contendo errors. Serviço, segurança, endpoint, advice e demais componentes T011+ não foram implementados.
+
+### Componentes desta tarefa
+
+- [PaymentRegistrationRequestDTO.java](../../src/main/java/com/devsuperior/dscommerce/dto/PaymentRegistrationRequestDTO.java): record somente Instant occurredAt com @NotNull. Ausência/null de propriedade permanecem disponíveis à Bean Validation local; o controller futuro deve aplicar @Valid. Não há consulta, Clock ou regra de janela dependente de pedido.
+- [PaymentConfirmationDTO.java](../../src/main/java/com/devsuperior/dscommerce/dto/PaymentConfirmationDTO.java): somente orderId/occurredAt/status, com Instant formatado UTC e exatamente três casas por anotação restrita ao campo. Construção exige ID positivo, PAID, ocorrência não nula, ano UTC 0001–9999 e precisão exata em ms; resultado interno inválido falha antes de formatação que pudesse truncar. Construção não é prova de commit nem resposta 201.
+- [PaymentRequestJsonConfig.java](../../src/main/java/com/devsuperior/dscommerce/config/PaymentRequestJsonConfig.java): @JsonComponent registra streaming deserializer somente para PaymentRegistrationRequestDTO. Objeto único, campo único, detecção de duplicatas inclusive nomes escapados, rejeição de propriedades extras/tipos/coerções e trailing JSON. Null na raiz é rejeitado; objeto vazio/campo null seguem para @NotNull.
+- [PaymentRegistrationDtoContractTest.java](../../src/test/java/com/devsuperior/dscommerce/dto/PaymentRegistrationDtoContractTest.java): slice Boot @JsonTest e ValidatorFactory local fechada em AfterAll; sem serviço/controller/DataSource/EntityManagerFactory/Clock no contexto.
+
+Reader usa gramática ASCII explícita, T/Z maiúsculos, segundos, offset Z ou ±HH:MM até ±18:00 e fração opcional de 1–9 dígitos. OffsetDateTime/ISO_OFFSET_DATE_TIME estrito confere calendário; conversão conserva o mesmo Instant e também confere ano UTC. nano %1000000 precisa ser zero. Não há trim, arredondamento, truncagem, aceitação de -00:00, leap second ou hora 24. Frações adicionais zeradas são normalizadas sem perda. Mensagem local de falha é fixa: Invalid payment data, sem propagar diagnóstico textual do parser como mensagem da aplicação; o envelope/status HTTP ainda dependem da tarefa própria.
+
+Nenhum flag global do mapper, serializer global de Instant ou DTO anterior foi modificado. A configuração é exclusiva do novo tipo, seguindo o padrão dos leitores existentes. Guardas de saída só asseguram representação válida do DTO; não avaliam permissão, histórico ou janela. Não se captura/reduz referência temporal no reader/DTO. A captura única com precisão nativa e sua comparação pertencem a T011. Não há montante na entrada/saída; a rejeição de amount e uma regressão local da string monetária máxima preservam esse contrato, sem antecipar o cálculo histórico BigDecimal da T011.
+
+### Tests first e RED funcional
+
+O teste completo foi escrito primeiro; em seguida foram disponibilizados os dois records tipados, com @NotNull no request, ainda sem reader específico, formato canônico ou guardas de confirmação. Esses records são APIs reais mantidas no resultado, sem tipos fictícios ou corpos que lançassem erro para fabricar RED. A compilação concluída permitiu observar o comportamento permissivo do mapper existente antes dos corpos correspondentes.
+
+Execução `DTO-T010-RED-20261021T192512466`, metadados iniciados 2026-10-21 às 19:27:16−03:00, término 19:28:22−03:00, duração Maven 01:00:
+
+~~~powershell
+.\mvnw.cmd "-Dtest=PaymentRegistrationDtoContractTest" "-Dsurefire.reportNameSuffix=DTO-T010-RED-20261021T192512466" test
+~~~
+
+**141 testes: 91 aprovados, 50 falhas de asserção, zero erros/ignorados, exit1, BUILD FAILURE.** Console/XML/TXT conciliados; bootstrap/compilação válidos, nenhuma falha de preparação contada como ausência funcional.
+
+| Método com falhas RED | Falhas |
+| --- | ---: |
+| rejectsInvalidGrammarCalendarRangeAndSubmillisecondsWithoutRounding | 22 |
+| rejectsNonobjectsWrongTypesUnknownOrDuplicateFieldsAndTrailingContent | 13 |
+| confirmationContainsExactlyThreeFieldsAndCanonicalUtcMilliseconds | 7 |
+| confirmationRejectsUnrepresentableInstantsInsteadOfSilentlyTruncating | 6 |
+| confirmationRejectsMissingValuesInvalidIdentityAndAnyStatusOtherThanPaid | 1 |
+| paymentReaderFailuresKeepAFixedMessageWithoutEchoingReceivedValues | 1 |
+| Total | **50** |
+
+O RED demonstra permissividade real em parte da gramática/estrutura, ausência de guardas de saída e representação variável de fração. Os outros casos já satisfeitos pelo Jackson/calendário/Bean Validation permaneceram GREEN, sem regressão artificial. As 50 falhas não são 50 erros de parse nem 50 causas independentes de negócio.
+
+### GREEN focal e conciliação
+
+Após implementar o reader e a confirmação, sem alterar o teste/asserções, execução `DTO-T010-GREEN-20261021T192922718`, iniciada 19:29:25−03:00, término 19:30:30−03:00 em 2026-10-21, duração Maven 59.647s:
+
+~~~powershell
+.\mvnw.cmd "-Dtest=PaymentRegistrationDtoContractTest" "-Dsurefire.reportNameSuffix=DTO-T010-GREEN-20261021T192922718" test
+~~~
+
+**141 aprovados, zero falhas/erros/ignorados, exit0, BUILD SUCCESS.** Ambiente das duas execuções: Windows/PowerShell, Java Zulu 21.0.12.1+1-LTS e Wrapper com Maven 3.9.16 configurado. LASTEXITCODE capturado imediatamente após Wrapper/Tee-Object. RED compilou 95 fontes produtivas/131 de teste; GREEN 96/131, sem contar compilação como execução. Avisos históricos de APIs depreciadas/ByteBuddy não alteram o resultado Surefire.
+
+| Método efetivamente executado em PaymentRegistrationDtoContractTest | Invocações GREEN | Alcance |
+| --- | ---: | --- |
+| acceptsOnlyLosslessOccurrencesAndKeepsTheExactInstant | 24 | Frações 1–9 exatas, zeros adicionais, offsets equivalentes/limite ±18:00, anos 0001/9999 e calendários bissextos 2000/2400; Instant conservado. |
+| rejectsInvalidGrammarCalendarRangeAndSubmillisecondsWithoutRounding | 48 | Sintaxe/capitalização/offset/segundos, espaços, ano local e UTC, calendário inválido, leap second/hora 24, subms e mais de 9 dígitos rejeitados. |
+| rejectsNonobjectsWrongTypesUnknownOrDuplicateFieldsAndTrailingContent | 32 | Raiz/tipos inválidos, amount/buyer/reference/status/case, duplicatas iguais/null/escapadas, documentos incompletos e conteúdo posterior rejeitados. |
+| leavesMissingOrNullOccurrenceForLocalNotNullBeanValidation | 2 | Ausência/null produz violação @NotNull em occurredAt, inclusive construção direta nula. |
+| confirmationContainsExactlyThreeFieldsAndCanonicalUtcMilliseconds | 24 | ID int64 máximo exato, PAID e UTC.SSS somente; saída parseada conserva o Instant aceito. |
+| confirmationRejectsUnrepresentableInstantsInsteadOfSilentlyTruncating | 6 | Ano UTC fora do contrato, extremos Instant e subms não são truncados/formatados. |
+| confirmationRejectsMissingValuesInvalidIdentityAndAnyStatusOtherThanPaid | 1 | Múltiplas asserções para ID null/zero/negativo, ocorrência null e status null/WAITING_PAYMENT. |
+| paymentReaderFailuresKeepAFixedMessageWithoutEchoingReceivedValues | 1 | Mensagem fixa em campo extra, texto inválido e JSON interno malformado; não equivale a envelope HTTP seguro. |
+| paymentSpecificRulesDoNotChangeOtherInstantCoercionOrDocumentPolicies | 1 | Tipo alheio conserva nanos, coerção anterior, tolerância a campo extra, duplicata e trailing JSON; Instant global preservado. |
+| existingOwnRepresentationKeepsItsCreationFormatAndExactMoneyStrings | 1 | Resumo próprio anterior conserva campos, criação UTC.SSS, WAITING_PAYMENT e string 99999999999999999.99. |
+| jsonSliceHasNoPersistenceClockOrApplicationController | 1 | Ausência desses beans no slice. |
+| Total | **141** | **11 métodos, nenhuma classe JUnit @Nested prevista.** |
+
+reconcile.py/reconciliation.json conferem somente a classe selecionada no console, 141 identidades únicas de testcase, onze métodos e multiplicidades, ausência de failure/error/skipped, totais e exit. UnrelatedInput é record auxiliar aninhado, não classe de teste omitida. A primeira passagem do conferidor documental precisou ajustar a expectativa do classname ao sufixo Surefire real `Classe(sufixo)`; corrigida a leitura do metadado, o conferidor retornou exit0. Nenhum Java/teste foi alterado e nenhum Maven foi repetido por esse ajuste.
+
+### Evidências preservadas e limites
+
+Diretórios exclusivos ignorados sob target/feature008-evidence/:
+
+- `DTO-T010-RED-20261021T192512466/`: received-file-hashes.json/received-status.txt/received-tracked-diff.patch, run.json/exit.json, console.log UTF-16LE, sources/ com os três Java executados no RED e hashes; previous-surefire/ preserva 254 relatórios anteriores, new-surefire/ somente XML+TXT RED, reconciliation.json com falhas/contagens.
+- `DTO-T010-GREEN-20261021T192922718/`: console/metadados/estado/diff, cópias dos quatro Java executados e source-hashes-before.json, manifesto recebido, previous-surefire/ preserva 256 relatórios incluindo RED, new-surefire/ somente XML+TXT GREEN, reconcile.py/reconciliation.json. SHA-256 dos relatórios anteriores conferidos e teste GREEN idêntico ao RED.
+
+Conferência proporcional dos relatórios Surefire XML/TXT relevantes; não houve inventário global de target/ nem uso do inventário opcional incompleto da T001 como prova. Ambos os runs foram sequenciais e preservam seus resultados separados.
+
+Esta seleção prova JSON e Bean Validation local, sem mocks de serviço/repository e sem MockMvc/HTTP real. Não iniciou H2, conexão/JPA, fixture, transação ou servidor web; portanto isolamento/limpeza H2 não foram exercitados novamente. Não prova @Valid MVC, ID/query/segurança HTTP, status 400/201, envelope, captura única de Clock, janela criação–referência, valores calculados, persistência, lock, concorrência, rollback ou commit. Essas provas continuam nas tarefas próprias; o RED HTTP T006 permanece histórico pendente. Não é S1-GREEN, BASE, FINAL, CI ou entrega funcional da 008.
+
+Critérios da **T010 atendidos**: somente sua checkbox passa para [X]. **T001–T010 [X], T011–T036 abertas: 10 concluídas/26 abertas**. Alterações desta tarefa limitadas aos três Java produtivos novos, ao teste novo, esta seção e checkbox T010. Sem stage, commit, push, merge ou alteração de main.
+
+Fechamento T010: diff incremental e quatro Java novos revisados; histórico do quickstart recebido (133.877 bytes), 22 Java anteriores e teste/asserções do RED preservados por SHA-256. Somente a checkbox T010 mudou em tasks.md; conferidos os 36 marcadores, dez concluídos e 26 abertos. Seis links novos resolvidos; git diff --check retornou exit0 e a conferência --no-index --check dos 23 Java não rastreados não apontou whitespace (exit1 nessa modalidade indica diferenças, sem diagnóstico). final-static-review.json registra essas conferências; os quatro Java finais coincidem com os executados no GREEN. extensions.yml segue ausente, sem hooks posteriores; nenhum Maven/Surefire permaneceu ativo. Estado final: cinco rastreados modificados, 23 Java não rastreados, nada staged; branch/HEAD/main e seleção008 preservados. Nenhum impedimento remanescente nesta tarefa e nenhuma execução Maven adicional após GREEN. Sem stage, commit ou push.
+
+## Execução T011 — guarda atual e serviço transacional de pagamento
+
+### Contexto recebido e escopo
+
+Em 2026-10-22, skill speckit-implement aplicada exclusivamente à T011. Confirmados raiz `C:/Users/ronal/dscommerce-speckit`, branch real `008-registrar-pagamento`, HEAD `3d8d1a4a99cfa3ea28e9aa7acff19e1d0008c279`, seleção local008 e nada staged. Cinco rastreados recebidos modificados: este quickstart, tasks.md, src/main/java/com/devsuperior/dscommerce/entities/Order.java, src/main/java/com/devsuperior/dscommerce/entities/OrderStatus.java e src/main/java/com/devsuperior/dscommerce/repositories/OrderRepository.java.
+
+Os 23 Java não rastreados recebidos foram conferidos nestes caminhos, relativos à raiz:
+
+| Diretório | Arquivos recebidos |
+| --- | --- |
+| src/main/java/com/devsuperior/dscommerce/config/ | PaymentRequestJsonConfig.java |
+| src/main/java/com/devsuperior/dscommerce/dto/ | PaymentConfirmationDTO.java; PaymentRegistrationRequestDTO.java |
+| src/main/java/com/devsuperior/dscommerce/entities/ | Payment.java |
+| src/main/java/com/devsuperior/dscommerce/repositories/ | OrderPaymentLockRepository.java; OrderPaymentLockRepositoryImpl.java; PaymentInsertRepository.java; PaymentInsertRepositoryImpl.java; PaymentRepository.java |
+| src/test/java/com/devsuperior/dscommerce/config/ | PaymentRegistrationDatabaseProbeTest.java; PaymentRegistrationObservationConfig.java; PaymentRegistrationTestConfig.java |
+| src/test/java/com/devsuperior/dscommerce/controllers/ | PaymentRegistrationApiHttpIntegrationTest.java; PaymentRegistrationHttpIntegrationTest.java; PaymentRegistrationHttpTestSupport.java |
+| src/test/java/com/devsuperior/dscommerce/dto/ | PaymentRegistrationDtoContractTest.java |
+| src/test/java/com/devsuperior/dscommerce/entities/ | PaymentModelTest.java |
+| src/test/java/com/devsuperior/dscommerce/fixtures/ | PaymentRegistrationDatabaseProbe.java; PaymentRegistrationTestFixture.java |
+| src/test/java/com/devsuperior/dscommerce/repositories/ | PaymentModelJpaIntegrationTest.java; PaymentPersistenceIntegrationTest.java; PaymentRepositoriesIntegrationTest.java; PaymentRepositoryFragmentsTest.java |
+
+O manifesto received-file-hashes.json em target/feature008-evidence/SERVICE-T011/ registra os 28 caminhos recebidos, comprimentos e SHA-256. Os 26 Java recebidos, incluindo os três rastreados, foram preservados integralmente; o prefixo recebido deste quickstart tem 146.982 bytes. Modelo, repositórios, reader exclusivo, mapper anterior, DTOs, asserções, suportes e evidências anteriores permanecem preservados.
+
+Lidos T011 integralmente, dependências T009–T010 e seus testes/evidências, tasks/plan, constituição, spec, research R1–R9, data-model, contratos pertinentes e procedimentos do quickstart/harness. check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks retornou exit0 e FEATURE_DIR absoluto008. requirements.md: 16/16, zero aberto, PASS documental, sem modificar checklist. Ignore Java existente suficiente; extensions.yml ausente na conferência inicial. Sem Maven/Surefire ativo antes da execução. Não se executaram BASE, seleções T006–T010, S1-GREEN ou suíte completa.
+
+### Implementação da tarefa
+
+- [PaymentAccessService.java](../../src/main/java/com/devsuperior/dscommerce/services/PaymentAccessService.java): aceita somente identidade autenticada válida e relê findEffectiveAccountRolesById a cada chamada. ADMIN isolado basta; authorities do token e coleção gerenciada não substituem a projeção escalar. Ausência de conta gera categoria401, ausência de ADMIN403 e falha/inconsistência da projeção500 com mensagem fixa e causa preservada. Não altera a guarda007.
+- [PaymentRegistrationService.java](../../src/main/java/com/devsuperior/dscommerce/services/PaymentRegistrationService.java): primeira instrução de negócio captura clock.instant sem truncagem. Guarda antes de consultar pedido; aquisição pelo fragmento lock/refresh recebido; nova guarda depois de seu retorno, antes de mutação. Sob a mesma transação, Payment anterior precede estado incompatível, com conflitos distintos; ausente404, janela inválida400, raiz/histórico corrompidos500. A referência local não avança durante consultas/esperas.
+- A soma integral deriva somente de productId/position/quantity/unitPrice históricos, sem Product, comprador ou coleção de itens. Verifica sequência, produtos distintos, quantidades e preços positivos; calcula preços, subtotais e soma exatos com BigDecimal/setScale(2, UNNECESSARY), capacidade19,2 e sem double. Payment continua sem montante persistido ou recebido.
+- register declara REQUIRED/READ_COMMITTED/rollbackFor Exception. Inserção pelo fragmento persist recebido, markPaid, flush e construção do DTO ocorrem no mesmo corpo transacional. Falhas de lock/lookup/projeção/persist/flush propagam sem retry ou consulta de recuperação; exceção inesperada de PK/FK não vira repetição por inferência.
+- [PaymentRegistrationException.java](../../src/main/java/com/devsuperior/dscommerce/services/exceptions/PaymentRegistrationException.java): sete categorias com status e mensagens fixos do contrato, incluindo dois conflitos distintos. A futura fronteira HTTP deverá adaptar essas categorias e as falhas propagadas; esta tarefa não cria controller, cadeia de segurança ou advice.
+
+A releitura não serializa revogação posterior à última guarda. REQUIRED pode participar de transação externa; esse chamador não recebe garantia de commit quando o corpo retorna. Flush e DTO interno tampouco demonstram commit.
+
+### Tests first, RED e coleta corrigida
+
+[PaymentRegistrationServiceTest.java](../../src/test/java/com/devsuperior/dscommerce/services/PaymentRegistrationServiceTest.java) foi escrito antes dos corpos produtivos. As APIs reais e a primeira implementação executável continham captura de referência, guardas, aquisição da raiz, conflitos e persist/PAID/flush/DTO; ainda faltavam validações temporais e históricas. Não se usou tipo fictício, stub que lança falha intencional ou erro de compilação como RED. As guardas já satisfeitas permaneceram GREEN.
+
+Primeira tentativa: SERVICE-T011-RED-20261022T073732805, iniciada às 07:37:41−03:00. O coletor PowerShell tinha ErrorActionPreference=Stop; um aviso nativo do ByteBuddy em stderr interrompeu o pipeline e a captura de LASTEXITCODE. Os oito XML/TXT gerados foram preservados, mas o console ficou incompleto e o exit do Wrapper não foi obtido. capture-failure.json registra essa falha de coleta; ela não é aprovação nem substitui o RED completo. Não restou processo Java antes da próxima invocação. Corrigido somente o coletor para tolerar stderr nativo e capturar o exit imediatamente após Wrapper/Tee-Object, repetiu-se a mesma seleção com fontes e asserções idênticas.
+
+RED completo SERVICE-T011-RED-20261022T073951492: 07:39:53–07:40:14−03:00, Maven15.570s:
+
+~~~powershell
+.\mvnw.cmd "-Dtest=PaymentRegistrationServiceTest" "-Dsurefire.reportNameSuffix=SERVICE-T011-RED-20261022T073951492" test
+~~~
+
+**77 testes: 42 aprovados, 35 falhas de asserção, zero erros/ignorados, exit1, BUILD FAILURE.** Falhas: leitura histórica ausente na sequência de sucesso(1); referência nativa/ocorrência posterior e relógio avançado(2); entradas temporais inválidas(5) e null(1); raiz corrompida(3); histórico corrompido(20); caminho histórico ausente nos cenários de propagação(3). Algumas entradas inválidas atingiam indevidamente Payment/DTO e falhavam na categoria esperada, evidenciando guarda ausente, não erro de preparação. Essas 35 falhas não representam 35 requisitos independentes nem prova de concorrência.
+
+### GREEN focal e conciliação
+
+Após completar as regras, sem mudar o teste ou enfraquecer asserções, SERVICE-T011-GREEN-20261022T074159319: 07:42:02–07:43:26−03:00, Maven01:18:
+
+~~~powershell
+.\mvnw.cmd "-Dtest=PaymentRegistrationServiceTest" "-Dsurefire.reportNameSuffix=SERVICE-T011-GREEN-20261022T074159319" test
+~~~
+
+| Grupo JUnit efetivamente executado | Testes | Falhas | Erros | Ignorados |
+| --- | ---: | ---: | ---: | ---: |
+| PaymentRegistrationServiceTest$CurrentAccess | 18 | 0 | 0 | 0 |
+| PaymentRegistrationServiceTest$RegistrationRules | 51 | 0 | 0 | 0 |
+| PaymentRegistrationServiceTest$TransactionAndCategories | 8 | 0 | 0 | 0 |
+| Total | **77** | **0** | **0** | **0** |
+
+**BUILD SUCCESS, exit0.** O relatório externo PaymentRegistrationServiceTest registra zero casos próprios porque contém os três grupos @Nested; não é seleção vazia. reconcile.ps1/reconciliation.json conferiram quatro XML e quatro TXT por execução completa, console/exit, os 24 métodos, multiplicidades e 77 identidades únicas, sem omissões/duplicatas/failure/error/skipped no GREEN. A conferência documental inicialmente precisou corrigir a montagem do nome do TXT; nenhum Maven foi iniciado por esse ajuste.
+
+| Critério T011 | Métodos/casos locais aprovados |
+| --- | --- |
+| ADMIN atual e falhas seguras | Sete métodos CurrentAccess/18 invocações: ADMIN isolado/ambos, CLIENT/sem perfil, conta ausente, sete identidades inválidas, releitura/revogação, lookup falho e quatro projeções corrompidas. |
+| Referência única antes de consultas | nativeReferenceComesFirstAndCompleteHistoricalSettlementPreservesTheAggregate; inclusiveBoundsRemainValidWhenTheClockAdvancesDuringControlledLookup[1–2]; elapsedLookupTimeCannotMakeAnOccurrenceAfterTheInitialReferenceValid; nativeNanosecondsAreComparedWithoutRoundingTheReferenceUp. Clock verificado uma vez; avanço ocorre em callback controlado, sem espera física. |
+| Guardas e elegibilidade antes de escrita | firstGuardFailurePreventsEveryOrderRead[1–3]; revalidationAfterRootAcquisitionPreventsWritesOnRevocationOrLookupFailure[1–3]; absentOrderIsNotFoundWithoutAnyPaymentHistoryOrWrite; existingPaymentAlwaysPrecedesIncompatibleStateAndIsNeverReusedOrRepaired[1–2]; paidWithoutPaymentIsASeparateConflictWithoutAutomaticRepair. |
+| Janela e corrupção distintas | invalidOccurrenceNeverMutatesOrSilentlyRounds[1–5]; nullOccurrenceIsInvalidInputEvenForDirectServiceCalls; corruptRootIsProcessingFailureWithoutRepair[1–3]. |
+| Histórico exato sem catálogo | Sucesso com linhas2×10,00+3×7,50; historicalCorruptionIsInternalFailureBeforeMutation[1–20], incluindo fração de centavo e overflow de preço/subtotal/soma; exactHistoricalMoneyAcceptsTrailingZerosAndTheDecimal19Scale2Limit[1–2]. Ausência de interação com Product/comprador e preservação do agregado no sucesso; o montante não integra o DTO. |
+| Persist/PAID/flush/DTO e propagação | Sequência no cenário de sucesso; operationalFailuresPropagateUnchangedWithoutRetryOrRecoveryQueries[1–5], sem chamadas posteriores à falha; registrationDeclaresRequiredReadCommittedAndRollbackForCheckedExceptions inspeciona os atributos Spring; domainFailuresKeepDistinctFixedCategoriesAndMessages[1–7]. |
+
+Ambiente observado: Windows/PowerShell, Java Zulu21.0.12.1+1-LTS, Maven3.9.16 selecionado pelo Wrapper existente. HEAD acima e diff recebido acrescido dos quatro Java T011. Compilação da primeira tentativa e GREEN: 99 fontes produtivos/132 de teste; não são contagens de testes. Avisos de APIs depreciadas/ByteBuddy permaneceram visíveis e não alteraram o resultado Surefire.
+
+### Preservação e limites
+
+Evidências ignoradas sob target/feature008-evidence/: diretório SERVICE-T011/ com manifesto/estado/diff recebido, cópias dos dois documentos anteriores, scripts de coleta/conciliação e revisão; três diretórios de execução nomeados acima com console, metadados, fontes/hash, previous-surefire e new-surefire. As execuções completas também têm exit.json e reconciliation.json; a primeira tem capture-failure.json e exit do Maven desconhecido. run-summary.json contém metadados concisos. Relatórios originais permanecem em target/surefire-reports com sufixos exclusivos.
+
+Os 258 relatórios anteriores à T011 foram copiados na primeira tentativa; o RED completo preservou266 e o GREEN274, incluindo as tentativas desta tarefa, com hashes conferidos. O teste, a guarda e a exceção são idênticos entre RED completo e GREEN; só o serviço ganhou as regras ausentes. Os quatro fontes finais coincidem com os executados no GREEN.
+
+Esta seleção usa objetos reais de domínio/DTO e mocks de Clock/guarda/repositories/EntityManager; a guarda real recebe projeções simuladas. Verifica regras locais, sequência e atributos transacionais. Não sobe Spring/H2/servidor, não exerce lock/refresh físico, SQL, espera concorrente, revogação em outra conexão, proxy dono da transação, rollback/commit ou HTTP. Não se afirma estado commitado a partir do objeto marcado PAID, nem segurança JWT/envelope/status HTTP a partir das categorias locais. Os contextos H2, URLs, configuração e seed recebidos não foram modificados ou acionados por esta seleção. Concorrência, commit, fronteira HTTP e checkpoints conjuntos permanecem nas tarefas próprias; o RED HTTP T006 continua histórico pendente. Não é S1-GREEN, FINAL, CI ou entrega da feature.
+
+Critérios da **T011 atendidos** por implementação e testes de regras focais; somente T011 passa para [X] em [tasks.md](tasks.md). **T001–T011 [X], T012–T036 abertas: 11 concluídas/25 abertas.** T012+ não foi executada. Alterações desta execução: quatro Java novos acima, esta seção acrescentada e somente o marcador T011. Não houve stage, commit, push, merge ou alteração de main.
+
+Fechamento T011: diff incremental dos dois documentos e quatro Java novos revisados; cinco links novos resolvidos, prefixo histórico de146.982 bytes e26 Java recebidos preservados por comparação/hash. git diff --check retornou exit0; git -c core.autocrlf=false diff --no-index --check contra /dev/null não apontou whitespace nos27 Java não rastreados (opção somente nesta invocação, sem alterar configuração Git; exit1 significa arquivo novo diferente). O conferidor documental foi ajustado para enumerar corretamente o array JSON de hashes e para evitar que avisos LF→CRLF fossem tratados como falha nativa pelo PowerShell; nenhuma fonte/asserção foi alterada ou execução Maven repetida por esses ajustes. final-static-review.json registra fontes idênticas ao GREEN, relatórios anteriores preservados e somente T011 marcada. extensions.yml segue ausente, sem hooks posteriores; nenhum Maven/Surefire permanece ativo. Estado final: cinco rastreados modificados e27 Java não rastreados, nada staged; branch/HEAD/main e seleção008 preservados. Nenhum impedimento remanescente da T011; limites de prova e T012–T036 permanecem explícitos acima.
+
+## Execução T012 — exposição HTTP, segurança e erros específicos de pagamento
+
+### Contexto e preservação
+
+Em 2026-10-22, skill speckit-implement aplicada exclusivamente à T012. Confirmados raiz `C:/Users/ronal/dscommerce-speckit`, branch real `008-registrar-pagamento`, HEAD `3d8d1a4a99cfa3ea28e9aa7acff19e1d0008c279`, seleção local008 e índice vazio. Cinco rastreados recebidos modificados: specs/008-registrar-pagamento/quickstart.md, specs/008-registrar-pagamento/tasks.md, src/main/java/com/devsuperior/dscommerce/entities/Order.java, src/main/java/com/devsuperior/dscommerce/entities/OrderStatus.java e src/main/java/com/devsuperior/dscommerce/repositories/OrderRepository.java.
+
+Conferidos os 27 Java não rastreados recebidos: os 23 enumerados na seção T011 acima, mais src/main/java/com/devsuperior/dscommerce/services/PaymentAccessService.java, src/main/java/com/devsuperior/dscommerce/services/PaymentRegistrationService.java, src/main/java/com/devsuperior/dscommerce/services/exceptions/PaymentRegistrationException.java e src/test/java/com/devsuperior/dscommerce/services/PaymentRegistrationServiceTest.java. received-file-hashes.json em target/feature008-evidence/HTTP-T012/ registra os 32 caminhos recebidos, comprimentos e SHA-256. Os 30 Java recebidos permaneceram idênticos; serviços, modelo, repositórios, DTOs, reader exclusivo, mapper anterior, testes e asserções não foram editados. O prefixo histórico recebido deste quickstart tem 161.661 bytes.
+
+Lidos T012 integralmente, suas dependências T006/T010/T011, condições de execução e separação de T013+, plano, constituição, spec/contratos pertinentes, pesquisa, modelo e quickstart/harness. check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks retornou exit0, FEATURE_DIR absoluto008 e documentos esperados. requirements.md: 16/16, zero aberto, PASS documental, sem mudar checklist. Ignore Java existente suficiente; extensions.yml ausente antes da execução. Nenhum Maven/Surefire ativo inicialmente. A skill já havia sido lida na execução anterior e suas regras foram reaplicadas ao escopo autorizado.
+
+Os dois diagnósticos históricos da T006 foram conferidos separadamente: 24 falhas pelo POST ausente/404 e oito pelo envelope401/403 com errors. As evidências originais e suas limitações permanecem intactas; não se repetiram a seleção T006, DTO/serviço/repositories, BASE ou suíte completa. A coleta nova preserva a correção da T011: ErrorActionPreference=Continue somente durante Wrapper/Tee-Object e LASTEXITCODE capturado imediatamente depois. Nenhuma interrupção da coleta ocorreu nestas duas invocações; avisos nativos permaneceram visíveis.
+
+### Implementação restrita à T012
+
+- [AdminPaymentController.java](../../src/main/java/com/devsuperior/dscommerce/controllers/AdminPaymentController.java): somente POST /admin/orders/{id}/payments, JSON de entrada/saída, Long @Positive e @Valid no corpo. Rejeita query; encaminha ID, DTO e Authentication ao serviço injetado. Sem transação externa, monta201 somente depois do retorno bem-sucedido; resultado interno nulo falha como500. Não cria Location, GET administrativo, regra financeira ou leitura alheia.
+- [SecurityConfig.java](../../src/main/java/com/devsuperior/dscommerce/config/SecurityConfig.java): cadeia @Order(-1) somente /admin/orders/*/payments, sem restrição de método no matcher. Reutiliza decoder/conversor existentes; exige a guarda escalar PaymentAccessService antes da MVC. A autorização ADMIN deriva dessa guarda, inclusive se a coleção lida pelo conversor estiver antiga; CLIENT não é exigido. Falhas conhecidas de resolução e da guarda são adaptadas para o entry point específico. As cadeias0–3 e a guarda007 não foram alteradas.
+- [PaymentAuthenticationEntryPoint.java](../../src/main/java/com/devsuperior/dscommerce/security/PaymentAuthenticationEntryPoint.java) e [PaymentAccessDeniedHandler.java](../../src/main/java/com/devsuperior/dscommerce/security/PaymentAccessDeniedHandler.java): envelopes fixos de quatro campos,401/403/500 distintos; somente401 traz WWW-Authenticate: Bearer. Sem errors de produtos, valores recebidos, conta, SQL ou detalhe interno. HEAD não escreve corpo.
+- [PaymentRegistrationExceptionHandler.java](../../src/main/java/com/devsuperior/dscommerce/controllers/handlers/PaymentRegistrationExceptionHandler.java): advice limitado ao novo controller. Binding/validação local e categorias do serviço seguem status/mensagens do contrato; validação de retorno, constraints persistentes, falhas internas e de conclusão são500. Sem diagnóstico de produtos, consulta de recuperação ou retry. 405/406/415 preservam status/headers sem impor JSON.
+- [GlobalExceptionHandler.java](../../src/main/java/com/devsuperior/dscommerce/controllers/handlers/GlobalExceptionHandler.java): somente reconhecimento do caminho de pagamento no fallback dos erros nativos405/406/415, que podem ocorrer antes da seleção de controller. Acrescentados pattern e ramo específico; os handlers e diagnósticos anteriores foram preservados.
+
+O fluxo produtivo chama o serviço Spring injetado e constrói201 depois de seu retorno. A comprovação física do proxy dono/commit com o serviço real continua na T013; a ordenação do código, uma anotação ou o mock usado abaixo não a substituem. Não se ampliou o contrato vigente das consultas007 ou se publicou a008 como entregue.
+
+### Tests first e RED focal
+
+Novos [PaymentRegistrationEndpointHttpTest.java](../../src/test/java/com/devsuperior/dscommerce/controllers/PaymentRegistrationEndpointHttpTest.java) e [PaymentRegistrationEndpointApiHttpTest.java](../../src/test/java/com/devsuperior/dscommerce/controllers/PaymentRegistrationEndpointApiHttpTest.java) escritos antes da implementação. As duas classes herdam17 métodos/48 invocações cada de PaymentEndpointScenarios. Não há grupos JUnit @Nested novos; a classe abstrata e o suporte HTTP não são casos omitidos. Seus nomes também são alcançados pela seleção futura PaymentRegistration*Test, sem alterar a tarefa T013.
+
+Os testes usam servidor real em porta aleatória, login/JWT reais, decoder/conversor existentes e resolução/guarda reais por padrão. PaymentRegistrationService é substituído por @MockBean somente nesses contextos para testar a fronteira HTTP sem executar quitação. Spies de AuthenticatedAccountService/PaymentAccessService delegam às implementações recebidas, exceto nas duas falhas controladas de resolução/guarda. O teste observa ausência de transação externa no thread do request ao chegar ao mock, sem alegar proxy ou commit. Nenhum failpoint foi acrescentado à produção.
+
+Execução HTTP-T012-RED-20261022T075834699, 07:58:37–08:00:37−03:00; duração Maven01:52:
+
+~~~powershell
+.\mvnw.cmd "-Dtest=PaymentRegistrationEndpointHttpTest,PaymentRegistrationEndpointApiHttpTest" "-Dsurefire.reportNameSuffix=HTTP-T012-RED-20261022T075834699" test
+~~~
+
+**96 testes: quatro aprovados, 92 falhas de asserção, zero erros/ignorados, exit1, BUILD FAILURE.** Cada contexto teve46 falhas e dois aprovados: HEAD não autenticado já tinha401/sem corpo, e os controles vizinhos já passavam. As demais falhas vieram da rota ausente e dos envelopes/mensagens anteriores, incluindo errors em401/403. Um404 de roteamento não comprova ausência isolada de cada regra simulada; este RED demonstra que a fronteira ainda não satisfazia as expectativas escritas. Não houve falha de compilação/preparação contada como RED.
+
+### GREEN focal e resultados efetivos
+
+Após implementar somente os componentes acima, sem alterar os dois testes/asserções, execução HTTP-T012-GREEN-20261022T080256515, 08:03:00–08:04:38−03:00; duração Maven01:32:
+
+~~~powershell
+.\mvnw.cmd "-Dtest=PaymentRegistrationEndpointHttpTest,PaymentRegistrationEndpointApiHttpTest" "-Dsurefire.reportNameSuffix=HTTP-T012-GREEN-20261022T080256515" test
+~~~
+
+| Classe/contexto | Testes | Falhas | Erros | Ignorados |
+| --- | ---: | ---: | ---: | ---: |
+| PaymentRegistrationEndpointHttpTest — ROOT | 48 | 0 | 0 | 0 |
+| PaymentRegistrationEndpointApiHttpTest — /api | 48 | 0 | 0 | 0 |
+| Total | **96** | **0** | **0** | **0** |
+
+**BUILD SUCCESS, exit0.** reconcile.ps1/reconciliation.json conferiram console/exit, dois XML e dois TXT por execução,17 métodos herdados por classe com multiplicidades e96 identidades únicas, sem omissões/duplicatas/ignorados. Os dois Java de teste são idênticos entre RED e GREEN; fontes finais conferidas contra source-hashes-before.json. Não houve nova execução Maven depois desse GREEN.
+
+| Métodos/casos por contexto | Invocações | Prova local da fronteira no GREEN |
+| --- | ---: | --- |
+| authorizedPostBindsLosslesslyAndReturnsOnlyTheThreeConfirmationFields; positiveLongMaximumReachesTheServiceWithoutIdentityLoss | 3 | ADMIN isolado/ambos, DTO recebido exato, ID int64 máximo,201 somente orderId/occurredAt/status, UTC.SSS, sem Location. Request thread sem transação externa ao chegar ao mock. |
+| everyPaymentMethodRequiresAuthenticationBeforeMvc; malformedBearerUsesThePayment401EnvelopeWithoutProductErrors; nonAdminGetsThePayment403BeforeInvalidBodyAndQueryAreExamined | 10 | POST/GET/HEAD/PUT/DELETE/PATCH/OPTIONS passam primeiro pela segurança;401/403 corretos, Bearer somente401, envelopes fechados onde há corpo e nenhuma chamada ao serviço. |
+| invalidPathIdentityIs400BeforeTheSettlementService; bodyReaderAndValidRejectBasicInvalidInputBeforeTheService; anyQueryParameterIsRejectedAndIsNotEchoedInTheErrorPath | 11 | ID zero/negativo/texto/overflow, corpo ausente/null/tipo/amount e query rejeitados400 sem chamar o serviço; path conserva contexto e exclui query. Não repete a matriz completa da gramática T010. |
+| serviceCategoriesHaveTheirExactSafeContractResponse | 7 | Adaptação das sete categorias recebidas, inclusive401/403/404 e dois409 distintos. Causas de negócio são simuladas; não se afirma que o serviço real as produziu nesta seleção. |
+| internalServiceOrResultFailuresStay500WithoutProductOrInputDiagnostics; methodReturnValidationIs500WhileInputMethodValidationIs400 | 7 | Falhas simuladas de banco/constraint/validator/mapping/resultado nulo são500; HandlerMethodValidationException simulada distingue retorno500 de entrada400. Não é falha real de flush/commit nem geração automática de violação de retorno. |
+| accountResolutionFailureInTheJwtConverterIs500RatherThan401; scalarGuardFailureBeforeMvcIs500RatherThanAuthenticationFailure | 2 | Exceções controladas nos spies atravessam a segurança real como500 seguro, sem Bearer ou chamada ao serviço de registro. |
+| authorizedUnsupportedMethodsRemainNative405AndExposeNoAdministrativeQuery; unsupportedRequestMediaTypeKeeps415AndItsNativeAcceptHeader; unacceptableResponseMediaTypeKeeps406WithoutForcingJson | 7 | Cinco métodos autorizados dão405/Allow POST;415 preserva Accept application/json;406 não força JSON incompatível. Sem corpo administrativo ou chamada ao serviço. |
+| neighboringPublicOrderAndProductSecurityContractsKeepTheirOwnResponses | 1 | Catálogo público e GET administrativo existente200; produto não autenticado conserva401 com errors; consultas próprias401 fechado; registro de pedido sem perfil conserva sua mensagem própria. Controles pontuais, não regressão completa001–007. |
+| Total por contexto | **48** | ROOT e /api executam as mesmas invocações. |
+
+Os dois diagnósticos T006 foram enfrentados pela fronteira específica: agora o POST chega ao serviço simulado e devolve201 mínimo;401/403 usam quatro campos e mensagens de pagamento, sem errors. A T006 original não foi reexecutada ou reinterpretada como GREEN de quitação/commit.
+
+### Ambiente, isolamento, evidências e limites
+
+Windows/PowerShell, Java Zulu21.0.12.1+1-LTS, Wrapper selecionando Maven3.9.16; HEAD acima com alterações recebidas e diff desta T012. O GREEN compilou103 fontes produtivos e134 de teste; essas contagens não são casos executados. Avisos históricos de APIs depreciadas/ByteBuddy/Hibernate ficaram visíveis, sem interrupção da coleta ou erro Surefire.
+
+Imports explícitos RootHttpContext/ApiHttpContext recebidos, perfil test, OSIV=false, create-drop, sem seed/import global e URLs H2 exclusivas e estáveis por contexto. GREEN: /api na porta59489 com H2 admin-product-test-6ec7e104-3c96-4bf5-b3e8-b4d2429d28e6; ROOT na59513 com H2 admin-product-test-9ac8c176-7d4e-4a9b-90b4-807b1e1c3d19. RED também teve dois bancos distintos, registrados na conciliação. Cada fixture cria contas próprias commitadas e as limpa seletivamente em AfterAll, sem limpeza global. Os helpers recebidos conferem as conexões e isolamento READ_COMMITTED; nenhuma propriedade global ou suporte foi alterado.
+
+Há persistência real somente para preparação/limpeza das contas e consultas de autenticação/autorização/controles vizinhos; não foram criados pedidos/pagamentos de cenário. Todos os logins e requests dos cenários usam HttpClient/Tomcat. A fixture recebida constrói internamente MockMvc, mas os testes novos não chamam perform; esse bootstrap não é contado como prova HTTP simulada. A simulação está no serviço de registro e nas exceções indicadas, não no transporte.
+
+Diretório target/feature008-evidence/HTTP-T012/ contém manifesto/estado/diff recebidos, cópias dos documentos e dos dois produtivos anteriormente limpos, hash do coletor T011 e scripts novos de coleta/conciliação/revisão. Cada diretório HTTP-T012-RED-20261022T075834699/ e HTTP-T012-GREEN-20261022T080256515/ contém run.json/exit.json, console.log, status/diff, fontes/hash, previous-surefire e new-surefire com reconciliação. RED preservou282 relatórios anteriores; GREEN preservou286, incluindo o RED, por SHA-256. Os originais continuam em target/surefire-reports com sufixos exclusivos; nenhuma evidência anterior foi sobrescrita.
+
+Esta seleção comprova exposição/binding/filtros/serialização/erros na configuração testada e controles vizinhos descritos. Não executa o serviço de quitação real, seu proxy, Payment+PAID, janela temporal de negócio, snapshots funcionais, locks, concorrência, rollback/commit, perda de transmissão ou leitura posterior de PAID. O201 do mock não prova pagamento commitado. As matrizes completas de autorização/entrada/tempo, cenários US1 e demais regressões continuam nas tarefas próprias. Não é checkpoint S1-GREEN/C1, FINAL, CI ou entrega da008.
+
+Critérios da **T012 atendidos** por implementação e validação focal da fronteira; somente T012 marcada em [tasks.md](tasks.md). **T001–T012 [X], T013–T036 abertas: 12 concluídas/24 abertas.** T013+ não foi executada. Alterações desta tarefa: quatro produtivos novos, dois produtivos ajustados, dois testes novos, esta seção e marcador T012. Sem stage, commit, push, merge ou alteração de main.
+
+Fechamento T012: diff incremental dos dois documentos e oito Java desta tarefa revisados; nove links novos resolvidos. Conferidos prefixo histórico de161.661 bytes,30 Java recebidos e282 relatórios anteriores preservados; dois testes/asserções idênticos ao RED e38 Java envolvidos idênticos aos fontes do GREEN. Cadeias0–3 comparadas com a cópia recebida; GlobalExceptionHandler tem somente sete linhas acrescentadas no recorte descrito. git diff --check retornou exit0; git -c core.autocrlf=false diff --no-index --check contra /dev/null não apontou whitespace nos33 Java não rastreados (opção somente por comando, sem alteração da configuração Git; exit1 significa arquivo novo diferente). final-static-review.json registra essas conferências, coletor T011 preservado, índice vazio, ausência de processo Java/Maven e hooks posteriores inexistentes: extensions.yml segue ausente. Git final: sete rastreados modificados e33 Java não rastreados, nada staged; branch/HEAD/main e seleção008 preservados. Nenhum impedimento remanescente desta tarefa; limites da validação e T013–T036 permanecem explícitos acima.
+
+## Execução T013 — S1-GREEN e checkpoint interno C1
+
+### Conferência inicial e escopo
+
+Em 2026-10-22, skill speckit-implement aplicada exclusivamente à T013. Confirmados raiz `C:/Users/ronal/dscommerce-speckit`, branch real `008-registrar-pagamento`, HEAD `3d8d1a4a99cfa3ea28e9aa7acff19e1d0008c279`, seleção local008 e índice vazio. Sete rastreados recebidos modificados: specs/008-registrar-pagamento/quickstart.md, specs/008-registrar-pagamento/tasks.md, src/main/java/com/devsuperior/dscommerce/config/SecurityConfig.java, src/main/java/com/devsuperior/dscommerce/controllers/handlers/GlobalExceptionHandler.java, src/main/java/com/devsuperior/dscommerce/entities/Order.java, src/main/java/com/devsuperior/dscommerce/entities/OrderStatus.java e src/main/java/com/devsuperior/dscommerce/repositories/OrderRepository.java.
+
+Os33 Java não rastreados recebidos correspondem aos27 conferidos na T012 mais seus seis novos arquivos: AdminPaymentController.java, PaymentRegistrationExceptionHandler.java, PaymentAuthenticationEntryPoint.java, PaymentAccessDeniedHandler.java e os dois PaymentRegistrationEndpoint*HttpTest.java, nos caminhos completos enumerados naquela seção. Os40 caminhos recebidos e seus comprimentos/SHA-256 estão em target/feature008-evidence/S1-T013/received-file-hashes.json; status/diff e cópias dos dois documentos também foram preservados. Prefixo histórico recebido deste quickstart:177.686 bytes.
+
+Lidos T013 integralmente, dependências T008–T012 e asserções T006/T007, seleção aprovada, condições do C1 e limites das histórias seguintes, sob constituição, plano, spec, pesquisa, modelo, contratos e procedimentos do quickstart/harness. check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks retornou exit0 e FEATURE_DIR absoluto008. requirements.md:16/16, zero aberto, PASS documental, sem modificar checklist. Ignore Java existente suficiente; extensions.yml ausente antes da execução; nenhum Maven/Surefire ativo inicialmente. Não houve baseline, suíte completa, seleção ampliada ou avanço de T014+.
+
+### Complemento previsto de observação, preservando a T006
+
+Somente [PaymentRegistrationHttpIntegrationTest.java](../../src/test/java/com/devsuperior/dscommerce/controllers/PaymentRegistrationHttpIntegrationTest.java), no suporte herdado por ROOT e /api, recebeu complemento de teste. A versão recebida foi copiada antes de editar e conferida contra o SHA-256 do S1-RED original T006. Todas as asserções anteriores foram mantidas, incluindo status/campos/headers, preservação histórica, transação própria, referência única, limpeza e repetição409.
+
+O próprio suporte recebido ainda indicava a complementação T013 das fotografias das rejeições: conservar a comparação anterior de sete tabelas e acrescentar a estrita de oito. Acrescentados também baseline de oito tabelas antes dos dados da fixture e comparação após sua limpeza seletiva, verificações locais do SQL de sucesso e exportação de templates sem valores de bind. Não se criou cenário ou componente de história posterior, nem se corrigiu produção por hipótese. Os outros37 Java recebidos, incluindo toda a produção, serviços, repositórios, reader, mapper, DTOs e demais testes/suportes, permaneceram idênticos.
+
+As evidências T006 RED, modelo/repositórios isolados, DTO/serviço e T012 continuam com seus comandos/resultados originais. Em particular, T012 permanece HTTP real com registro simulado, sem prova de Payment persistido; seus testes agora compõem o seletor conjunto, mantendo esse alcance. Não houve novo RED artificial ou reexecução isolada redundante.
+
+### Única execução Maven desta tarefa
+
+Execução `S1-T013-GREEN-20261022T081608099`, metadados iniciados às08:16:10−03:00 e concluídos às08:18:46−03:00, em2026-10-22; duração Maven02:30, coleta155,623s:
+
+~~~powershell
+.\mvnw.cmd "-Dtest=PaymentRegistration*Test,PaymentPersistenceIntegrationTest" "-Dsurefire.reportNameSuffix=S1-T013-GREEN-20261022T081608099" test
+~~~
+
+**BUILD SUCCESS, exit0;371 testes, zero falhas/erros/ignorados.** Seleção literal exigida, incluindo as duas classes de fronteira T012; nenhum teste de T014+ existe/foi selecionado. Wrapper seleciona Maven3.9.16, Java Zulu21.0.12.1+1-LTS, Windows/PowerShell, Boot3.3.4/Hibernate6.5.3.Final/H2 2.2.224. HEAD acima, diff recebido mais o complemento de teste. Produção estava compilada e não foi recompilada;134 fontes de teste foram compilados, sem confundir essa contagem com testes executados. Avisos anteriores de APIs depreciadas/ByteBuddy/Hibernate ficaram visíveis e não interromperam a coleta, que preserva a correção documentada na T011.
+
+| Classe/grupo efetivamente executado | Testes | Alcance |
+| --- | ---: | --- |
+| PaymentRegistrationHttpIntegrationTest — ROOT | 16 | HTTP real, serviço/proxy/JPA reais, fotografias independentes e limpeza. |
+| PaymentRegistrationApiHttpIntegrationTest — /api | 16 | Mesmos11 métodos herdados e multiplicidades do ROOT. |
+| PaymentRegistrationEndpointHttpTest — ROOT | 48 | Fronteira HTTP real, registro simulado da T012. |
+| PaymentRegistrationEndpointApiHttpTest — /api | 48 | Mesmos17 métodos herdados da T012. |
+| PaymentRegistrationDtoContractTest | 141 | Slice JSON e Bean Validation local, sem banco/HTTP. |
+| PaymentRegistrationServiceTest e três grupos @Nested | 77 | CurrentAccess18, RegistrationRules51 e TransactionAndCategories8; regras/interações locais com mocks. Relatório externo tem zero casos próprios. |
+| PaymentRegistrationDatabaseProbeTest | 12 | Sensibilidade do probe e limpeza seletiva, JDBC; inclui controle negativo de schema ausente. |
+| PaymentPersistenceIntegrationTest | 13 | Schema/metamodelo real e integridade/round-trip JDBC independentes. |
+| Total | **371** | **Oito classes principais e três grupos aninhados.** |
+
+reconcile.ps1/reconciliation.json conferiram console/exit,11 XML e11 TXT,371 identidades únicas e os métodos/multiplicidades herdados/aninhados. As identidades foram comparadas com os relatórios históricos correspondentes: T006 RED, MODEL-T008, DTO-T010 GREEN, SERVICE-T011 GREEN e HTTP-T012 GREEN. Sem casos omitidos, renomeados, duplicados, vazios indevidamente, desabilitados ou ignorados. A aprovação atual não altera os resultados daqueles runs. Não houve falha nesta execução ou necessidade de correção/repetição Maven.
+
+### US1 com serviço real: confirmação e estado após conclusão
+
+| Cenário | Método T006, executado em ROOT e /api | Resultado e observação |
+| --- | --- | --- |
+| US1.1 | us11AdminSettlesForeignOrderWithExactlyThreeConfirmationFieldsAndHistorical4250 | ADMIN quita pedido alheio;201 fechado e uma linha Payment; total histórico2×10,00+3×7,50=42,50 preservado. |
+| US1.2 | us12OwnAdminWithoutClientAndBothProfilesUseTheSameSettlementRules[1–3] | ADMIN isolado próprio e ambos os perfis próprio/alheio aceitos pelas mesmas regras. |
+| US1.3 | us13CatalogPriceTwelveDoesNotReplaceHistoricalTwentyOrOrderData | Catálogo alterado para12,00 antes da janela; compra2×10,00 continua20,00, sem reprecificação ou mudança do agregado. |
+| US1.4 | us14EquivalentOffsetWithExtraZerosPreservesOccurrenceRatherThanBusinessReference | Offset equivalente e zeros adicionais conservam o Instant informado; resposta UTC.SSS e ocorrência JDBC exata. |
+| US1.5 | us15OccurrenceEqualToCreationIsAccepted | Igualdade inferior aceita sem deslocar criação/ocorrência. |
+| US1.6 | us16OccurrenceEqualToInitialReferenceSurvivesClockAdvanceBeforeCompletion | Latch na referência capturada, avanço controlado do Clock e liberação; igualdade superior conserva a referência original. Não é experimento de espera em lock concorrente. |
+
+Por contexto,16 invocações JUnit fizeram17 POSTs de pagamento: nove201, três400, dois401, dois403 e um409. Os nove sucessos incluem a primeira aceitação do teste de repetição; portanto são18 quitações reais aprovadas nos dois contextos e34 respostas de pagamento, sem confundir essas quantidades com371 testes. Além desses POSTs, a preparação usa login HTTP real e controles administrativos existentes.
+
+Em cada sucesso, as asserções recebidas exigiram: confirmação com exatamente orderId/occurredAt/status PAID e sem Location; request marcado concluído; proxy produtivo original com uma entrada no corpo; ausência de transação externa na entrada/saída; transação física nova, não readOnly, conexão vinculada, autoCommit desativado e READ_COMMITTED; uma leitura de Clock de negócio. O proxy retorna antes de o controller construir201 e a observação o envolve dos dois lados do interceptor transacional real, sem substituí-lo.
+
+Depois da resposta e da conclusão observada, o probe usa novas conexões JDBC físicas, sem EntityManager da aplicação: Payment único com a ocorrência exata e pedido PAID ficam visíveis. A lista inteira de pedidos coincide com o baseline alterando somente o status do alvo; comprador/criação e itens permanecem iguais. A comparação opaca das sete tabelas acusa exatamente tb_order, conservando catálogo/categorias/associações/contas/perfis/itens e pedido canário. Assim, a prova de sucesso combina proxy dono/conclusão e leitura independente do estado efetivado; não deriva de flush ou DTO interno isoladamente. Não se instrumentou a delegação de Connection.commit nesta tarefa.
+
+### SQL, schema, rejeições e limpeza
+
+Nos18 sucessos foram arquivados162 templates SQL SERVICE_BODY,81 por contexto, todos observados com transação ativa e sem valores de bind. Cada janela teve nove templates nesta execução: duas guardas escalares, dois SELECT FOR UPDATE somente da raiz, lookup de Payment, projeção escalar histórica, INSERT de Payment, SELECT adicional de itens históricos e UPDATE de Order. A leitura adicional aparece entre INSERT/UPDATE na janela de flush; a validação em cascata @Valid do agregado é sua explicação por inspeção do modelo, não um novo acesso ao preço de catálogo. Nenhuma consulta a tb_product foi observada/assertada nessas janelas.
+
+Exemplos de templates realmente observados, sem parâmetros:
+
+~~~sql
+select o1_0.id,o1_0.buyer_id,o1_0.created_at,o1_0.status from tb_order o1_0 where o1_0.id=? for update
+select oi1_0.product_id,oi1_0.position,oi1_0.quantity,oi1_0.unit_price from tb_order_item oi1_0 where oi1_0.order_id=? order by oi1_0.position
+insert into tb_payment (occurred_at,order_id) values (?,?)
+update tb_order set buyer_id=?,created_at=?,status=? where id=?
+~~~
+
+StatementInspector observa preparação de SQL Hibernate, não JDBC direto nem confirmação do driver. A prova dos efeitos finais vem dos snapshots após conclusão, que também mostram os campos preservados apesar das colunas presentes no UPDATE. A ordem específica do DML acima não é promessa geral nem substitui a instrumentação de falhas da US4.
+
+PaymentPersistenceIntegrationTest verificou tb_payment somente com order_id/occurred_at, PK compartilhada, FK nomeada fk_payment_order, NOT NULL, BIGINT e TIMESTAMP WITH TIME ZONE de escala3, sem ID independente/amount. Confirmou as quatro colunas de Order e enum ampliado, rejeições de duplicidade/órfão/null/remoção referenciada no banco e três round-trips temporais exatos, incluindo anos0001/2026/9999. São provas de schema/JDBC gerado, separadas da quitação via serviço. O probe confirmou sensibilidade a Payment e às sete tabelas anteriores, incluindo limpeza seletiva após falha de asserção controlada; esse estímulo não é falha de processamento HTTP.
+
+Nos testes reais, rejeições básicas401/403, campo amount e janela temporal400 conservam as oito tabelas, com14 comparações estritas novas. A repetição409 já exigia snapshot estrito recebido e conserva a primeira ocorrência em ambos os contextos. Após cada uma das32 invocações, a limpeza seletiva Payment→itens→pedidos→demais linhas próprias restaura o baseline completo de oito tabelas, incluindo o canário. Fotografias iguais não provam ausência de toda mutação transitória; não se atribui a elas observação universal de DML.
+
+Os dois diagnósticos T006 foram resolvidos nesta execução com o serviço real: POST agora201 e Payment/PAID visíveis após conclusão;401/403 passam pelas mesmas asserções fechadas de quatro campos, mensagens/path e Bearer somente401, sem errors. Além desses códigos,400 temporal/estrutural e409 de repetição foram exercitados em HTTP real ROOT/Api. A adaptação404/500 e erros nativos continua coberta pelos96 testes de fronteira simulada T012 incluídos na seleção; isso não comprova causas internas/rollback reais ou amplia a matriz de US2/US4.
+
+### Isolamento, evidências e limites do C1
+
+Seis contextos JPA tiveram URLs H2 exclusivas, registradas em reconciliation.json: probe, persistência, dois HTTP reais e dois HTTP de fronteira simulada. ROOT real usou porta59683 e /api real59627; os simulados usaram59659/59636. O controle negativo de probe usa outro banco vazio deliberado, sem DDL de aprovação. Slice DTO e unitários de serviço não usam H2. Imports/perfis/OSIV/create-drop/seed recebidos permaneceram intactos, sem interferência entre contextos; snapshots compostos são feitos após terminar escritores, não como fotografia atômica sob concorrência.
+
+Logins, controles e POSTs T006/T012 são HttpClient contra Tomcat real. Algumas fixtures constroem MockMvc internamente, sem perform nesses cenários; os unitários usam mocks e o slice JSON usa Bean Validation local. Só os32 testes T006 exercitam a operação de quitação real na entrada HTTP; não se atribui essa prova aos96 da T012,141 do DTO ou77 do serviço local.
+
+Evidências ignoradas em target/feature008-evidence/S1-T013/: manifesto/estado/diff recebidos, cópias dos documentos/teste original, scripts e revisão incremental. Diretório S1-T013-GREEN-20261022T081608099/ contém run.json/exit.json, console.log, status/diff, fontes/hash, previous-surefire com290 relatórios anteriores preservados e new-surefire com22 arquivos desta execução. reconciliation.json inclui identidades e comparação histórica; real-settlement-sql.log e real-payment-statuses.log extraem as janelas SQL e34 status reais. Não houve sobrescrita de relatórios, alteração de evidências anteriores ou interrupção da coleta.
+
+**C1/US1 aprovado no alcance desta seleção.** Não se comprovam concorrência real no mesmo pedido/pedidos distintos, refresh com entidade obsoleta, revogação durante espera de lock, falhas reais de DML/flush/commit, commit indeterminado, transmissão perdida, leitura de PAID nas consultas próprias ou regressões completas001–007. Os controles JDBC de constraints e as falhas simuladas de fronteira não substituem essas provas. C1 é incremento interno, não entrega/publicação da008, FINAL ou CI; contratos planejados e artefatos históricos continuam preservados.
+
+Somente **T013** marcada em [tasks.md](tasks.md): **T001–T013 [X], T014–T036 abertas,13 concluídas/23 abertas**. Arquivos desta tarefa: complemento do suporte HTTP em PaymentRegistrationHttpIntegrationTest.java, esta seção acrescentada e marcador T013; nenhuma mudança produtiva ou Java novo. Sem stage, commit, push, merge ou alteração de main.
+
+Fechamento T013: diff incremental do teste e documentos revisado; duas referências novas resolvidas. A cópia recebida do teste coincide com o hash original T006 e suas29 expressões assertThat/assertThatThrownBy foram preservadas integralmente, além das verificações herdadas de status/proxy/snapshot. Conferidos37 Java recebidos inalterados,38 fontes finais idênticos aos executados e177.686 bytes históricos do quickstart preservados; somente o marcador T013 mudou em tasks.md. git diff --check retornou exit0; git -c core.autocrlf=false diff --no-index --check contra /dev/null não apontou whitespace nos33 Java não rastreados (opção somente nesta invocação; exit1 significa arquivo novo diferente). final-static-review.json registra essas conferências e290 relatórios anteriores intactos. extensions.yml segue ausente, sem hooks posteriores; nenhum Maven/Surefire permanece ativo. Estado final: sete rastreados modificados e33 Java não rastreados, nada staged; branch/HEAD/main e seleção008 preservados. Nenhum impedimento ou falha remanescente da T013;23 tarefas posteriores seguem abertas e não houve outro Maven após o S1-GREEN.

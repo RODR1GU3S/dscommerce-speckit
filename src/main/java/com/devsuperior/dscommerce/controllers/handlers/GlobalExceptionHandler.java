@@ -65,6 +65,7 @@ public class GlobalExceptionHandler {
     private static final String AUTHENTICATION_PROCESSING_MESSAGE =
             "Authentication could not be completed";
     private static final Pattern ADMIN_PRODUCT_ITEM = Pattern.compile("/admin/products/[1-9][0-9]*");
+    private static final Pattern PAYMENT_REGISTRATION_PATH = Pattern.compile("/admin/orders/[^/]+/payments");
     private static final Pattern PRODUCT_DELETE = Pattern.compile(
             "delete\\s+from\\s+tb_product\\s+where\\s+id\\s*=\\s*\\?", Pattern.CASE_INSENSITIVE);
     private static final Pattern CATEGORY_PAIR_INSERT = Pattern.compile(
@@ -300,6 +301,12 @@ public class GlobalExceptionHandler {
             Exception exception, HttpServletRequest request) throws Exception {
         // Let MVC preserve client-error statuses and headers; keep internal failures safely sanitized.
         boolean nativeClientError = exception instanceof ErrorResponse error && error.getStatusCode().is4xxClientError();
+        // Mapping/negotiation may fail before a controller is selected, so its scoped advice cannot run.
+        if (PAYMENT_REGISTRATION_PATH.matcher(request.getRequestURI().substring(request.getContextPath().length())).matches()
+                && exception instanceof ErrorResponse error
+                && List.of(405, 406, 415).contains(error.getStatusCode().value())) {
+            return ResponseEntity.status(error.getStatusCode()).headers(error.getHeaders()).build();
+        }
         if (isAdminRequest(request) && nativeClientError && exception instanceof ErrorResponse error
                 && List.of(405, 406, 415).contains(error.getStatusCode().value())) {
             var status = HttpStatus.valueOf(error.getStatusCode().value());

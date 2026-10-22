@@ -105,6 +105,14 @@ public class Order {
         return status;
     }
 
+    /** Applies only the state transition; eligibility and payment insertion belong to the service. */
+    public void markPaid() {
+        if (status != OrderStatus.WAITING_PAYMENT) {
+            throw new IllegalStateException("Order is not awaiting payment");
+        }
+        status = OrderStatus.PAID;
+    }
+
     @Transient
     public BigDecimal getTotal() {
         return items.stream().map(OrderItem::getSubtotal).reduce(BigDecimal.ZERO, BigDecimal::add);

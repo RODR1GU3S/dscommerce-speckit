@@ -1110,3 +1110,437 @@ Evidências ignoradas em target/feature008-evidence/S1-T013/: manifesto/estado/d
 Somente **T013** marcada em [tasks.md](tasks.md): **T001–T013 [X], T014–T036 abertas,13 concluídas/23 abertas**. Arquivos desta tarefa: complemento do suporte HTTP em PaymentRegistrationHttpIntegrationTest.java, esta seção acrescentada e marcador T013; nenhuma mudança produtiva ou Java novo. Sem stage, commit, push, merge ou alteração de main.
 
 Fechamento T013: diff incremental do teste e documentos revisado; duas referências novas resolvidas. A cópia recebida do teste coincide com o hash original T006 e suas29 expressões assertThat/assertThatThrownBy foram preservadas integralmente, além das verificações herdadas de status/proxy/snapshot. Conferidos37 Java recebidos inalterados,38 fontes finais idênticos aos executados e177.686 bytes históricos do quickstart preservados; somente o marcador T013 mudou em tasks.md. git diff --check retornou exit0; git -c core.autocrlf=false diff --no-index --check contra /dev/null não apontou whitespace nos33 Java não rastreados (opção somente nesta invocação; exit1 significa arquivo novo diferente). final-static-review.json registra essas conferências e290 relatórios anteriores intactos. extensions.yml segue ausente, sem hooks posteriores; nenhum Maven/Surefire permanece ativo. Estado final: sete rastreados modificados e33 Java não rastreados, nada staged; branch/HEAD/main e seleção008 preservados. Nenhum impedimento ou falha remanescente da T013;23 tarefas posteriores seguem abertas e não houve outro Maven após o S1-GREEN.
+
+## T014 — Autoria da matriz de autorização HTTP (2026-10-22)
+
+### Estado inicial confirmado e escopo
+
+Skill speckit-implement aplicada exclusivamente à T014. Conferidos raiz `C:/Users/ronal/dscommerce-speckit`, branch real `008-registrar-pagamento`, Git limpo, índice vazio e seleção local008. HEAD real: `2f053fef08725da34ed04f28d77b2fe52b90cec4`; último commit `feat: register full order payments`, pai `3d8d1a4a99cfa3ea28e9aa7acff19e1d0008c279`. A lista de git diff-tree foi comparada integralmente com os40 caminhos explícitos conferidos no checkpoint T003–T013: sete modificados e33 Java acrescentados, sem arquivo adicional ou ausente. Não houve divergência nem criação/repetição de commit.
+
+Lidos T014 integral, dependência T013, condições da fase US2 e de T015–T018, constituição, AGENTS.md, harness, spec/US2/FR-001/002/012/015, plano, research R1/R2/R6/R8, modelo, [contrato POST008](contracts/payment-registration-openapi.yaml) e procedimentos/evidências pertinentes deste guia. O comando `.\.specify\scripts\powershell\check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks` retornou exit0 e FEATURE_DIR absoluto008. Checklist requirements.md:16/16 marcados, zero aberto, PASS documental, sem alterar marcadores. Ignore Java existente adequado; extensions.yml ausente na entrada.
+
+**T014 é autoria de testes.** A seleção S2 está prevista para T018, com execução anterior a eventuais correções de T017; não foi antecipada nesta tarefa. Não houve Maven/Wrapper, javac, compilação, bootstrap Spring/H2, servidor, request, teste ou reconciliação de Surefire. Não se fabricou RED para guardas já presentes. Nenhum exit code Maven ou novo GREEN é alegado.
+
+### Arquivos novos e matriz escrita, ainda não executada
+
+- [PaymentAuthorizationHttpIntegrationTest.java](../../src/test/java/com/devsuperior/dscommerce/controllers/PaymentAuthorizationHttpIntegrationTest.java): classe ROOT e suporte package-private PaymentAuthorizationScenarios.
+- [PaymentAuthorizationApiHttpIntegrationTest.java](../../src/test/java/com/devsuperior/dscommerce/controllers/PaymentAuthorizationApiHttpIntegrationTest.java): variante /api herdando a mesma matriz, com import explícito do observador008.
+
+| Método herdado, com multiplicidade prevista por contexto | Casos escritos |
+| --- | --- |
+| missingInvalidExpiredAndRemovedAccountCredentialsAre401WithoutRestrictedReads — 5 | Sem token, token malformado, assinatura adulterada, expirado assinado e conta efetivamente removida após emissão:401/Bearer. Decoder real controla a validade/invalidade das credenciais de preparação. |
+| clientAndNoProfileCannotSettleEvenTheirOwnPurchase — 4 | CLIENT/sem perfil, pedido próprio/alheio:403. |
+| currentAdminAloneOrWithClientSettlesOwnAndForeignOrders — 4 | ADMIN isolado/ambos, pedido próprio/alheio:201 mínimo e estado independente esperado. |
+| signedRoleNameAndAuthorityClaimsCannotGrantOrRemoveDatabasePermission — 4 | ADMIN/ambos com claims sem ADMIN continuam autorizados; CLIENT/sem perfil com roles/authorities/scope de ADMIN continuam negados; name alheio não troca subject. Claims deliberadamente falsos são assinados pelo encoder real de teste; não equivalem a assinatura inválida. |
+| revocationAfterIssuanceDefeatsTheSameSignedAdminClaims — 4 | ADMIN/ambos passam a CLIENT/sem perfil após emissão; mesmo token com claims antigos de ADMIN:403. |
+| currentGrantAllowsTheSamePreviouslyDeniedCredentialWithoutReissuingIt — 4 | CLIENT/sem perfil passam a ADMIN isolado/ambos; mesmo token primeiro403, depois201, sem reemissão ou claim atualizada. |
+| revocationBetweenFilterAndServiceIsRereadBeforeAnyOrderLookup — 4 | Filtro real já autorizou ADMIN/ambos; mudança commitada para CLIENT/sem perfil antes do corpo do serviço:403, sem leitura de pedido. |
+| accountRemovedBetweenFilterAndServiceBecomes401WithoutExposingThePurchase — 1 | Filtro já passou; remoção commitada da conta antes do serviço:401/Bearer, sem leitura restrita. |
+| controlledRepositoryLookupFailuresStay500RatherThan401OrBusinessConflicts — 4 | Falha controlada na resolução de entidade do filtro, guarda escalar do filtro, guarda na entrada do serviço e guarda após lock:500 seguro. |
+| invalidInputsStillAuthenticateAndAuthorizeBeforeTheirLocal400 — 6 | JSON malformado, corpo ausente, campo extra, query, ID não positivo e overflow. Cada caso tem controle ADMIN400 e tentativas sem token401, CLIENT403 e sem perfil403, sem alcançar serviço. Não é a matriz de gramática da T015. |
+| Total escrito | **10 métodos;40 invocações previstas por classe/contexto,80 nos dois. Nenhum grupo JUnit @Nested ou caso desabilitado.** |
+
+Essa é contagem estática dos parâmetros, não resultado JUnit. Se todos os caminhos escritos forem alcançados futuramente, são62 POSTs de pagamento por contexto (124 no total): dez201, seis400, doze401, trinta403 e quatro500. Há mais POSTs que invocações porque concessões têm duas tentativas e cada controle de entrada tem quatro. Login HTTP de preparação é separado dessas quantidades; contagens efetivas, métodos herdados e ausência de omissões/duplicatas precisam ser conferidos no futuro console/XML/TXT.
+
+### Observação preparada e preservações
+
+Os dois testes compõem sem editar os suportes008 recebidos: RootHttpContext/ApiHttpContext, Clock controlável, observador scoped de SQL/proxy, fixture e probe estrito de oito tabelas. Usam futuro HttpClient/Tomcat real, login/JWT/decoder/conversor reais e serviço/repositories/JPA reais; nenhum @MockBean/@SpyBean substitui a quitação. A fixture histórica constrói internamente MockMvc, mas os métodos novos não fazem perform; isso não é execução MockMvc ou HTTP nesta autoria.
+
+Preparação escrita cria dados próprios commitados e pedido canário; histórico2×10,00 permanece20,00 apesar do catálogo12,00. Antes da fixture há baseline completo; AfterEach remove somente seus dados, Payment antes de itens/pedidos, e exige restauração de oito tabelas. Não muda URL/seed/perfil/mapper globais, nem os contextos históricos. Isolamento H2 e limpeza foram somente reutilizados no código, não exercitados de novo.
+
+Cada rejeição tem seu status/envelope fechado status/error/message/path, mensagens fixas, path com contexto sem query, Bearer somente401 e nenhuma Location. Janelas exigem somente SELECT observado; negativas anteriores ao serviço exigem zero Clock de negócio, SQL fora do serviço e nenhuma referência a pedidos/itens/Payment/catálogo. Nas negativas de guarda do serviço, exigem proxy original, transação dona READ_COMMITTED e referência única. Só o caso de lookup após lock permite os dois SELECT FOR UPDATE de raiz, ainda sem Payment/itens/DML. StatementInspector observa preparação Hibernate; snapshots JDBC independentes após término complementam essa observação, sem prometer detectar toda mutação transitória/JDBC arbitrário.
+
+A mudança entre filtro/serviço usa gate PROXY_ENTRY do suporte existente, antes da transação/captura de referência do corpo, sem sleep ou espera em lock. O teste confirma primeiro que o gate foi atingido, com zero Clock/leituras restritas. Mudanças de conta/perfil usam REQUIRES_NEW/READ_COMMITTED no chamador e são confirmadas pelo probe. O baseline da rejeição é tomado **após a alteração externa commitada**; Payment e dados do pedido/catálogo têm de permanecer iguais também durante essa preparação. Não se atribui a alteração externa ao POST. Gates/janelas/requests têm limites finitos e liberação/encerramento por try-with-resources antes da limpeza.
+
+As quatro falhas de lookup usam somente interceptor temporário no repository real, restrito ao ID da conta própria e à chamada escolhida; todas as demais chamadas delegam. A asserção exige um hit e a contagem esperada de guardas; finally remove apenas esse advice, após fechar a janela. É estímulo controlado de falha de consulta, não falha física de banco, DML, flush, commit ou instrumentação antecipada de T023.
+
+Sucessos escritos exigem201 de três campos, proxy real concluído e Payment/PAID visíveis por novas conexões JDBC, com ocorrência exata e preservação de comprador/criação/itens/histórico, contas/perfis/catálogo e canário. **Essas asserções não foram executadas nesta T014** e não acrescentam prova de persistência ou commit ao C1.
+
+### Revisão e conclusão limitada à autoria
+
+Preservados integralmente a implementação inicial,38 Java recebidos do checkpoint, asserções e evidências T001–T013. O prefixo histórico deste quickstart tem194.106 bytes. Permanecem históricos o S1-RED da T006 e seus dois diagnósticos; a correção de coleta T011; T012 com HTTP real e registro simulado; e C1/T013 com371 aprovados, zero falhas/erros/ignorados, exit0,18 quitações reais e limites explícitos. Esse resultado anterior não aprova os testes novos.
+
+A revisão estática cobre conteúdo dos dois Java, referências às APIs existentes, herança/contextos, matriz, recursos/finally, diff documental, links e whitespace. Evidências dessa revisão ficam no diretório ignorado target/feature008-evidence/AUTH-T014/: estado inicial/manifesto dos40 caminhos, cópias dos documentos e hashes dos312 relatórios recebidos. Nenhum relatório ou fonte anterior foi reescrito; sem inventário global de target/.
+
+Critérios de **autoria da T014 atendidos**; somente seu marcador passa para [X] em [tasks.md](tasks.md). **T001–T014 [X], T015–T036 abertas:14 concluídas/22 abertas.** A compilação e a comprovação executável da matriz continuam pendentes para a etapa aprovada, antes de qualquer correção T017 e no checkpoint S2/T018. Não há GREEN/C2, segurança adicional comprovada, falha funcional demonstrada ou autorização para corrigir produção nesta autoria.
+
+T015/gramática completa, T016/perfis sob espera de lock e cache antigo, concorrência US3, falhas transacionais/transporte US4, consultas PAID e regressões completas continuam nas tarefas próprias. Não ampliar permissão de leitura ao ADMIN, alterar contratos/vigência001–007 ou declarar entrega da008. Sem stage, commit, push, merge ou alteração de main.
+
+Fechamento T014: conteúdo completo dos dois Java e diff dos documentos revisados; review.py executado com Python externo em modo -B -I -X utf8, exit0, somente para conferência estática de arquivos/metadados. static-review.json registra38 Java recebidos inalterados,312 relatórios anteriores com SHA-256 idênticos, prefixo histórico de194.106 bytes conservado, somente marcador T014 alterado,10 métodos/40 invocações previstas por contexto, quatro links resolvidos e índice vazio. Essa revisão não compila nem executa Java ou aplicação.
+
+Comandos de whitespace: `git diff --check` retornou exit0; `git -c core.autocrlf=false diff --no-index --check -- /dev/null <cada um dos dois Java novos>` retornou exit1 em cada arquivo por serem novos/diferentes de /dev/null, sem diagnóstico de whitespace. Avisos LF→CRLF refletem a configuração Git existente, não mudança de configuração. A revisão identificou perda de acentos no acréscimo inicial via pipeline PowerShell; somente a seção T014 foi regravada em UTF-8 com escapes Unicode no transporte, mantendo o prefixo histórico intacto. Nenhum fonte/asserção ou relatório foi afetado.
+
+Estado final: quickstart.md/tasks.md modificados e somente os dois Java T014 não rastreados; nada staged. HEAD/branch/main e seleção008 preservados. extensions.yml ausente também no fechamento, sem hooks after_implement. Nenhuma compilação, teste, Wrapper, C1, baseline ou suíte completa executada; não há console/Surefire novo a conciliar. Não há impedimento remanescente de autoria; execução e comprovação funcional seguem pendentes nas etapas posteriores autorizadas. Sem stage, commit, push ou alteração de main.
+
+## T015 — Autoria de entrada HTTP e validação de fronteira (2026-10-22)
+
+### Conferência inicial, dependência e alcance
+
+Skill speckit-implement aplicada exclusivamente à T015. Confirmados raiz `C:/Users/ronal/dscommerce-speckit`, branch real `008-registrar-pagamento`, HEAD `2f053fef08725da34ed04f28d77b2fe52b90cec4`, seleção local008 e índice vazio. Recebidos somente specs/008-registrar-pagamento/quickstart.md e tasks.md modificados e os dois Java T014 não rastreados: src/test/java/com/devsuperior/dscommerce/controllers/PaymentAuthorizationHttpIntegrationTest.java e PaymentAuthorizationApiHttpIntegrationTest.java. Seus caminhos completos, comprimentos e SHA-256 constam no manifesto desta tarefa.
+
+Lidos T015 integralmente, dependência T013 e suas evidências, fronteiras T014/T016–T018, constituição, AGENTS.md, harness e artefatos pertinentes: spec/US2.4/5/8/9, plano, research R1–R3/R5/R6/R8, modelo e [contrato POST008](contracts/payment-registration-openapi.yaml). O comando `.\.specify\scripts\powershell\check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks` retornou exit0, FEATURE_DIR absoluto008 e documentos esperados. requirements.md:16/16, zero aberto, PASS documental, sem alterar checklist. Ignore Java existente adequado; extensions.yml ausente antes da autoria.
+
+**Somente escrita/revisão estática de testes.** Nenhum Maven/Wrapper, javac, compilação, servidor, contexto Spring/H2, MockMvc, HTTP ou teste foi executado nesta T015. A fase agenda execução S2 antes de eventual correção T017 e no checkpoint T018; não foi antecipada. Os80 casos previstos na T014 continuam **não compilados/não executados**, sem novo RED/GREEN. C1, baseline e suíte completa não foram repetidos.
+
+### Três arquivos novos
+
+- [PaymentInputHttpIntegrationTest.java](../../src/test/java/com/devsuperior/dscommerce/controllers/PaymentInputHttpIntegrationTest.java): ROOT e suporte herdado PaymentInputScenarios; helper package-private PaymentInputCases contém somente os oráculos compartilhados desta T015.
+- [PaymentInputApiHttpIntegrationTest.java](../../src/test/java/com/devsuperior/dscommerce/controllers/PaymentInputApiHttpIntegrationTest.java): /api, mesmos métodos e fontes de argumentos, import explícito do observador008.
+- [PaymentBoundaryValidationTest.java](../../src/test/java/com/devsuperior/dscommerce/controllers/PaymentBoundaryValidationTest.java): MVC local/Bean Validation, controller/advice/reader produtivos e serviço de registro simulado, sem filtros ou banco.
+
+Nenhum arquivo produtivo, suporte compartilhado, teste recebido, parser/DTO/mapper anterior ou contrato foi alterado. PaymentInputCases centraliza apenas os dados dos novos testes HTTP e MockMvc; não chama predicados da implementação para calcular a expectativa. Os testes DTO anteriores permanecem íntegros.
+
+### Matriz HTTP escrita e ainda não executada
+
+| Método herdado em ROOT e /api | Invocações previstas por contexto |
+| --- | ---: |
+| rejectsMissingNullWrongTypeExtraDuplicateAndTrailingJsonBeforeBusiness | 39 |
+| rejectsEveryInvalidR3GrammarCalendarRangeAndPrecisionBeforeBusiness | 48 |
+| allValidR3FormsReachTheRealServiceRatherThanFailingInputParsing | 24 |
+| selectedPaymentRouteRejectsNonpositiveMalformedOrOutOfRangeIds | 7 |
+| everyQueryParameterIsInvalidAndExcludedFromTheSafePath | 5 |
+| absentPositiveIdentityIsBusiness404WithoutCreatingOrChangingAnyRow | 1 |
+| paidWithoutPaymentIsIncompatibleState409AndIsNeverAutomaticallyRepaired | 1 |
+| omittedOrDifferentOperationSegmentsAreRouting404NotInputValidationProof | 3 |
+| positiveSelectedRouteControlConservesEquivalentOffsetAndExtraZeroMilliseconds | 1 |
+| Total estático | **9 métodos;129 por contexto,258 nos dois.** |
+
+Os39 documentos incluem corpo ausente/branco, raiz null/escalar/array, propriedade ausente/null/tipo incorreto, campos amount/buyer/buyerId/createdAt/items/price/status/orderId/reference, duplicatas inclusive nome escapado e JSON posterior/incompleto. Os48 textos inválidos cobrem a gramática R3: T/Z e segundos, espaços, calendário/bissextos, anos local/UTC, offsets e ±18:00, -00:00, leap second/hora24, fração até9 e exatidão em ms, sem coerção ou arredondamento.
+
+As24 formas válidas são controles de parsing que usam ID positivo comprovadamente ausente: exigem **404 do serviço real**, entrada/proxy/transação observados e consulta da raiz. Isso isola sintaxe de janela temporal; anos0001/9999 e2400 não são declarados quitações elegíveis. Exatidão do Instant efetivamente ligado ao parâmetro e UTC.SSS são verificadas no complemento MockMvc para os24 pares. Um controle HTTP separado exige201 real no pedido elegível com offset equivalente/zeros adicionais, confirmação fechada, Payment/PAID por JDBC independente após conclusão e preservação histórica. O404 das24 formas válidas não é usado como prova de quitação nem confundido com ausência de roteamento.
+
+Os sete IDs selecionados na rota cobrem zero, negativo, texto, overflow/underflow int64, decimal e exponencial; cinco queries devem400 sem ecoar query em path. Ausência de pedido tem404 de negócio seguro, sem criação. PAID sem Payment é preparado por transação JDBC própria e commitada antes do baseline; exige409 **Order is not awaiting payment**, sem reparo. Não se cria outro estado ou caso de concorrência/repetição da US3.
+
+Os três caminhos sem a operação completa têm somente controle404 de roteamento, zero entrada de negócio e oito tabelas preservadas. Não exigem envelope de pagamento quando nenhum controller de pagamento foi selecionado, nem aprovam US2.5 por esse404. As rejeições de entrada400 na rota efetiva e o controle201 são as provas escritas correspondentes.
+
+### Complemento MockMvc/validação, ainda não executado
+
+PaymentBoundaryValidationTest contém10 métodos e122 invocações previstas: os mesmos39 documentos/48 textos inválidos e24 pares válidos, dois IDs para @Positive nativo, dois casos ausência/null para @Valid/@NotNull e sete casos individuais/parametrizados de resultado interno, categorias e ausência de IO de domínio. Total desta autoria: **380 invocações JUnit previstas**,258 HTTP e122 locais; não são resultados Surefire ou contagem observada de requests.
+
+O contexto local é AnnotationConfigWebApplicationContext/@EnableWebMvc, sem auto-configuração de aplicação. Instala o reader produtivo explicitamente só no mapper MVC local, sem mudar flags globais. Usa Bean Validation real e Authentication fornecida ao request; não verifica JWT, filtro, persistência ou commit. Para cada forma válida, o mock precisa receber exatamente o ID int64 máximo, o Instant do oráculo e a mesma autenticação; confirmação tem somente três campos e UTC.SSS.
+
+Ausência/null desserializa primeiro, depois exige violação @NotNull e rejeição MVC sem chamar serviço. IDs0/−1 precisam gerar HandlerMethodValidationException de entrada e400 antes do serviço; reflexão também confere @Positive/@Valid no controller produtivo. Parsing/validação local exige serviço sem interações e ausência de DataSource, EntityManagerFactory, repositories e Clock no contexto, além da inspeção do reader puro e do único constraint @NotNull. Isso limita IO de domínio, sem alegar instrumentação universal de rede/arquivos.
+
+Entrada temporal subms deve400 antes do serviço; a mesma precisão inválida gerada internamente pelo construtor real de PaymentConfirmationDTO deve500 após delegação válida. Metadata real de HandlerMethodValidationException de retorno e exceção de constraint de entidade são estímulos controlados separados, também500; não provam geração automática de constraint no retorno atual ou falha física de persistência. As categorias ALREADY_REGISTERED, INCOMPATIBLE_STATE e PROCESSING_FAILURE conservam respectivamente409/409/500 e suas mensagens distintas, sem converter falha interna em repetição ou entrada400. Esse teste de adaptação não executa repetição real da US3.
+
+### Observação, preservações e limites
+
+HTTP futuro reutiliza os suportes008 sem edição, login/JWT/segurança reais, serviço/proxy/JPA reais e H2 exclusivo por contexto ROOT/Api. Não substitui quitação por mock nesses dois contextos. Fixture cria somente dados próprios commitados e pedido canário; limpeza seletiva é Payment→itens→pedidos→demais dados próprios, com comparação final do baseline completo. Nenhuma propriedade/seed/OSIV/mapper global foi modificada.
+
+Rejeições locais exigem zero Clock de negócio, nenhuma fase de serviço e nenhuma leitura restrita/pagamento/catálogo no SQL observado. Rejeições de negócio exigem transação dona READ_COMMITTED, referência única e proxy falho; todos os statements observados são SELECT, com uma aquisição de raiz no404 e aquisição/refresh no409. Cada tentativa compara oito tabelas após terminar, antes da limpeza. StatementInspector captura preparação Hibernate, não JDBC direto, execução universal de DML ou commit do driver; snapshots compostos não são fotografia atômica concorrente nem detectam toda mutação transitória revertida.
+
+Preservados40 Java recebidos, incluindo os dois da T014 ainda não executados, e o prefixo histórico de206.020 bytes do quickstart. Mantidos o RED T006 e seus dois diagnósticos, a coleta corrigida T011, a fronteira simulada T012 e C1/T013 com371 aprovados/zero falhas/erros/ignorados/exit0,18 quitações reais e seus limites. GREEN histórico não aprova arquivos novos. Nenhuma falha funcional ou impedimento de compilação/preparação foi observado por execução nesta autoria, pois tais execuções não ocorreram; compilabilidade e comportamento continuam pendentes.
+
+Manifesto/estado inicial, cópias dos documentos, hashes dos312 relatórios anteriores e revisão estática estão em target/feature008-evidence/INPUT-T015/, ignorado pelo Git. Não foi alterado relatório anterior nem feito inventário global de target/. Somente **T015** é acrescentada às concluídas em [tasks.md](tasks.md): **T001–T015 [X], T016–T036 abertas,15 concluídas/21 abertas**. São critérios de autoria atendidos, sem C2, correção de produção ou avanço de T016+. Sem stage, commit, push, merge ou alteração de main.
+
+Fechamento T015: conteúdo completo dos três Java e diff incremental dos documentos revisados. review.py executado com Python externo em modo -B -I -X utf8, exit0:40 Java recebidos inalterados,312 relatórios preservados por SHA-256,206.020 bytes históricos do quickstart intactos, somente marcador T015 alterado e cinco links locais resolvidos. Conferidas referências de imports locais, herança/factories e contagens estáticas39/48/24 dos provedores,129 invocações HTTP previstas por contexto e122 locais. Isso não prova compilabilidade, execução JUnit, wiring Spring ou comportamento funcional.
+
+`git diff --check` retornou exit0. `git -c core.autocrlf=false diff --no-index --check -- /dev/null <cada um dos três Java novos>` retornou exit1 por serem arquivos novos diferentes de /dev/null, sem diagnóstico de whitespace. Avisos LF→CRLF refletem configuração Git já existente; nenhuma configuração foi alterada. A seção nova foi gravada em UTF-8 por escapes Unicode no transporte, preservando o prefixo recebido, inclusive toda a T014.
+
+Estado final: quickstart.md/tasks.md continuam modificados; cinco Java não rastreados, sendo os dois T014 preservados e somente os três T015 novos nesta tarefa. Nada staged; HEAD/branch/main e seleção008 preservados. extensions.yml ausente no fechamento, sem hook after_implement. Nenhum Wrapper, compilação, teste, servidor, C1, baseline ou suíte completa; não há novo console/Surefire a conciliar. T014 e T015 seguem aguardando comprovação executável na etapa autorizada; nenhum impedimento de autoria ou nova falha funcional demonstrada. T016–T036 permanecem abertas. Sem stage, commit, push ou alteração de main.
+
+## T016 — Autoria de referência temporal e perfis atuais sob espera (2026-10-22)
+
+### Conferência inicial e limite da tarefa
+
+Skill speckit-implement aplicada exclusivamente à T016. Confirmados raiz `C:/Users/ronal/dscommerce-speckit`, branch `008-registrar-pagamento`, HEAD `2f053fef08725da34ed04f28d77b2fe52b90cec4`, seleção local008 e índice vazio. Somente quickstart.md/tasks.md da008 estavam modificados; cinco Java recebidos não rastreados, todos em src/test/java/com/devsuperior/dscommerce/controllers/: PaymentAuthorizationHttpIntegrationTest.java, PaymentAuthorizationApiHttpIntegrationTest.java, PaymentInputHttpIntegrationTest.java, PaymentInputApiHttpIntegrationTest.java e PaymentBoundaryValidationTest.java. Caminhos completos e hashes recebidos estão no manifesto desta tarefa.
+
+Lidos T016 integral, dependência T013/evidência C1, condições da fase US2/T017–T018 e procedimentos aprovados de referência, locks e snapshots, sob constituição, AGENTS.md, harness, spec/US1.5–6/US2.3/6–7, plano, research R2/R3/R5/R8, modelo e contrato008. `.\.specify\scripts\powershell\check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks` retornou exit0 e FEATURE_DIR absoluto008. requirements.md:16/16, zero aberto, PASS documental, sem modificar checklist. Ignore Java existente adequado; extensions.yml ausente antes da autoria.
+
+A T016 descreve **criar o teste**; a tabela de seleções identifica S2/T018 e exige execução antes de eventuais correções T017. Esta entrega limita-se à autoria/revisão, sem executar esse checkpoint posterior ou repetir o núcleo C1. Nenhum Wrapper, javac, compilação, contexto, HTTP, banco ou teste foi executado. Não há contagem real JUnit, console/Surefire ou exit code Maven novo; tampouco diagnóstico funcional ou impedimento de compilação observado por execução. As80 invocações previstas T014 e380 T015 continuam **não compiladas/não executadas**. Nenhum GREEN foi presumido ou RED fabricado.
+
+### Arquivo novo e casos escritos
+
+Novo [PaymentTemporalAndCurrentRolesIntegrationTest.java](../../src/test/java/com/devsuperior/dscommerce/services/PaymentTemporalAndCurrentRolesIntegrationTest.java), no pacote services previsto na tarefa. Usa RootHttpContext e herda o suporte HTTP008 público, com import explícito do observador existente. Não cria alias Api, configuração produtiva, novo suporte compartilhado ou substituto de serviço/repository.
+
+| Método / parâmetro escrito | Expectativa futura |
+| --- | --- |
+| initialReferenceAndInclusiveWindowSurviveARealRootLockWait — LOWER_EQUAL | Ocorrência igual à criação,201. |
+| Mesmo método — BEFORE_CREATION | Criação−1ms,400 de janela de negócio após a espera. |
+| Mesmo método — UPPER_EQUAL | Ocorrência igual à referência inicial representável,201, mesmo após avanço do Clock. |
+| Mesmo método — AFTER_REFERENCE | Referência inicial+1ms,400 apesar de o Clock posterior já admitir o instante. |
+| Mesmo método — NATIVE_FLOOR | Referência .123000001 e ocorrência .123,201; nanos lidos do Clock permanecem observados. |
+| Mesmo método — NATIVE_CEILING | Referência .123999999 e ocorrência .124, apenas1ns posterior,400; sem arredondar a referência para cima. |
+| scalarGuardAfterTheWaitRejectsRevocationDespiteInitializedManagedRoles — ADMIN | ADMIN removido por outra transação durante a espera,403; coleção gerenciada ainda contém ADMIN. |
+| Mesmo método — BOTH | Remover somente ADMIN conserva CLIENT no banco,403, apesar de coleção gerenciada antiga com ambos. |
+| Total estático | **Dois métodos parametrizados, oito invocações previstas, somente ROOT.** Enum e AcquisitionState são auxiliares, não grupos JUnit @Nested. |
+
+Esses números são de autoria, não testes aprovados ou requests realizados. Se todos os caminhos forem alcançados futuramente, esperam-se três201, três400 e dois403, um POST de pagamento por invocação e login real separado. Autenticação401, pedido ausente404, conflitos409 e falhas internas500 não recebem prova nova nesta tarefa. Timeout, falha de infraestrutura ou instrumentação deve falhar o experimento, nunca ser convertido em rejeição de negócio bem-sucedida.
+
+### Coordenação escrita, antes de qualquer prova executável
+
+O código prepara contas/perfis/pedidos próprios commitados, alvo e canário, histórico2×10,00=20,00 com catálogo12,00. O holder obtém conexão física independente READ_COMMITTED pelo suporte008, adquire SELECT FOR UPDATE somente da raiz alvo e mantém a transação aberta. O request usa HttpClient/Tomcat, JWT e cadeia de segurança reais, proxy produtivo original e JPA reais; nenhum mock ou bean falso.
+
+Gate REFERENCE_READ exige uma leitura de negócio, valor nativo esperado, nenhuma aquisição de pedido e nenhum SQL do corpo até então. A leitura do Clock já ocorreu no gate, mas o teste não afirma que a atribuição local do serviço já terminou durante essa pausa. Após liberar esse gate, ORDER_LOCK_SQL identifica preparação do primeiro lock; isso sozinho não é prova de bloqueio físico.
+
+Um interceptor temporário no repository real, restrito ao ID alvo/método de aquisição, captura session_id() da conexão vinculada ao serviço e delega sem alterar o resultado. Com o gate de SQL liberado, o teste exige metadados H2 de SESSION_STATE=BLOCKED, BLOCKER_ID igual à sessão do holder e statement de tb_order/FOR UPDATE. IDs devem ser distintos; isDone=false apenas complementa a prova. A técnica segue a [observação de sessões H2 do harness de produtos](../../src/test/java/com/devsuperior/dscommerce/controllers/AdminProductConcurrencyIntegrationTest.java), sem alterar esse arquivo.
+
+Só depois desse bloqueio comprovado pelo futuro teste o Clock avança cinco minutos. A referência observada e a contagem de uma leitura devem continuar iguais. O holder não altera linhas e termina por rollback para liberar a raiz; somente depois o teste aguarda resposta, término do filtro e proxy, exige transação dona READ_COMMITTED e compara estado por novas conexões JDBC.
+
+Nos dois cenários de perfis, o interceptor pré-carrega UserAccount/roles **dentro do mesmo contexto JPA da transação de serviço**, antes de tentar o lock. Exige entidade gerenciada e coleção inicializada com ADMIN. Enquanto o serviço está bloqueado, outra conexão/transação independente remove somente o ADMIN da conta própria e commita. Snapshot exige alteração exclusiva de tb_user_account_role, com pedidos/itens/Payment/catálogo/contas preservados. Esse estado já alterado é o baseline da rejeição, sem atribuir a mudança externa ao POST.
+
+Depois de lock/refresh, ainda antes da segunda guarda, a instrumentação exige a mesma entidade gerenciada com roles antigas contendo ADMIN. O serviço deve rejeitar403 usando a guarda escalar atual. SQL do corpo precisa mostrar duas guardas escalares, uma antes e outra depois dos dois locks de raiz; a consulta extra de pré-carga de entidade não é contada como guarda. A rejeição não pode consultar Payment/histórico nem produzir DML; snapshot final deve coincidir com o baseline após a revogação. Não se promete serializar revogação depois da última leitura de permissão.
+
+### Recursos, observação e limites
+
+Gates/janela/conexões/statements/resultsets usam try-with-resources. O holder fecha antes da janela aguardar workers em falha; o finally remove somente o advice local depois de fechar a janela. Conexão vinculada é obtida/liberada por DataSourceUtils, sem fechar diretamente a transação de aplicação. O writer externo é commitado/fechado antes do snapshot correspondente; cleanup da fixture ocorre após concluir janelas/threads.
+
+O polling verifica metadados reais, com prazo8s, queryTimeout2s e cadência5ms por LockSupport.parkNanos, conforme o padrão existente. A cadência não constitui evidência de ordenação ou espera; só os metadados satisfazem a asserção. Gates/Futures usam limite10s, statements auxiliares timeout10s e Hikari conserva o lock_timeout20s do contexto008. Não há Thread.sleep, wait ilimitado, NOWAIT/SKIP LOCKED, mutex de negócio, timeout global novo ou alteração de URL/seed/perfil/OSIV/mapper.
+
+Sucessos escritos exigem confirmação fechada201 com ocorrência UTC.SSS, sem Location ou WWW-Authenticate; Payment único e PAID visíveis após retorno/conclusão, com comprador/criação/itens/histórico e demais tabelas/canário preservados. Rejeições400/403 têm mensagens próprias e quatro campos seguros, proxy falho, somente SELECT observado e snapshots completos iguais ao baseline apropriado. Flush/DTO não são usados como prova de commit.
+
+A captura nativa e o controle .123999999→.124 confrontam arredondamento para cima e recaptura após espera. Com entrada restrita a milissegundos, apenas esses resultados de fronteira não distinguiriam matematicamente uma truncagem interna para baixo; a exigência de não truncar também foi conferida por inspeção do serviço recebido, que mantém diretamente a variável retornada por clock.instant(). Não se altera esse código ou enfraquece a asserção da referência exata.
+
+StatementInspector observa preparação Hibernate, não JDBC direto, execução universal de DML ou commit do driver. Leituras de sessão/holder/writer são JDBC de instrumentação separado. Snapshots compostos não são atômicos sob escritores arbitrários; nesta coordenação o writer externo termina e o serviço permanece bloqueado até o baseline ser obtido. Nenhuma dessas observações foi executada agora, nem comprova outro banco, durabilidade, concorrência entre duas quitações, falhas de gravação/commit ou transporte; essas provas continuam nas tarefas próprias.
+
+### Preservação e conclusão limitada à autoria
+
+Preservados43 Java recebidos, incluindo todos os cinco não rastreados de T014/T015, e217.995 bytes históricos do quickstart. Permanecem intactos asserções, suporte e evidências recebidos: RED T006 e seus diagnósticos, correção de coleta T011, T012 com registro simulado e C1/T013 histórico de371 aprovados/zero falhas/erros/ignorados/exit0 e18 quitações reais, com todos os seus limites. C1 não aprova o novo teste.
+
+target/feature008-evidence/TEMPORAL-T016/ guarda manifesto/estado inicial dos45 caminhos recebidos, cópias dos documentos, hashes dos312 relatórios anteriores e revisão estática, sem inventário global de target/. Não há relatório de teste novo nem reescrita de evidência anterior.
+
+Critérios de **autoria da T016 atendidos**; somente seu marcador passa para [X] em [tasks.md](tasks.md). **T001–T016 [X], T017–T036 abertas:16 concluídas/20 abertas.** As comprovações executáveis T014–T016 continuam pendentes na etapa S2 aprovada, antes de qualquer correção T017 e no checkpoint T018. Esta tarefa não é aprovação C2 ou checkpoint diagnóstico executado; não há causa funcional nova a corrigir. Sem stage, commit, push, merge ou alteração de main.
+
+Fechamento T016: conteúdo completo do Java novo, APIs/referências locais, coordenação de recursos e diff incremental dos documentos revisados. review.py executado com Python externo -B -I -X utf8, exit0; static-review.json registra43 Java recebidos e312 relatórios preservados por SHA-256,217.995 bytes históricos intactos, somente marcador T016 alterado, três links existentes e nenhuma alteração de HEAD/branch/main/seleção ou índice. Conferidas estaticamente duas factories de parâmetros, seis casos temporais e dois perfis, sem testes herdados adicionais, @Nested JUnit, desabilitados ou assumptions. As oito invocações são previstas; **zero execuções Java nesta tarefa**, sem alegar compilabilidade ou aprovação funcional.
+
+`git diff --check` retornou exit0. `git -c core.autocrlf=false diff --no-index --check -- /dev/null src/test/java/com/devsuperior/dscommerce/services/PaymentTemporalAndCurrentRolesIntegrationTest.java` retornou exit1 pelo arquivo novo diferente de /dev/null, sem diagnóstico de whitespace. Avisos LF→CRLF são da configuração existente. A seção acrescentada foi gravada em UTF-8, com preservação byte a byte do prefixo recebido.
+
+Estado final: quickstart.md/tasks.md modificados e seis Java não rastreados — os cinco T014/T015 preservados e somente PaymentTemporalAndCurrentRolesIntegrationTest.java novo, no diretório services previsto. Nada staged. extensions.yml ausente também no fechamento, sem hooks after_implement. Não houve Wrapper, compilação, teste ou checkpoint diagnóstico executável, nem repetição de C1/BASE/suíte completa. Não há console/Surefire novo, falha funcional demonstrada ou correção antecipada de T017. Sem impedimento remanescente de autoria; comprovações executáveis continuam pendentes. Sem stage, commit, push ou alteração de main.
+
+## T017 — Confronto diagnóstico de US2 com a produção (2026-10-22)
+
+### Estado recebido e escopo efetivo
+
+Aplicada speckit-implement exclusivamente à [T017](tasks.md). Confirmados raiz `C:/Users/ronal/dscommerce-speckit`, branch `008-registrar-pagamento`, HEAD `2f053fef08725da34ed04f28d77b2fe52b90cec4`, seleção local008 e índice vazio. Somente este quickstart e tasks.md da008 estavam modificados. Seis Java não rastreados recebidos, com caminhos conferidos pelo Git:
+
+- `src/test/java/com/devsuperior/dscommerce/controllers/PaymentAuthorizationHttpIntegrationTest.java`
+- `src/test/java/com/devsuperior/dscommerce/controllers/PaymentAuthorizationApiHttpIntegrationTest.java`
+- `src/test/java/com/devsuperior/dscommerce/controllers/PaymentInputHttpIntegrationTest.java`
+- `src/test/java/com/devsuperior/dscommerce/controllers/PaymentInputApiHttpIntegrationTest.java`
+- `src/test/java/com/devsuperior/dscommerce/controllers/PaymentBoundaryValidationTest.java`
+- `src/test/java/com/devsuperior/dscommerce/services/PaymentTemporalAndCurrentRolesIntegrationTest.java`
+
+Lidos T017 integral, dependências T014–T016, condições T018 e seleção aprovada, constituição, AGENTS.md/harness e artefatos pertinentes: spec/US2, plano, research, modelo, contrato POST008/precedência, procedimentos e evidências anteriores deste guia. Conferidos os seis testes completos, componentes atribuídos à T017, controller, fragmento de lock, categorias e segurança de T012. Pré-requisitos `.\.specify\scripts\powershell\check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks` executados com exit0, FEATURE_DIR absoluto008. Checklist requirements.md:16/16, zero aberto, PASS documental; ignore Java adequado e extensions.yml ausente.
+
+A dependência da T017 exige testes escritos/executados antes de correção; a tabela S2 exige testar antes de T017. Por isso foi executada **uma seleção S2 diagnóstica anterior a qualquer alteração**, incluindo o núcleo expressamente previsto. Isso não encerra T018/C2, não é repetição autônoma de C1 e não autoriza T018+. As notas T014–T016 de autoria sem compilação/execução permanecem históricas intactas: esta é a primeira execução desses seis arquivos, separada das revisões estáticas anteriores.
+
+### Comando, ambiente, coleta e resultado observado
+
+Windows/PowerShell5.1, Java21.0.12.1 Zulu, Wrapper configurado para Maven3.9.16; nenhuma dependência, propriedade global, seed, URL ou suporte alterado. Não havia processo Java/Maven ativo na conferência anterior. Uma invocação Maven por vez, sem baseline, suíte completa ou seleções adicionais:
+
+~~~powershell
+.\mvnw.cmd "-Dtest=PaymentAuthorization*Test,PaymentInput*Test,PaymentBoundaryValidationTest,PaymentTemporalAndCurrentRolesIntegrationTest,PaymentRegistration*Test,PaymentPersistenceIntegrationTest" "-Dsurefire.reportNameSuffix=S2-T017-DIAG-20261022T094650162" test
+~~~
+
+Coletor `target/feature008-evidence/run-t017.ps1`: manifesto e cópias dos46 caminhos recebidos (40 do checkpoint mais seis Java novos), estado/diff inicial e hashes em `target/feature008-evidence/REVIEW-T017/`. Copiados os312 relatórios anteriores antes do Wrapper; mantidos também em seus caminhos originais. Evidência nova em `target/feature008-evidence/S2-T017-DIAG-20261022T094650162/`: run.json, console.txt, exit.json, previous-surefire-reports/, surefire-reports/, analysis.json, coverage.json e diagnosis.json. Diretórios ignorados pelo Git, sem inventário global de target/.
+
+O console foi coletado com stderr mesclado por Tee-Object e ErrorActionPreference=Continue durante a chamada nativa. LASTEXITCODE capturado imediatamente após a pipeline, antes de qualquer outra chamada nativa; depois restaurado Stop. Mantida a correção de coleta documentada em T011. Console em UTF-16 do Tee-Object/PowerShell5.1; JSON em UTF-8. Avisos de agente/VM e depreciação não foram tratados como falhas funcionais.
+
+Execução iniciada em2026-10-22T09:46:50−03:00 e encerrada pelo coletor às09:52:29−03:00,338,092s; console Maven informa05:31min e término09:52:28−03:00. Compilação de140 fontes de teste concluída; Surefire/JUnit executado. **BUILD FAILURE, exit1:839 invocações,814 aprovadas,25 falhas,0 erros,0 ignoradas.** Não houve impedimento de compilação ou preparação nem seleção vazia.
+
+| Classe/grupo efetivamente executado | Invocações | Aprovadas | Falhas |
+| --- | ---: | ---: | ---: |
+| PaymentAuthorizationHttpIntegrationTest — ROOT | 40 | 30 | 10 |
+| PaymentAuthorizationApiHttpIntegrationTest — /api | 40 | 30 | 10 |
+| PaymentInputHttpIntegrationTest — ROOT | 129 | 128 | 1 |
+| PaymentInputApiHttpIntegrationTest — /api | 129 | 128 | 1 |
+| PaymentBoundaryValidationTest — MVC local | 122 | 122 | 0 |
+| PaymentTemporalAndCurrentRolesIntegrationTest — ROOT | 8 | 5 | 3 |
+| PaymentRegistrationHttpIntegrationTest e Api — serviço/persistência reais | 32 | 32 | 0 |
+| PaymentRegistrationEndpointHttpTest e Api — HTTP real, serviço simulado | 96 | 96 | 0 |
+| PaymentRegistrationDtoContractTest | 141 | 141 | 0 |
+| PaymentPersistenceIntegrationTest | 13 | 13 | 0 |
+| PaymentRegistrationDatabaseProbeTest | 12 | 12 | 0 |
+| PaymentRegistrationServiceTest$CurrentAccess | 18 | 18 | 0 |
+| PaymentRegistrationServiceTest$RegistrationRules | 51 | 51 | 0 |
+| PaymentRegistrationServiceTest$TransactionAndCategories | 8 | 8 | 0 |
+| PaymentRegistrationServiceTest — container externo | 0 | 0 | 0 |
+| Total | 839 | 814 | 25 |
+
+Console,17 XML e17 TXT próprios conciliados;839 identidades classe/método/invocação únicas, sem duplicatas ou omissões da seleção. Conferidos10 métodos herdados de autorização por contexto, nove de entrada por contexto, dez métodos locais e dois temporais; matrizes39/48/24 atingiram129 HTTP por contexto e122 locais. No núcleo,11 métodos herdados de integração real por contexto e17 da fronteira com serviço simulado; os três grupos @Nested somam77, sem contar novamente o container externo de zero casos. Comparadas as371 identidades do núcleo com os relatórios C1: correspondência exata, todas aprovadas nesta execução. Contagens de invocações não são contagem presumida de requests, pois alguns casos fazem várias chamadas.
+
+### Diagnóstico das25 falhas, sem alteração dos testes
+
+Todas as falhas são AssertionFailedError no oráculo de confirmação201, depois de a asserção de status201 ter passado. Cada par JSON esperado/recebido exibido é textualmente igual e contém exatamente orderId/occurredAt/status. O ponto de falha está nos testes recebidos:
+
+| Local | Falhas | Alcance interrompido |
+| --- | ---: | --- |
+| [PaymentAuthorizationHttpIntegrationTest.java](../../src/test/java/com/devsuperior/dscommerce/controllers/PaymentAuthorizationHttpIntegrationTest.java), assertAccepted, linha366 | 20 | Dez controles positivos por contexto: quatro ADMIN próprio/alheio, quatro concessões atuais e dois claims enganosos com ADMIN real. |
+| [PaymentInputHttpIntegrationTest.java](../../src/test/java/com/devsuperior/dscommerce/controllers/PaymentInputHttpIntegrationTest.java), controle positivo, linha196 | 2 | Um controle de offset/zeros adicionais por contexto. |
+| [PaymentTemporalAndCurrentRolesIntegrationTest.java](../../src/test/java/com/devsuperior/dscommerce/services/PaymentTemporalAndCurrentRolesIntegrationTest.java), assertSuccess, linha395 | 3 | LOWER_EQUAL, UPPER_EQUAL e NATIVE_FLOOR após espera real. |
+
+Esses três locais constroem o esperado com ObjectNode.put("orderId", long), produzindo LongNode; readTree da resposta com IDs pequenos produz IntNode no mapper existente. A igualdade de ObjectNode delega aos filhos e IntNode/LongNode não são iguais entre si. Todos os25 IDs observados são positivos e cabem em int32; o contrato int64 admite esses valores e não impõe uma classe Java ao consumidor JSON. Isso explica a igualdade textual com falha de equals, sem demonstrar divergência contratual da resposta.
+
+Diagnóstico apoiado por relatórios, fontes locais e inspeção de bytecode do **Jackson2.17.2 realmente presente no classpath Surefire**, sem alterar flags do mapper nem executar teste adicional:
+
+~~~powershell
+$jackson = 'C:/Users/ronal/.m2/repository/com/fasterxml/jackson/core/jackson-databind/2.17.2/jackson-databind-2.17.2.jar'
+javap -classpath $jackson -c com.fasterxml.jackson.databind.node.IntNode com.fasterxml.jackson.databind.node.LongNode com.fasterxml.jackson.databind.node.JsonNodeFactory com.fasterxml.jackson.databind.node.ObjectNode com.fasterxml.jackson.databind.deser.std.JsonNodeDeserializer
+javap -classpath $jackson -p -c com.fasterxml.jackson.databind.deser.std.BaseNodeDeserializer
+~~~
+
+Ambas as inspeções retornaram exit0; saídas preservadas em jackson-bytecode.txt e jackson-reader-bytecode.txt. Não são testes de aplicação nem prova runtime adicional. analyze.py, coverage.py e diagnose.py foram executados com Python externo `-B -I -X utf8`, exit0, apenas para conciliar relatórios, fontes/hashes, pares de JSON e marcos do console; não substituem JUnit.
+
+Classificação: **falhas de asserção do oráculo recebido, sem RED funcional demonstrado na produção**. Não são erro de compilação, setup ou indisponibilidade de banco. Os25 casos continuam falhos; não foram omitidos, reinterpretados como GREEN ou corrigidos por mudança produtiva/mapper global. Como o pedido exige preservar testes/asserções e T017 atribui componentes produtivos específicos, os três oráculos ficaram byte-preservados. Corrigi-los exige recorte autorizado próprio, mantendo campos fechados, número integral e valor exato do ID, instante exato, status, headers e todas as verificações posteriores; depois será necessária execução justificada. Nenhum rerun nesta tarefa.
+
+### Confronto da produção e alcance das provas obtidas
+
+PaymentRegistrationService conserva clock.instant nativo como primeira instrução, uma única variável local durante guardas/consultas/espera, sem truncar ou recapturar. PaymentAccessService consulta conta/perfis escalares atuais antes de pedido e depois de find+refresh, sem confiar em roles gerenciadas/claims. Permanecem existência de pagamento antes de estado incompatível, janela inclusiva, histórico exato e mutações somente após elegibilidade. Falhas internas não viram entrada400 nem repetição409; não há lookup em Bean Validation.
+
+Reader exclusivo conserva gramática R3 e validação pura; advice scoped distingue validação de entrada400 de retorno/entidade500. SecurityConfig e handlers de T012 preservam ADMIN atual antes de MVC e categorias401/403/500, sem ampliar permissões ou matcher de consultas/produtos. Não foi demonstrada lacuna que justifique modificar esses componentes. Revisão estática não aprova regressões001–007; o fechamento específico de T018 e as tarefas posteriores continuam necessários.
+
+Passaram as negativas de autorização/claims/perfis, mudanças entre filtro/serviço, lookup controlado500 nos quatro pontos e precedência de segurança antes de entrada inválida em ROOT e /api. Passaram as rejeições locais de documentos/gramática/ID/query,404 de negócio e409 PAID sem Payment, sem reparo, nos dois contextos. Controles de rota omitida permaneceram prova de roteamento404, não substituto de validação. Os122 casos MockMvc locais usam serviço simulado e validadores/reader/MVC reais; não provam JWT, socket, persistência ou commit. As categorias locais repetição409/incompatibilidade409/falha interna500 passaram sem tornar esse estímulo controlado prova de repetição real/concorrência da US3.
+
+Os oito casos T016 registraram bloqueio físico H2 com sessões distintas e blocker correspondente, antes do avanço do Clock. As três rejeições temporais BEFORE_CREATION, AFTER_REFERENCE e NATIVE_CEILING passaram integralmente; a última conserva referência .123999999 e rejeita .124. Os dois casos ADMIN/BOTH revogados durante a espera passaram integralmente: roles gerenciadas antigas pré-carregadas, mudança externa commitada separada do baseline e guarda escalar atual403 sem mutação causada pela tentativa. Esses cinco casos registraram T016_RESULT após snapshots independentes. Nos três controles201, passaram até a comparação de confirmação a referência única, bloqueio, guardas e status; as asserções posteriores à linha395 não foram alcançadas. Não atribuir a eles prova completa de snapshots/histórico após a transação.
+
+O núcleo manteve371 aprovações, com18 T013_SUCCESS (nove por contexto) exigindo transação dona READ_COMMITTED, uma leitura de negócio e Payment/PAID por JDBC independente, além da preservação histórica. Essa é evidência atual limitada aos mesmos casos, sem substituir o C1 histórico ou reparar os25 testes. Os96 casos de endpoint com registro simulado permanecem HTTP real com serviço mock, sem prova de persistência. Flush e DTO interno continuam distintos de commit.
+
+Sem prova nova de duas quitações concorrentes no mesmo pedido, independência de pedidos, falhas físicas de DML/flush/commit, resultado indeterminado ou perda de transporte. A prova H2 de espera/revogação não comprova outro banco nem serializa revogação posterior à última guarda. Observação Hibernate é de preparação SQL; snapshots não detectam toda mutação transitória revertida. Permanecem os limites de nanos descritos na T016 e as tarefas próprias de US3–US5/FINAL.
+
+### Estado da tarefa e preservações
+
+**T017 permanece aberta**, pois seu GREEN exigido não foi obtido. Sem correção produtiva demonstrada; os oráculos estão fora dos componentes atribuídos e foram preservados por exigência do pedido. **T001–T016 [X]; T017–T036 abertas,16 concluídas/20 abertas.** tasks.md não recebeu nenhuma edição nesta tarefa. T018/C2 não executada como fechamento; nenhuma antecipação de T018+.
+
+Única edição de arquivo versionável nesta execução: acréscimo desta seção ao quickstart. Produção, suporte,44 Java recebidos (incluindo os seis não rastreados), tasks.md recebido e312 relatórios anteriores preservados por SHA-256; histórico do quickstart preservado como prefixo byte a byte. RED T006/dois diagnósticos, correção de coleta T011, T012 simulada e C1 histórico371/18 quitações mantidos. Nada staged; sem commit, push, merge ou alteração de main.
+
+Fechamento documental T017: revisados diff, conteúdo completo dos seis Java não rastreados e referências. review.py executado com Python externo `-B -I -X utf8`, exit0:44 Java recebidos, tasks.md e312 relatórios preservados,230.843 bytes históricos do quickstart intactos,115 links locais resolvidos, HEAD/branch/main/seleção e índice conferidos. `git diff --check` retornou exit0. Para cada um dos seis Java novos, `git -c core.autocrlf=false diff --no-index --check -- /dev/null <caminho>` não produziu diagnóstico de whitespace; exit1 corresponde ao arquivo novo diferente de /dev/null. Avisos LF→CRLF são da configuração existente, preservada. extensions.yml ausente também ao final, sem hook after_implement.
+
+Git final mantém os mesmos oito caminhos do estado recebido: quickstart.md/tasks.md modificados e seis Java não rastreados, nada staged. Nesta tarefa somente quickstart recebeu conteúdo novo; a única pendência impeditiva de GREEN observada são os três oráculos de confirmação responsáveis pelas25 falhas. Nenhuma alteração ou execução adicional de produção/testes, T018+, stage, commit, push ou main.
+
+## T017 — Retomada autorizada: representação inteira dos três oráculos (2026-10-22)
+
+Retomada exclusiva da [T017](tasks.md), usando speckit-implement. Confirmados raiz `C:/Users/ronal/dscommerce-speckit`, branch `008-registrar-pagamento`, HEAD `2f053fef08725da34ed04f28d77b2fe52b90cec4`, seleção local008 e índice vazio. Estado recebido: somente quickstart.md/tasks.md modificados e os mesmos seis Java T014–T016 não rastreados. Pré-requisitos do Spec Kit executados com `-Json -RequireTasks -IncludeTasks`, exit0 e FEATURE_DIR absoluto008; requirements.md16/16, zero aberto, PASS documental. Constituição, T017/dependências/limite T018, plano, pesquisa, modelo, contrato POST e harness confrontados; ignore Java adequado, sem alteração de configuração.
+
+### Causa confirmada antes da edição e correção restrita
+
+Nova conciliação somente de leitura dos17 XML e console do S2 diagnóstico `S2-T017-DIAG-20261022T094650162`: **839 casos únicos,814 aprovados,25 falhas,0 erros/ignorados,BUILD FAILURE/exit1**. O histórico anterior continua válido como registro reprovado; não houve nova execução S2/BASE/suíte completa. As25 falhas atingiam, após status201 aprovado, exatamente:
+
+| Oráculo recebido | Falhas S2 | Correção nesta retomada |
+| --- | ---: | --- |
+| [PaymentAuthorizationHttpIntegrationTest.java](../../src/test/java/com/devsuperior/dscommerce/controllers/PaymentAuthorizationHttpIntegrationTest.java), `PaymentAuthorizationScenarios.assertAccepted`, antiga linha366 | 20, ROOT+/api | Uma comparação estrutural. |
+| [PaymentInputHttpIntegrationTest.java](../../src/test/java/com/devsuperior/dscommerce/controllers/PaymentInputHttpIntegrationTest.java), `positiveSelectedRouteControlConservesEquivalentOffsetAndExtraZeroMilliseconds`, antiga linha196 | 2, ROOT+/api | Uma comparação estrutural. |
+| [PaymentTemporalAndCurrentRolesIntegrationTest.java](../../src/test/java/com/devsuperior/dscommerce/services/PaymentTemporalAndCurrentRolesIntegrationTest.java), `assertSuccess`, antiga linha395 | 3, ROOT | Uma comparação estrutural. |
+
+`ObjectNode.put(orderId,long)` produzia LongNode; readTree da resposta com ID pequeno produzia IntNode. A igualdade dos nós depende da classe numérica, embora os25 pares fossem textualmente iguais. A única alteração de cada Java é um comentário e `isEqualTo(mapper.readTree(expected.toString()))` no lugar de `isEqualTo(expected)`: o esperado inteiro é serializado sem perda e lido pelo mesmo parser da resposta. Não se converte o ID recebido para comparar nem se reconfigura o mapper. Valores pequenos recebem IntNode de ambos os lados; grandes conservam LongNode e todos os bits de int64. O esperado continua um número JSON inteiro: strings, decimais inclusive `.0`, expoentes, IDs vizinhos e outras estruturas não são iguais. Permanecem a asserção explícita `isIntegralNumber`, todas as chaves/valores esperados e a comparação da árvore inteira, sem remover campos. Ordem e verificações de itens históricos permanecem intactas.
+
+Nenhuma mudança em produção, mapper global, coerções da aplicação, suporte compartilhado, aliasesApi ou PaymentBoundaryValidationTest. Sem conversão por ponto flutuante, tolerância, truncamento ou alteração da ocorrência. Headers, autorização, referência única, janelas inclusivas, SQL, proxy, snapshots e limpeza posteriores à comparação foram preservados integralmente.
+
+### Validações focais novas, sequenciais e com relatórios próprios
+
+Windows/PowerShell5.1; Java21.0.12.1 Zulu; Wrapper/Maven3.9.16. Coletor `target/feature008-evidence/RESUME-T017/run-focal.ps1`; uma invocação Maven por vez, copiando console e todo `target/surefire-reports/` para o diretório próprio antes da próxima. Sufixos exclusivos conservaram os relatórios reprovados originais. `run.json` contém comando/ambiente/HEAD/branch/main/início; `exit.json` registra término/duração/exit; também foram guardados estado/diff e hashes dos três Java usados. Console via Tee-Object em UTF-16, stderr mesclado e LASTEXITCODE capturado imediatamente; JSON UTF-8. Advertências de agente/VM/depreciação não foram tratadas como falhas funcionais.
+
+Comandos efetivamente executados, nesta ordem:
+
+~~~powershell
+.\mvnw.cmd "-Dtest=PaymentAuthorizationHttpIntegrationTest,PaymentAuthorizationApiHttpIntegrationTest" "-Dsurefire.reportNameSuffix=T017-AUTH-20261022T161026931" test
+.\mvnw.cmd "-Dtest=PaymentInputHttpIntegrationTest,PaymentInputApiHttpIntegrationTest,PaymentBoundaryValidationTest,PaymentRegistrationEndpointHttpTest#positiveLongMaximumReachesTheServiceWithoutIdentityLoss,PaymentRegistrationEndpointApiHttpTest#positiveLongMaximumReachesTheServiceWithoutIdentityLoss" "-Dsurefire.reportNameSuffix=T017-INPUT-20261022T161443116" test
+.\mvnw.cmd "-Dtest=PaymentTemporalAndCurrentRolesIntegrationTest" "-Dsurefire.reportNameSuffix=T017-TEMPORAL-20261022T161819093" test
+~~~
+
+| Execução/diretório sob `target/feature008-evidence/` | Casos aprovados | Contextos/controles efetivamente executados | XML/TXT próprios | Resultado |
+| --- | ---: | --- | ---: | --- |
+| `T017-AUTH-20261022T161026931` | 80/80 | 40 por ROOT e /api; dez métodos herdados por contexto, incluindo positivos, credenciais/claims/perfis atuais, mudanças filtro→serviço, lookup500 e segurança antes da MVC. | 2/2 | BUILD SUCCESS,exit0;0 falhas/erros/ignorados. |
+| `T017-INPUT-20261022T161443116` | 382/382 | 129 HTTP por ROOT e /api;122 MVC locais;somente um controle HTTP de Long.MAX_VALUE por contexto com serviço simulado. Matrizes39 documentos/48 ocorrências inválidas/24 válidas e categorias400/404/409/500 mantidas. | 5/5 | BUILD SUCCESS,exit0;0 falhas/erros/ignorados. |
+| `T017-TEMPORAL-20261022T161819093` | 8/8 | ROOT;seis casos temporais e dois de revogação ADMIN/BOTH durante espera física H2. | 1/1 | BUILD SUCCESS,exit0;0 falhas/erros/ignorados. |
+| Total focal | **470/470** | Identidades únicas conferidas;os25 casos reprovados originais estão incluídos e passaram. | 8/8 | **0 falhas,0 erros,0 ignorados.** |
+
+- `AUTH`: 2026-10-22T16:10:27.6674709-03:00 até 2026-10-22T16:14:17.0206594-03:00; duração do coletor 229.3531885s, exit0.
+- `INPUT`: 2026-10-22T16:14:43.5551859-03:00 até 2026-10-22T16:17:15.4835694-03:00; duração do coletor 151.9283835s, exit0.
+- `TEMPORAL`: 2026-10-22T16:18:19.5019923-03:00 até 2026-10-22T16:19:02.5887508-03:00; duração do coletor 43.086758499999995s, exit0.
+
+
+Console e Surefire XML/TXT conciliados por `RESUME-T017/analyze.ps1`: totais globais, contagem de testcase por XML, classes/métodos/parâmetros, identidades sem duplicatas e exit real. Para relacionar execuções, removido somente o sufixo próprio de cada execução que o Surefire também acrescenta ao classname dos testcases; XML/TXT originais intactos. Resultados detalhados em `AUTH-analysis.json`, `INPUT-analysis.json`, `TEMPORAL-analysis.json`; `DIAG-analysis.json` mantém a análise nova do S2 antigo sem modificar sua evidência. Os470 casos focais correspondem a identidades do diagnóstico anterior, sem seleção vazia, desabilitação, remoção ou sucesso de compilação contado como teste. Os dois controles Long.MAX_VALUE são seleção justificada desse método específico, não repetição do núcleo S1.
+
+Os20 controles de autorização e os dois de entrada antes interrompidos agora alcançaram proxy/referência e snapshots independentes após confirmação, preservação de itens/histórico e cleanup completo. Os três controles temporais LOWER_EQUAL/UPPER_EQUAL/NATIVE_FLOOR agora concluíram as verificações posteriores; também passaram BEFORE_CREATION/AFTER_REFERENCE/NATIVE_CEILING e ADMIN/BOTH revogados. O console temporal contém oito `T016_WAIT` com sessões distintas e blocker correspondente e oito `T016_RESULT` após asserções, com uma leitura de negócio e referência nativa conservada. A tentativa NATIVE_FLOOR aceita `.123` sob referência `.123000001`; NATIVE_CEILING rejeita `.124` sob `.123999999`, sem deslocar limite ou arredondar.
+
+Controle auxiliar de representação, separado das470 invocações JUnit: `java --class-path <classpath Jackson extraído do XML AUTH> target/feature008-evidence/RESUME-T017/OracleControls.java`, exit0, **50 controles/zero falhas**. Fonte, classpath efetivo2.17.2, comando e console preservados no recibo. Exercitados1/int32máximo/int32+1/2^53/2^53+1/Long.MAX_VALUE−1/Long.MAX_VALUE, inteiro vizinho diferente, string, decimal `.0`/`.5`, expoente, alteração de status/instante/formato temporal, campo extra/ausente e objeto/array incorretos. Reproduzida também a desigualdade original IntNode/LongNode. Não é teste JUnit, HTTP, persistência ou transação; não substitui os controles pelo Wrapper. A tentativa auxiliar `python -B -I -X utf8 -c "import sys; print(sys.executable)"` encontrou somente o alias WindowsApps sem Python instalado; a análise/revisão foi feita com PowerShell/.NET, sem teste da aplicação bloqueado.
+
+### Critérios da T017, preservação e limites
+
+Revisados PaymentAccessService, PaymentRegistrationService, PaymentRequestJsonConfig, PaymentRegistrationExceptionHandler e os handlers/cadeia de segurança T012. A produção já atende aos critérios confrontados: referência nativa capturada uma vez na primeira instrução e mantida após espera; guardas escalares atuais antes de pedido e após lock/refresh, antes de mutação; elegibilidade conjunta e categorias/mensagens fechadas; parser/Bean Validation locais sem IO de domínio; falhas de retorno/entidade/internas permanecem500 em vez de400/401/409. GREEN focal obtido sem mudança cosmética de produção nem enfraquecimento dos testes. As dependências T014–T016 haviam sido escritas/executadas no S2 reprovado antes desta correção.
+
+Recibo `RESUME-T017/` guarda captura, originais e revisão incremental. A captura inicial dos três Java terminou após o patch; essa cópia foi retida em `captured-after-edit/`. Seus originais foram recuperados de `REVIEW-T017/received/`, conferidos pelo SHA-256 do manifesto histórico e por comparação exata que permite somente a mudança descrita em cada arquivo; procedência em `original-recovery.json`. Nenhuma evidência histórica foi reescrita. Preservados por hash os1.012 arquivos de evidência/relatório inventariados nesta retomada e também os312 relatórios anteriores já inventariados no diagnóstico. O quickstart recebido permanece prefixo byte a byte, inclusive a seção anterior que deixou T017 aberta; esta nova seção registra sua resolução posterior.
+
+Limites preservados: HTTP ROOT+/api usa serviço/persistência reais nos cenários de autorização/entrada; MVC local e os dois controles HTTP int64 usam serviço simulado. Temporal observa H2, conexões independentes e espera real; não comprova outro banco nem revogação posterior à última guarda. Observação Hibernate é de preparação SQL; snapshots não detectam toda mutação transitória revertida. Parser auxiliar não comprova aceitação HTTP de pedidos grandes existentes. Sem prova nova de concorrência US3, failpoints/commit indeterminado/transporte US4, consultas pós-pagamento US5 ou regressões completas. **T018/C2 permanece pendente:** não foi executado o checkpoint conjunto S2+S1, nem repetidos BASE ou suíte completa; estes resultados focais não o substituem.
+
+Critérios completos da **T017 atendidos**, com causa de oráculo corrigida, revisão produtiva sem lacuna demonstrada e GREEN focal. Alterado somente seu marcador em tasks.md: **T001–T017[X];T018–T036 abertas,17 concluídas/19 abertas**. Nesta retomada os únicos arquivos de trabalho editados são os três Java indicados, quickstart.md e esse marcador; os outros três Java não rastreados recebidos permanecem byte-preservados. Diff e conteúdo completo dos seis Java novos revisados; links locais, referências de métodos/relatórios e whitespace conferidos. `git diff --check` exit0; os seis `git -c core.autocrlf=false diff --no-index --check -- /dev/null <Java>` sem diagnóstico de whitespace, com exit1 por serem arquivos novos. `final-review.json` registra preservações, identidades e estado Git. extensions.yml ausente também no fechamento, sem hooks before/after_implement.
+
+Git final: mesma raiz/branch/HEAD/seleção e main; quickstart.md/tasks.md modificados e os mesmos seis Java não rastreados. Nada staged; sem stage, commit, push, merge ou alteração de main. Pendência seguinte é T018, sem antecipação de T018–T036 ou declaração de entrega da Feature008.
+
+## T018 — Checkpoint conjunto US1+US2 / C2 (2026-10-22)
+
+Aplicada speckit-implement exclusivamente à [T018](tasks.md), lida integralmente com T013–T017, condições C2 e tabela de seleções. Confirmados raiz `C:/Users/ronal/dscommerce-speckit`, branch `008-registrar-pagamento`, HEAD `2f053fef08725da34ed04f28d77b2fe52b90cec4`, seleção local008 e índice vazio. Recebidos somente quickstart.md/tasks.md modificados e os mesmos seis Java não rastreados:
+
+- `src/test/java/com/devsuperior/dscommerce/controllers/PaymentAuthorizationHttpIntegrationTest.java`
+- `src/test/java/com/devsuperior/dscommerce/controllers/PaymentAuthorizationApiHttpIntegrationTest.java`
+- `src/test/java/com/devsuperior/dscommerce/controllers/PaymentInputHttpIntegrationTest.java`
+- `src/test/java/com/devsuperior/dscommerce/controllers/PaymentInputApiHttpIntegrationTest.java`
+- `src/test/java/com/devsuperior/dscommerce/controllers/PaymentBoundaryValidationTest.java`
+- `src/test/java/com/devsuperior/dscommerce/services/PaymentTemporalAndCurrentRolesIntegrationTest.java`
+
+Pré-requisitos `.specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks`: exit0, FEATURE_DIR absoluto008. requirements.md16/16, zero aberto, PASS documental; constituição, plano, procedimentos/limites do quickstart e precedência contratual conferidos. Ignore Java adequado; extensions.yml ausente antes e depois, sem hooks. T017 já atendida com revisão e GREEN focal; isso foi tratado como dependência, não como aprovação conjunta. Seus três oráculos corrigidos, igualdade estrutural, número JSON inteiro e precisão int64 permaneceram byte-preservados nesta tarefa.
+
+### Execução nova, seleção exata e coleta
+
+Uma única invocação Maven, nenhuma outra simultânea; não havia processo Java ativo na conferência inicial. Windows/PowerShell5.1, Java21.0.12.1 Zulu, Wrapper/Maven3.9.16 conforme propriedades existentes. Executado exatamente o seletor S2/T018, reunindo T014–T016 e todo o núcleo S1 aprovado, sem BASE, suíte completa ou T019+:
+
+~~~powershell
+.\mvnw.cmd "-Dtest=PaymentAuthorization*Test,PaymentInput*Test,PaymentBoundaryValidationTest,PaymentTemporalAndCurrentRolesIntegrationTest,PaymentRegistration*Test,PaymentPersistenceIntegrationTest" "-Dsurefire.reportNameSuffix=S2-T018-20261022T162604150" test
+~~~
+
+Início registrado: `2026-10-22T16:26:05.0425685-03:00`; término do coletor: `2026-10-22T16:30:59.2050275-03:00`; duração observada do coletor: 294.162459s. Console Maven:04:47min, término16:30:58−03:00. Exit0.
+
+Coletor `target/feature008-evidence/run-t018.ps1`; recibo `target/feature008-evidence/REVIEW-T018/` com manifesto/hashes dos354 arquivos recebidos, cópias dos dois documentos/seis Java, status/diff e referência main. Registrados hashes de2.155 arquivos de evidência anteriores: relatórios originais, diagnóstico S2 reprovado, três execuções focais T017 e recibo/controles separados do parser. A captura terminou antes do Wrapper e de qualquer edição documental desta tarefa.
+
+Evidência nova em `target/feature008-evidence/S2-T018-20261022T162604150/`: run.json (comando/ambiente/HEAD/branch/main/início), console.txt, exit.json, previous-surefire-reports/, surefire-reports/, analysis.json e coverage.json. Relatórios anteriores copiados antes do Wrapper; console e todo Surefire copiados após término, sem clean nem sobrescrita dos sufixos antigos. Console UTF-16 via Tee-Object, stderr mesclado com ErrorActionPreference=Continue e LASTEXITCODE capturado imediatamente; JSON UTF-8. Advertências conhecidas de agente/VM/depreciação não foram contadas como falhas de comportamento.
+
+### Resultado conjunto efetivamente conferido
+
+**BUILD SUCCESS,exit0:839 invocações aprovadas,0 falhas,0 erros,0 ignoradas.** Console,17 XML e17 TXT próprios conciliados por `REVIEW-T018/analyze.ps1`, exit0; fontes inalteradas, sem sucesso presumido a partir da compilação ou dos grupos focais.
+
+| Classe/grupo executado | Casos aprovados |
+| --- | ---: |
+| PaymentAuthorizationHttpIntegrationTest / Api | 40+40 |
+| PaymentInputHttpIntegrationTest / Api | 129+129 |
+| PaymentBoundaryValidationTest — MVC local | 122 |
+| PaymentTemporalAndCurrentRolesIntegrationTest — ROOT | 8 |
+| PaymentRegistrationHttpIntegrationTest / Api — serviço/persistência reais | 16+16 |
+| PaymentRegistrationEndpointHttpTest / Api — HTTP real, serviço simulado | 48+48 |
+| PaymentRegistrationDtoContractTest | 141 |
+| PaymentPersistenceIntegrationTest | 13 |
+| PaymentRegistrationDatabaseProbeTest | 12 |
+| PaymentRegistrationServiceTest$CurrentAccess | 18 |
+| PaymentRegistrationServiceTest$RegistrationRules | 51 |
+| PaymentRegistrationServiceTest$TransactionAndCategories | 8 |
+| PaymentRegistrationServiceTest — container externo | 0, sem duplicar os77 aninhados |
+| **Total** | **839** |
+
+Conferidos839 pares classe/método/invocação únicos, sem omissões/duplicatas: correspondência exata com as identidades do diagnóstico S2 reprovado. Normalizado somente o sufixo próprio que Surefire acrescenta ao classname; arquivos brutos permanecem intactos. Todos os25 casos então falhos passaram agora, sem reinterpretar o diagnóstico histórico. Os371 casos do núcleo correspondem exatamente às identidades C1/T013; os468 restantes são US2. As470 identidades focais T017 também estão presentes, como subconjunto desta execução, sem somar novamente seus resultados históricos.
+
+Métodos herdados por contexto ROOT/Api: autorização10, entrada9, integração real US1 onze e fronteira com serviço simulado17; matrizes e contagens de invocações iguais em cada par. MVC local:10 métodos/122 casos; temporal:dois métodos/oito casos. Os três grupos @Nested do serviço somam18+51+8=77; seu container externo tem zero e não infla o total. Todas as17 suítes esperadas e seus TXT foram conferidos; nenhuma seleção vazia, classe excluída, teste desabilitado ou omissão de parâmetros foi usada para obter GREEN.
+
+### Critérios C2 e controles preservados
+
+| Critério/cenários | Evidência nesta execução conjunta |
+| --- | --- |
+| US2.1–3: credenciais e ADMIN atual | Autorização40 por contexto:401 com Bearer para ausência/invalidez/expiração/conta removida;403 para CLIENT/sem perfil;ADMIN isolado/ambos em compra própria/alheia;claims enganosos e mudança de perfis após emissão/filtro;lookup falho500. SQL/snapshots e controle de segredos preservados. |
+| Segurança anterior à MVC | Entradas inválidas têm400 com ADMIN atual,401 sem credencial e403 sem ADMIN antes do serviço; asserções de ausência de leitura restrita/DML nas rejeições precoces, envelope e path seguro passaram em ROOT e /api. |
+| US2.4–5,8–9: entrada e erros | Matrizes39 documentos/48 ocorrências inválidas/24 válidas;IDs/faixa/query/JSON fechado/duplicatas/trailing;offset e zeros exatos;404 de negócio e409 PAID sem Payment sem reparo. Rotas omitidas continuam somente prova de roteamento. MVC local distingue entrada400 de validação de retorno/entidade500 e conserva reader/validator sem IO de domínio. |
+| US2.6–7 e limites inclusivos | LOWER_EQUAL/UPPER_EQUAL aceitos,BEFORE_CREATION/AFTER_REFERENCE rejeitados. NATIVE_FLOOR aceita ocorrência `.123` com referência `.123000001`;NATIVE_CEILING rejeita `.124` com `.123999999`. Oito T016_WAIT comprovaram sessões distintas e estado BLOCKED com blocker correspondente antes do avanço do Clock. |
+| Revogação após espera | ADMIN/BOTH pré-carregados no contexto JPA perderam ADMIN em transação externa commitada durante o bloqueio;guarda escalar atual rejeitou403,sem mutação causada pela tentativa. Mudança externa foi isolada no baseline. Oito T016_RESULT ocorreram após asserções completas,com clockCalls=1 e snapshots independentes. |
+| Seis cenários US1 e núcleo | 32 casos de HTTP/serviço/persistência reais ROOT/Api;18 T013_SUCCESS,nove por contexto,com proxy dono READ_COMMITTED,uma leitura de negócio e Payment/PAID por JDBC independente. Confirmação de três campos,ocorrência,42,50/histórico20,00 versus catálogo12,00,headers,limites e rejeições permaneceram aprovados. DTO141,serviço77,persistência13 e probe12 completam o núcleo371 com fronteira simulada96. |
+| Isolamento de rotas/handlers | `neighboringPublicOrderAndProductSecurityContractsKeepTheirOwnResponses` passou nos dois contextos:GET público/products,GET admin/products autorizado/401 com envelope de produtos,GET/orders401 ePOST/orders com rejeição própria;nenhuma interação com serviço de pagamento. Revisão de SecurityConfig confirmou matcher exclusivo `/admin/orders/*/payments`,cadeias GET/HEAD/orders e/admin/** próprias;advice limitado a AdminPaymentController e fallback global de405/406/415 somente no path de pagamento. |
+
+Rejeições conferem snapshots completos de oito tabelas e SQL observado; o núcleo registrou ainda14 T013_REJECTION e32 T013_CLEANUP, após as respectivas asserções. Limpeza seletiva exercitada sem alterar seed/DB/perfil/mapper globais. Os três oráculos conservam a comparação integral da árvore e isIntegralNumber;nenhuma asserção de autorização,janela,histórico ou ausência de mutação foi alterada. **Não houve falha nova a diagnosticar ou corrigir;nenhum Java ou componente produtivo recebeu edição.**
+
+Os **50 controles adicionais do parser continuam sendo a execução isolada histórica da T017**, com fonte/comando/console próprios em RESUME-T017, exit0. Não foram reexecutados nem incluídos nas839 invocações JUnit desta T018. O diagnóstico anterior839/814/25/exit1 e os focais470/470 permanecem registros separados e preservados.
+
+### Limites e fechamento exclusivo da T018
+
+Checkpoint C2 aprovado localmente na seleção e revisão descritas;nenhuma execução CI/Linux nesta tarefa. HTTP de autorização/entrada/US1 usa serviço e H2 reais;fronteira96 e MVC122 usam serviço simulado. DTO/serviço unitários não provam commit por si sós. A espera física e JDBC independente comprovam o H2 observado,não outro banco nem revogação posterior à última guarda. SQL observado é preparação Hibernate;snapshots não detectam toda mudança transitória revertida. Contagens JUnit não equivalem a contagem de requests ou pagamentos. Os controles vizinhos e revisão de matcher não substituem a suíte completa de consultas007/produtos ou as histórias posteriores.
+
+T019–T036 permanecem abertas:sem antecipar concorrência US3,failpoints/rollback/transporte US4,leituras PAID US5 ou FINAL. Contratos008 continuam alvos planned;sem publicação de vigência ou declaração de entrega da Feature008. BASE e suíte completa não foram repetidas.
+
+Acrescentada somente esta seção ao quickstart, preservando seu prefixo recebido byte a byte; em tasks.md,alterado somente o marcador T018 para[X]. **T001–T018[X],T019–T036 abertas:18 concluídas/18 abertas.** Revisados diff incremental,conteúdo/referências dos seis Java recebidos,links locais e whitespace;`git diff --check` exit0 e seis verificações `git -c core.autocrlf=false diff --no-index --check -- /dev/null <Java>` sem diagnóstico (exit1 pelo arquivo novo). REVIEW-T018/final-review.json registra preservação por SHA-256 dos352 demais arquivos recebidos e das2.155 evidências inventariadas, incluindo oráculos e controles anteriores.
+
+Git final mantém raiz/branch/HEAD/seleção e main;somente quickstart.md/tasks.md modificados e os mesmos seis Java não rastreados;nada staged. Sem stage,commit,push,merge ou alteração de main. Pendência seguinte:T019,fora do escopo executado.

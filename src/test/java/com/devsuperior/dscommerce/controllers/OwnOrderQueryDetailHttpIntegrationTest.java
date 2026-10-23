@@ -70,6 +70,22 @@ class OwnOrderQueryDetailHttpIntegrationTest extends OwnOrderQueryDetailHttpTest
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 abstract class OwnOrderQueryDetailHttpTestSupport {
 
+    @ParameterizedTest(name = "post008 PAID historical total {0}")
+    @ValueSource(strings = {"42.50", "0.01", "9007199254740993.01"})
+    void detailPost008RealPaymentKeepsCurrentNamesRecordedItemsAndExactMoney(String amount) {
+        try (var journey = new PaidOwnOrderHttpJourney(context, mapper, port, expectedContextPath(), sql)) {
+            journey.prepare("client");
+            var target = journey.orders.stream().filter(order -> order.total().equals(amount)).findFirst().orElseThrow();
+            journey.assertDetail(journey.ownerToken, target);
+            journey.pay(target, FIRST_INSTANT.plusSeconds(7200));
+            journey.renameCurrentCatalog();
+            journey.assertPages();
+            journey.assertDetail(journey.ownerToken, journey.order(target.id()));
+            journey.assertDetail(journey.ownerToken, journey.order(target.id()));
+            journey.assertHead("/orders/" + target.id(), journey.ownerToken, 200);
+        }
+    }
+
     private static final DateTimeFormatter INSTANT = DateTimeFormatter
             .ofPattern("uuuu-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(ZoneOffset.UTC);
     private static final Set<String> PAGE_FIELDS = Set.of("content", "page", "size", "totalElements", "totalPages");

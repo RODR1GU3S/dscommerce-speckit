@@ -16,10 +16,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.json.JsonTest;
 import org.springframework.context.ApplicationContext;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -281,6 +284,80 @@ class OwnOrderQueryDtoContractTest {
                 Stream.of("", "0.00", "-1.00", "1", "1.0", "1.000", "1.001", "1e2", "1E+2", "01.00",
                         "1,00", "1,000.00", "100000000000000000.00", " 1.00", "1.00 ", "+1.00", "NaN", "Infinity"))
                 .map(amount -> Arguments.of(field, amount)));
+    }
+
+    /** Feature 008 target; the 007 document remains the historical source, not an alternative PAID schema. */
+    @Test
+    void post008ContractExtendsOnlyStoredStatusesAndKeepsClosedQueryShapes() throws Exception {
+        var target = Files.readString(Path.of("specs/008-registrar-pagamento/contracts/own-orders-openapi.yaml"));
+        var historical = Files.readString(Path.of("specs/007-consultar-meus-pedidos/contracts/own-orders-openapi.yaml"));
+        assertThat(target).contains("x-origin-contract: ../../007-consultar-meus-pedidos/contracts/own-orders-openapi.yaml",
+                "version: 0.2.0");
+        for (var schema : List.of("OwnOrderSummary", "OwnOrderDetail")) {
+            assertThat(schemaBlock(target, schema)).contains("additionalProperties: false",
+                    "enum: [WAITING_PAYMENT, PAID]");
+            assertThat(schemaBlock(historical, schema)).contains("enum: [WAITING_PAYMENT]")
+                    .doesNotContain("enum: [WAITING_PAYMENT, PAID]");
+        }
+        assertThat(schemaBlock(target, "OwnOrderSummary")).contains("required: [id, createdAt, status, total]");
+        assertThat(schemaBlock(target, "OwnOrderDetail")).contains("required: [id, createdAt, status, total, items]");
+        assertThat(schemaBlock(target, "OwnOrderItem")).contains("additionalProperties: false",
+                "required: [productId, productName, quantity, unitPrice, subtotal]");
+        assertThat(schemaBlock(target, "OwnOrderPage")).contains("additionalProperties: false",
+                "required: [content, page, size, totalElements, totalPages]");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"0.01", "0.10", "0.99", "1.00", "42.50", "10000000.00",
+            "9007199254740993.01", "99999999999999999.98", "99999999999999999.99"})
+    void paidSummaryAndDetailKeepPost008FieldsAndExactMoneyWithoutPaymentData(String amount) throws Exception {
+        var summary = new OwnOrderSummaryDTO(Long.MAX_VALUE, CREATED_AT, OrderStatus.PAID, amount);
+        var detail = new OwnOrderDetailDTO(Long.MAX_VALUE, CREATED_AT, OrderStatus.PAID, amount,
+                List.of(new OwnOrderItemDTO(8L, "Nome atual", 1, amount, amount)));
+        var summaryJson = json(summary);
+        var detailJson = json(detail);
+        assertFields(summaryJson, "id", "createdAt", "status", "total");
+        assertFields(detailJson, "id", "createdAt", "status", "total", "items");
+        assertInteger(summaryJson.get("id"), Long.MAX_VALUE);
+        assertText(summaryJson.get("createdAt"), "2026-10-08T15:00:00.123Z");
+        assertText(summaryJson.get("status"), "PAID");
+        assertText(summaryJson.get("total"), amount);
+        for (var field : List.of("id", "createdAt", "status", "total")) {
+            assertThat(detailJson.get(field)).isEqualTo(summaryJson.get(field));
+        }
+        assertThat(detailJson.get("items").size()).isEqualTo(1);
+        assertItem(detailJson.get("items").get(0), 8L, "Nome atual", 1, amount, amount);
+        assertThat(mapper.readValue(mapper.writeValueAsBytes(summary), OwnOrderSummaryDTO.class)).isEqualTo(summary);
+        assertThat(mapper.readValue(mapper.writeValueAsBytes(detail), OwnOrderDetailDTO.class)).isEqualTo(detail);
+    }
+
+    @Test
+    void mixedPaidAndWaitingDtosKeepSuppliedPageMetadataAndRecordedItemSequence() throws Exception {
+        var paid = new OwnOrderSummaryDTO(9L, CREATED_AT, OrderStatus.PAID, "42.50");
+        var value = json(new PageResponseDTO<>(List.of(paid, summary(3L, "0.01")), 0, 2, 5L, 3));
+        assertPage(value, 0, 2, 5L, 3);
+        assertThat(value.get("content").size()).isEqualTo(2);
+        assertFields(value.get("content").get(0), "id", "createdAt", "status", "total");
+        assertThat(value.get("content").get(0)).isEqualTo(json(paid));
+        assertSummary(value.get("content").get(1), 3L, "0.01");
+        var detail = json(new OwnOrderDetailDTO(9L, CREATED_AT, OrderStatus.PAID, "42.50", List.of(
+                new OwnOrderItemDTO(8L, "B atual", 2, "10.00", "20.00"),
+                new OwnOrderItemDTO(3L, " A atual ", 3, "7.50", "22.50"))));
+        assertFields(detail, "id", "createdAt", "status", "total", "items");
+        for (var field : List.of("id", "createdAt", "status", "total")) {
+            assertThat(detail.get(field)).isEqualTo(value.get("content").get(0).get(field));
+        }
+        assertThat(detail.get("items").size()).isEqualTo(2);
+        assertItem(detail.get("items").get(0), 8L, "B atual", 2, "10.00", "20.00");
+        assertItem(detail.get("items").get(1), 3L, " A atual ", 3, "7.50", "22.50");
+        // Supplied JSON values only: persistence, ownership and ordering are exercised by the JPA/service variants.
+    }
+
+    private static String schemaBlock(String document, String schema) {
+        var matcher = Pattern.compile("(?ms)^    " + Pattern.quote(schema)
+                + ":\\n(.*?)(?=^    [A-Za-z][A-Za-z0-9]*:|\\z)").matcher(document.replace("\r\n", "\n"));
+        assertThat(matcher.find()).as("Named local OpenAPI schema must exist").isTrue();
+        return matcher.group(1);
     }
 
     static Stream<String> detailCurrentNames() {

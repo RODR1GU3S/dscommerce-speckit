@@ -4,13 +4,20 @@ import com.devsuperior.dscommerce.DscommerceApplication;
 import com.devsuperior.dscommerce.config.AdminProductTestConfig;
 import com.devsuperior.dscommerce.config.OwnOrderQueryTestObservationConfig;
 import com.devsuperior.dscommerce.dto.TokenResponseDTO;
+import com.devsuperior.dscommerce.entities.UserRole;
+import com.devsuperior.dscommerce.fixtures.AdminProductDatabaseProbe.OrderRow;
+import com.devsuperior.dscommerce.fixtures.AdminProductDatabaseProbe.ProductRow;
 import com.devsuperior.dscommerce.fixtures.AdminProductDatabaseProbe.SqlObservation;
 import com.devsuperior.dscommerce.fixtures.AdminProductTestFixture.Account;
+import com.devsuperior.dscommerce.fixtures.AdminProductTestFixture.ProductData;
 import com.devsuperior.dscommerce.fixtures.OwnOrderQueryDatabaseProbe;
 import com.devsuperior.dscommerce.fixtures.OwnOrderQueryTestFixture;
 import com.devsuperior.dscommerce.fixtures.OwnOrderQueryTestFixture.ItemInput;
 import com.devsuperior.dscommerce.fixtures.OwnOrderQueryTestFixture.OrderManifest;
 import com.devsuperior.dscommerce.fixtures.OwnOrderQueryTestFixture.Scenario;
+import com.devsuperior.dscommerce.fixtures.PaymentRegistrationDatabaseProbe;
+import com.devsuperior.dscommerce.fixtures.PaymentRegistrationDatabaseProbe.PaymentRow;
+import com.devsuperior.dscommerce.fixtures.PaymentRegistrationTestFixture;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterAll;
@@ -32,6 +39,9 @@ import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.context.WebApplicationContext;
 
 import java.io.IOException;
@@ -43,6 +53,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -55,6 +66,7 @@ import java.util.stream.Stream;
 
 import static com.devsuperior.dscommerce.fixtures.OwnOrderQueryTestFixture.FIRST_INSTANT;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest(classes = DscommerceApplication.class, webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {"server.servlet.context-path=", "spring.jpa.open-in-view=false",
@@ -70,6 +82,24 @@ class OwnOrderQueryListHttpIntegrationTest extends OwnOrderQueryListHttpTestSupp
 /** Shared US1 assertions only; does not inherit or rerun the authenticationGate tests of F0. */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 abstract class OwnOrderQueryListHttpTestSupport {
+
+    @Test
+    void listPost008PaidOldPurchaseKeepsTwoTwoOneCreationIdOrderAndOwnCount() {
+        try (var journey = new PaidOwnOrderHttpJourney(context, mapper, port, expectedContextPath(), sql)) {
+            journey.prepare("client");
+            journey.assertPages();
+            var oldest = journey.orders.getLast();
+            var newest = journey.orders.getFirst();
+            // The oldest purchase is paid later in occurrence time; neither payment changes creation order.
+            journey.pay(oldest, FIRST_INSTANT.plusSeconds(7200));
+            journey.pay(newest, FIRST_INSTANT.plusSeconds(120));
+            journey.pay(journey.orders.get(2), FIRST_INSTANT.plusSeconds(180));
+            journey.assertPages();
+            journey.assertDetail(journey.ownerToken, journey.order(oldest.id()));
+            journey.assertPage(journey.emptyToken, 0, 2, List.of(), "");
+            journey.assertPage(journey.emptyToken, 3, 2, List.of(), "");
+        }
+    }
 
     private static final DateTimeFormatter INSTANT = DateTimeFormatter
             .ofPattern("uuuu-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(ZoneOffset.UTC);
@@ -428,5 +458,329 @@ abstract class OwnOrderQueryListHttpTestSupport {
     record AliasCase(String label, String query) { @Override public String toString() { return label; } }
     record PageCase(String label, String query, int page, int size, int from, int to, int pages) {
         @Override public String toString() { return label; }
+    }
+}
+
+/** T029 composition shared by list/detail/security and inherited ROOT/Api cases; no test discovery here. */
+final class PaidOwnOrderHttpJourney implements AutoCloseable {
+
+    private static final DateTimeFormatter INSTANT = DateTimeFormatter
+            .ofPattern("uuuu-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(ZoneOffset.UTC);
+    private final WebApplicationContext context;
+    private final ObjectMapper mapper;
+    private final int port;
+    private final String contextPath;
+    private final String databaseUrl;
+    private final SqlObservation sql;
+    private final HttpClient http;
+    private final PaymentRegistrationDatabaseProbe database;
+    private final PaymentRegistrationDatabaseProbe.Snapshot received;
+    private final PaymentRegistrationTestFixture fixture;
+    private final Map<Long, String> currentNames = new HashMap<>();
+    private ProductData a;
+    private ProductData b;
+    Account owner;
+    private Account payer;
+    String ownerToken;
+    String payerToken;
+    String deniedToken;
+    String emptyToken;
+    List<OrderManifest> orders;
+    OrderManifest payerOrder;
+
+    PaidOwnOrderHttpJourney(WebApplicationContext context, ObjectMapper mapper, int port,
+                            String contextPath, SqlObservation sql) {
+        outsideTransaction();
+        this.context = context;
+        this.mapper = mapper;
+        this.port = port;
+        this.contextPath = contextPath;
+        this.sql = sql;
+        databaseUrl = context.getEnvironment().getRequiredProperty("spring.datasource.url");
+        assertThat(databaseUrl).startsWith("jdbc:h2:mem:admin-product-test-");
+        assertThat(context.getServletContext().getContextPath()).isEqualTo(contextPath);
+        assertThat(port).isPositive();
+        database = new PaymentRegistrationDatabaseProbe(databaseUrl);
+        received = database.snapshot();
+        fixture = new PaymentRegistrationTestFixture(context);
+        http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10))
+                .followRedirects(HttpClient.Redirect.NEVER).build();
+        // No insertion here: preparation below is always inside the caller's try-with-resources.
+    }
+
+    void prepare(String identity) {
+        outsideTransaction();
+        var accounts = fixture.prepareAccessAccounts();
+        owner = switch (identity) {
+            case "client" -> accounts.client();
+            case "admin" -> accounts.admin();
+            case "both" -> accounts.both();
+            default -> throw new AssertionError("Use an authorized own-order identity");
+        };
+        payer = owner.id() == accounts.admin().id()
+                ? fixture.createAccount("us5-payer-" + java.util.UUID.randomUUID(), "password123", Set.of(UserRole.ADMIN))
+                : accounts.admin();
+        assertThat(payer.id()).isNotEqualTo(owner.id());
+        assertThat(payer.roles()).containsExactly(UserRole.ADMIN);
+        var otherBuyer = fixture.prepareBuyer();
+        var emptyBuyer = fixture.prepareBuyer();
+        a = fixture.createProduct("Produto A anterior", new BigDecimal("99.00"));
+        b = fixture.createProduct("Produto B anterior", new BigDecimal("12.00"));
+        assertThat(b.id()).isGreaterThan(a.id());
+        currentNames.put(a.id(), a.name());
+        currentNames.put(b.id(), b.name());
+        var oldest = fixture.createOrder(owner, FIRST_INSTANT,
+                List.of(new ItemInput(b.id(), 2, "10.00", "20.00"),
+                        new ItemInput(a.id(), 3, "7.50", "22.50")), "42.50");
+        var middle = fixture.createOrder(owner, FIRST_INSTANT.plusSeconds(10),
+                List.of(new ItemInput(b.id(), 2, "10.00", "20.00")), "20.00");
+        var tiedFirst = fixture.createOrder(owner, FIRST_INSTANT.plusSeconds(60),
+                List.of(new ItemInput(a.id(), 1, "0.01", "0.01")), "0.01");
+        var tiedSecond = fixture.createOrder(owner, FIRST_INSTANT.plusSeconds(60),
+                List.of(new ItemInput(b.id(), 1, "9007199254740993.01", "9007199254740993.01")), "9007199254740993.01");
+        var tiedLast = fixture.createOrder(owner, FIRST_INSTANT.plusSeconds(60),
+                List.of(new ItemInput(a.id(), 1, "15.25", "15.25")), "15.25");
+        assertThat(tiedLast.id()).isGreaterThan(tiedSecond.id());
+        assertThat(tiedSecond.id()).isGreaterThan(tiedFirst.id());
+        orders = List.of(tiedLast, tiedSecond, tiedFirst, middle, oldest);
+        payerOrder = fixture.createOrder(payer, FIRST_INSTANT.plusSeconds(60),
+                List.of(new ItemInput(a.id(), 1, "3.33", "3.33")), "3.33");
+        fixture.createOrder(otherBuyer, FIRST_INSTANT.plusSeconds(5),
+                List.of(new ItemInput(b.id(), 1, "4.00", "4.00")), "4.00");
+        ownerToken = login(owner);
+        payerToken = login(payer);
+        deniedToken = login(accounts.none());
+        emptyToken = login(emptyBuyer);
+        System.out.println("T029_CONTEXT path=" + (contextPath.isEmpty() ? "ROOT" : contextPath)
+                + " port=" + port + " database=" + databaseUrl.split(";", 2)[0]
+                + " owner=" + identity + " scenarioOwnOrders=5 scenarioForeignOrders=2 mockMvcDispatches=0");
+    }
+
+    void pay(OrderManifest target, Instant occurrence) {
+        outsideTransaction();
+        assertThat(fixture.ownedOrderIds()).contains(target.id());
+        assertThat(target.buyerId()).isEqualTo(owner.id());
+        assertThat(target.status()).isEqualTo("WAITING_PAYMENT");
+        var before = database.snapshot();
+        var path = "/admin/orders/" + target.id() + "/payments";
+        var response = send(HttpRequest.newBuilder(uri(path)).timeout(Duration.ofSeconds(30))
+                .header("Authorization", "Bearer " + payerToken).header("Content-Type", "application/json")
+                .header("Accept", "application/json").POST(HttpRequest.BodyPublishers.ofByteArray(
+                        bytes(Map.of("occurredAt", INSTANT.format(occurrence))))).build());
+        assertThat(response.statusCode()).as("T029 real payment HTTP status").isEqualTo(201);
+        assertThat(response.headers().firstValue("Content-Type").orElse("")).startsWith("application/json");
+        assertThat(response.headers().allValues("Location")).isEmpty();
+        assertThat(response.headers().allValues("WWW-Authenticate")).isEmpty();
+        assertJson(json(response), mapper.createObjectNode().put("orderId", target.id())
+                .put("occurredAt", INSTANT.format(occurrence)).put("status", "PAID"));
+        // New driver connections after the actual HTTP response, without a caller transaction.
+        var after = database.snapshot();
+        assertThat(after.payments()).containsExactlyInAnyOrderElementsOf(Stream.concat(before.payments().stream(),
+                Stream.of(new PaymentRow(target.id(), occurrence))).toList());
+        assertThat(after.previous().data().orders()).isEqualTo(before.previous().data().orders().stream()
+                .map(row -> row.id() == target.id()
+                        ? new OrderRow(row.id(), row.buyerId(), row.createdAt(), "PAID") : row).toList());
+        // This probe reports every changed table, including opaque account columns and profiles.
+        assertThatThrownBy(() -> OwnOrderQueryDatabaseProbe.assertUnchanged(before.previous(), after.previous()))
+                .isInstanceOf(AssertionError.class).hasMessage("Observed database state changed: tb_order");
+        orders = orders.stream().map(order -> order.id() == target.id()
+                ? new OrderManifest(order.id(), order.buyerId(), order.createdAt(), "PAID", order.total(), order.items())
+                : order).toList();
+        System.out.println("T029_PAYMENT path=" + contextPath + path
+                + " status=201 independentPaymentAndPaid=true allowedChangedTables=tb_order,tb_payment");
+    }
+
+    OrderManifest order(long id) {
+        return orders.stream().filter(order -> order.id() == id).findFirst().orElseThrow();
+    }
+
+    void assertPages() {
+        var visited = new ArrayList<Long>();
+        for (int page = 0; page < 3; page++) {
+            var result = assertPage(ownerToken, page, 2, orders, "&sort=occurredAt,desc&buyerId=" + payer.id());
+            result.get("content").forEach(row -> visited.add(row.get("id").longValue()));
+        }
+        assertThat(visited).containsExactlyElementsOf(orders.stream().map(OrderManifest::id).toList());
+        assertThat(new HashSet<>(visited)).hasSize(5);
+        assertPage(ownerToken, 3, 2, orders, "");
+    }
+
+    JsonNode assertPage(String token, int page, int size, List<OrderManifest> expectedOrders, String extra) {
+        var actual = json(read("GET", "/orders?page=" + page + "&size=" + size + extra, token, 200));
+        var expected = mapper.createObjectNode().put("page", page).put("size", size)
+                .put("totalElements", expectedOrders.size()).put("totalPages", (expectedOrders.size() + size - 1) / size);
+        var content = expected.putArray("content");
+        expectedOrders.stream().skip((long) page * size).limit(size).forEach(order -> content.add(header(order)));
+        assertJson(actual, expected);
+        return actual;
+    }
+
+    void assertDetail(String token, OrderManifest order) {
+        var expected = header(order);
+        var items = expected.putArray("items");
+        for (var item : order.items()) {
+            items.addObject().put("productId", item.productId()).put("productName", currentNames.get(item.productId()))
+                    .put("quantity", item.quantity()).put("unitPrice", item.unitPrice()).put("subtotal", item.subtotal());
+        }
+        assertJson(json(read("GET", "/orders/" + order.id(), token, 200)), expected);
+    }
+
+    private com.fasterxml.jackson.databind.node.ObjectNode header(OrderManifest order) {
+        // Equality of the complete wire object rejects Payment, occurrence, buyer and any other added key.
+        return mapper.createObjectNode().put("id", order.id()).put("createdAt", INSTANT.format(order.createdAt()))
+                .put("status", order.status()).put("total", order.total());
+    }
+
+    void renameCurrentCatalog() {
+        outsideTransaction();
+        var before = database.snapshot();
+        var committed = new TransactionTemplate(context.getBean(PlatformTransactionManager.class));
+        committed.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        committed.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
+        var jdbc = context.getBean(JdbcTemplate.class);
+        committed.executeWithoutResult(status -> {
+            assertThat(jdbc.update("update tb_product set name = ?, price = ? where id = ?",
+                    "Á", new BigDecimal("0.00"), a.id())).isEqualTo(1);
+            assertThat(jdbc.update("update tb_product set name = ?, price = ? where id = ?",
+                    " Nome atual B ", new BigDecimal("37.00"), b.id())).isEqualTo(1);
+        });
+        var after = database.snapshot();
+        assertThat(after.payments()).isEqualTo(before.payments());
+        assertThat(after.previous().data().products()).isEqualTo(before.previous().data().products().stream().map(row -> {
+            if (row.id() == a.id()) {
+                return new ProductRow(row.id(), "Á", row.description(), row.image(), new BigDecimal("0.00"));
+            }
+            if (row.id() == b.id()) {
+                return new ProductRow(row.id(), " Nome atual B ", row.description(), row.image(), new BigDecimal("37.00"));
+            }
+            return row;
+        }).toList());
+        assertThatThrownBy(() -> OwnOrderQueryDatabaseProbe.assertUnchanged(before.previous(), after.previous()))
+                .isInstanceOf(AssertionError.class).hasMessage("Observed database state changed: tb_product");
+        currentNames.put(a.id(), "Á");
+        currentNames.put(b.id(), " Nome atual B ");
+    }
+
+    void assertForeignEqualsAbsent(long foreignId) {
+        assertThat(database.snapshot().previous().data().orders()).noneMatch(row -> row.id() == Long.MAX_VALUE);
+        JsonNode previous = null;
+        for (var id : List.of(foreignId, Long.MAX_VALUE)) {
+            var path = "/orders/" + id + "?private=must-not-appear&buyerId=" + owner.id();
+            var error = assertError("GET", path, payerToken, 404, "Not Found", "Order not found");
+            var withoutPath = (com.fasterxml.jackson.databind.node.ObjectNode) error.deepCopy();
+            withoutPath.remove("path");
+            if (previous != null) { assertThat(withoutPath).isEqualTo(previous); }
+            previous = withoutPath;
+            assertError("HEAD", path, payerToken, 404, "Not Found", "Order not found");
+        }
+    }
+
+    JsonNode assertError(String method, String path, String token, int status, String error, String message) {
+        var response = read(method, path, token, status);
+        assertThat(response.headers().allValues("WWW-Authenticate"))
+                .containsExactlyElementsOf(status == 401 ? List.of("Bearer") : List.of());
+        if (method.equals("HEAD")) { assertThat(response.body()).isEmpty(); return null; }
+        var actual = json(response);
+        assertJson(actual, mapper.createObjectNode().put("status", status).put("error", error)
+                .put("message", message).put("path", contextPath + path.split("\\?", 2)[0]));
+        return actual;
+    }
+
+    void assertHead(String path, String token, int expectedStatus) {
+        var response = read("HEAD", path, token, expectedStatus);
+        assertThat(response.body()).isEmpty();
+        assertThat(response.headers().allValues("WWW-Authenticate")).isEmpty();
+    }
+
+    private HttpResponse<byte[]> read(String method, String path, String token, int expectedStatus) {
+        outsideTransaction();
+        assertThat(method).isIn("GET", "HEAD");
+        var builder = HttpRequest.newBuilder(uri(path)).timeout(Duration.ofSeconds(30))
+                .header("Accept", "application/json").method(method, HttpRequest.BodyPublishers.noBody());
+        if (token != null) { builder.header("Authorization", "Bearer " + token); }
+        var before = database.snapshot();
+        sql.clear();
+        var response = send(builder.build());
+        var events = sql.events();
+        var after = database.snapshot();
+        new OwnOrderQueryDatabaseProbe.Observation<>(response, before.previous(), after.previous(), events).assertNoWrites();
+        PaymentRegistrationDatabaseProbe.assertUnchanged(before, after);
+        for (var event : events) {
+            if (event.sql() != null && event.sql().matches("(?is).*\\btb_payment\\b.*")) {
+                throw new AssertionError("Own-order HTTP query must not read the payment table");
+            }
+        }
+        assertThat(response.statusCode()).as("T029 own-order HTTP status").isEqualTo(expectedStatus);
+        assertThat(response.headers().firstValue("Content-Type").orElse("")).startsWith("application/json");
+        assertThat(response.headers().allValues("WWW-Authenticate"))
+                .containsExactlyElementsOf(expectedStatus == 401 ? List.of("Bearer") : List.of());
+        System.out.println("T029_READ method=" + method + " path=" + contextPath + path.split("\\?", 2)[0]
+                + " expected=" + expectedStatus + " actual=" + response.statusCode()
+                + " bodyBytes=" + response.body().length + " snapshotTables=8 mockMvcDispatches=0");
+        return response;
+    }
+
+    private String login(Account account) {
+        outsideTransaction();
+        var roles = database.snapshot().previous().roles().stream().filter(row -> row.accountId() == account.id())
+                .map(OwnOrderQueryDatabaseProbe.AccountRole::role).collect(java.util.stream.Collectors.toSet());
+        assertThat(roles).containsExactlyInAnyOrderElementsOf(account.roles());
+        var response = send(HttpRequest.newBuilder(uri("/login")).timeout(Duration.ofSeconds(30))
+                .header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofByteArray(
+                        bytes(Map.of("name", account.name(), "password", account.password())))).build());
+        assertThat(response.statusCode()).as("T029 real HTTP login status").isEqualTo(200);
+        try {
+            var credential = mapper.readValue(response.body(), TokenResponseDTO.class);
+            assertThat(credential.tokenType()).isEqualTo("Bearer");
+            assertThat(credential.accessToken()).isNotBlank();
+            var jwt = context.getBean(JwtDecoder.class).decode(credential.accessToken());
+            assertThat(jwt.getSubject()).isEqualTo(Long.toString(account.id()));
+            return credential.accessToken();
+        } catch (IOException | JwtException failure) { throw new AssertionError("T029 requires a valid real login credential"); }
+    }
+
+    private HttpResponse<byte[]> send(HttpRequest request) {
+        try { return http.send(request, HttpResponse.BodyHandlers.ofByteArray()); }
+        catch (InterruptedException failure) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("T029 real HTTP transport interrupted");
+        } catch (IOException failure) { throw new IllegalStateException("T029 real HTTP transport could not complete"); }
+    }
+
+    private URI uri(String path) { return URI.create("http://localhost:" + port + contextPath + path); }
+
+    private JsonNode json(HttpResponse<byte[]> response) {
+        try { return mapper.readTree(response.body()); }
+        catch (IOException failure) { throw new AssertionError("T029 requires valid wire JSON"); }
+    }
+
+    private byte[] bytes(Object value) {
+        try { return mapper.writeValueAsBytes(value); }
+        catch (IOException failure) { throw new AssertionError("T029 fixture JSON must be serializable"); }
+    }
+
+    private void assertJson(JsonNode actual, JsonNode expected) {
+        try {
+            // Normalize numeric nodes through wire JSON, preserving exact string money and all closed keys.
+            if (actual == null || !actual.equals(mapper.readTree(mapper.writeValueAsBytes(expected)))) {
+                throw new AssertionError("T029 expected exact own-order fields, owner, order, values and metadata");
+            }
+        } catch (IOException failure) { throw new AssertionError("T029 JSON oracle must be serializable"); }
+    }
+
+    private static void outsideTransaction() {
+        if (TransactionSynchronizationManager.isActualTransactionActive()
+                || TransactionSynchronizationManager.isSynchronizationActive()) {
+            throw new AssertionError("T029 real HTTP setup/read/cleanup requires no caller transaction");
+        }
+    }
+
+    @Override public void close() {
+        outsideTransaction();
+        try {
+            fixture.close(); // Owned Payment first, then owned items/orders/accounts/catalog; never global DELETE.
+            PaymentRegistrationDatabaseProbe.assertUnchanged(received, database.snapshot());
+            assertThat(context.getEnvironment().getRequiredProperty("spring.datasource.url")).isEqualTo(databaseUrl);
+        } finally { http.close(); }
     }
 }

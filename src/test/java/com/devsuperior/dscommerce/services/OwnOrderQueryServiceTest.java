@@ -13,9 +13,13 @@ import com.devsuperior.dscommerce.entities.OrderItem;
 import com.devsuperior.dscommerce.entities.Product;
 import com.devsuperior.dscommerce.entities.UserAccount;
 import com.devsuperior.dscommerce.fixtures.AdminProductDatabaseProbe.SqlObservation;
+import com.devsuperior.dscommerce.fixtures.AdminProductDatabaseProbe.OrderRow;
 import com.devsuperior.dscommerce.fixtures.OwnOrderQueryDatabaseProbe;
 import com.devsuperior.dscommerce.fixtures.OwnOrderQueryTestFixture;
 import com.devsuperior.dscommerce.fixtures.OwnOrderQueryTestFixture.OrderManifest;
+import com.devsuperior.dscommerce.fixtures.OwnOrderQueryTestFixture.Scenario;
+import com.devsuperior.dscommerce.fixtures.PaymentRegistrationDatabaseProbe;
+import com.devsuperior.dscommerce.fixtures.PaymentRegistrationDatabaseProbe.PaymentRow;
 import com.devsuperior.dscommerce.repositories.OrderRepository;
 import com.devsuperior.dscommerce.security.AuthenticatedAccountPrincipal;
 import com.devsuperior.dscommerce.services.exceptions.OrderAccountResolutionException;
@@ -55,10 +59,15 @@ import org.springframework.web.context.WebApplicationContext;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.Callable;
 
+import static com.devsuperior.dscommerce.fixtures.OwnOrderQueryTestFixture.FIRST_INSTANT;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowable;
@@ -538,6 +547,194 @@ class OwnOrderQueryServiceTest {
         when(access.requireAccountId(any())).thenThrow(cause);
         assertThatThrownBy(() -> new OwnOrderQueryService(access, orders).detail(8, authentication(42))).isSameAs(cause);
         verifyNoInteractions(orders);
+    }
+
+    /** Feature 008 target: specs/008-registrar-pagamento/contracts/own-orders-openapi.yaml. */
+    @Test
+    void paidRealListAndDetailKeepCreationOrderInsteadOfPaymentOccurrence() throws Exception {
+        try (var fixture = new OwnOrderQueryTestFixture(context)) {
+            var scenario = fixture.preparePaginationScenario();
+            try (var paid = new PaidOrders(scenario.insertedOrders())) {
+                var oldest = scenario.expectedClientOrders().getLast();
+                paid.add(oldest, FIRST_INSTANT.plusSeconds(3600));
+                paid.add(scenario.expectedClientOrders().getFirst(), FIRST_INSTANT.plusSeconds(120));
+                var expected = scenario.expectedClientOrders().stream().map(paid::expected).toList();
+                var visited = new ArrayList<Long>();
+                for (int number = 0; number < 3; number++) {
+                    int pageNumber = number;
+                    var slice = expected.subList(number * 2, Math.min(number * 2 + 2, 5));
+                    var result = paid.unchanged(() -> realList(oldest.buyerId(), pageNumber, 2));
+                    assertPage(result, slice, number, 2, 5, 3);
+                    assertQueryFields(result, "content", "page", "size", "totalElements", "totalPages");
+                    for (var summary : result.content()) { assertQueryFields(summary, "id", "createdAt", "status", "total"); }
+                    visited.addAll(result.content().stream().map(OwnOrderSummaryDTO::id).toList());
+                }
+                assertThat(visited).containsExactlyElementsOf(expected.stream().map(OrderManifest::id).toList()).doesNotHaveDuplicates();
+                assertThat(visited.getLast()).isEqualTo(oldest.id());
+                assertPage(paid.unchanged(() -> realList(oldest.buyerId(), 3, 2)), List.of(), 3, 2, 5, 3);
+                assertPage(paid.unchanged(() -> realList(scenario.emptyBuyer().id(), 0, 2)), List.of(), 0, 2, 0, 0);
+                var detail = paid.unchanged(() -> realDetail(oldest.buyerId(), oldest.id()));
+                assertDetailDto(detail, paid.expected(oldest), oldest.items().stream().map(item -> item.productName()).toList());
+                assertPaidDetailFields(detail);
+            }
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"client", "other", "admin", "both"})
+    void paidRealContentAndCountStayOwnAndForeignDetailMatchesAbsentEvenForAdmin(String identity) throws Exception {
+        try (var fixture = new OwnOrderQueryTestFixture(context)) {
+            var scenario = fixture.preparePaginationScenario();
+            try (var paid = new PaidOrders(scenario.insertedOrders())) {
+                for (var order : scenario.insertedOrders()) { paid.add(order, FIRST_INSTANT.plusSeconds(120)); }
+                var expected = paidOwned(scenario, identity).stream().map(paid::expected).toList();
+                var owner = expected.getFirst().buyerId();
+                var result = paid.unchanged(() -> realList(owner, 0, 1));
+                assertPage(result, List.of(expected.getFirst()), 0, 1, expected.size(), expected.size());
+                assertQueryFields(result, "content", "page", "size", "totalElements", "totalPages");
+                assertQueryFields(result.content().getFirst(), "id", "createdAt", "status", "total");
+                var detail = paid.unchanged(() -> realDetail(owner, expected.getFirst().id()));
+                assertDetailDto(detail, expected.getFirst(), expected.getFirst().items().stream().map(item -> item.productName()).toList());
+                assertPaidDetailFields(detail);
+                for (var foreign : scenario.insertedOrders()) {
+                    if (foreign.buyerId() == owner) { continue; }
+                    paid.unchanged(() -> {
+                        detailRealFailure(foreign.id(), authentication(owner), OwnOrderNotFoundException.class, true);
+                        return null;
+                    });
+                }
+                paid.unchanged(() -> {
+                    detailRealFailure(Long.MAX_VALUE, authentication(owner), OwnOrderNotFoundException.class, true);
+                    return null;
+                });
+            }
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"42.50", "0.01", "9007199254740993.01"})
+    void paidRealDetailKeepsCurrentNamesCreationAndRecordedMoney(String amount) throws Exception {
+        try (var fixture = new OwnOrderQueryTestFixture(context)) {
+            var scenario = fixture.preparePaginationScenario();
+            try (var paid = new PaidOrders(scenario.insertedOrders())) {
+                var original = scenario.expectedClientOrders().stream().filter(order -> order.total().equals(amount)).findFirst().orElseThrow();
+                var expected = paid.add(original, FIRST_INSTANT.plusSeconds(120));
+                var names = Map.of(scenario.productA().id(), " A atual após quitação ",
+                        scenario.productB().id(), "B atual após quitação");
+                noTransaction();
+                var catalogSetup = new TransactionTemplate(transactions);
+                catalogSetup.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+                catalogSetup.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
+                catalogSetup.executeWithoutResult(status -> {
+                    assertThat(status.isNewTransaction()).isTrue();
+                    assertThat(jdbc.update("update tb_product set name = ?, price = ? where id = ?",
+                            names.get(scenario.productA().id()), BigDecimal.ZERO, scenario.productA().id())).isEqualTo(1);
+                    assertThat(jdbc.update("update tb_product set name = ?, price = ? where id = ?",
+                            names.get(scenario.productB().id()), new BigDecimal("37.00"), scenario.productB().id())).isEqualTo(1);
+                });
+                var detail = paid.unchanged(() -> realDetail(original.buyerId(), original.id()));
+                assertDetailDto(detail, expected, original.items().stream().map(item -> names.get(item.productId())).toList());
+                assertPaidDetailFields(detail);
+                assertThat(detail.createdAt()).isEqualTo(original.createdAt());
+                assertThat(detail.total()).isEqualTo(amount);
+            }
+        }
+    }
+
+    private static List<OrderManifest> paidOwned(Scenario scenario, String identity) {
+        return switch (identity) {
+            case "client" -> scenario.expectedClientOrders();
+            case "other" -> List.of(scenario.insertedOrders().get(5), scenario.insertedOrders().get(1));
+            case "admin" -> List.of(scenario.insertedOrders().get(3));
+            case "both" -> List.of(scenario.insertedOrders().get(7));
+            default -> throw new IllegalArgumentException("Unknown owned fixture identity");
+        };
+    }
+
+    private void assertPaidDetailFields(OwnOrderDetailDTO detail) throws Exception {
+        assertQueryFields(detail, "id", "createdAt", "status", "total", "items");
+        assertThat(detail.status().name()).isEqualTo("PAID");
+        for (var item : detail.items()) { assertQueryFields(item, "productId", "productName", "quantity", "unitPrice", "subtotal"); }
+    }
+
+    private void assertQueryFields(Object value, String... expected) throws Exception {
+        noTransaction();
+        var beforeSerialization = sql.events();
+        var json = mapper.readTree(mapper.writeValueAsBytes(value));
+        assertThat(json.isObject()).isTrue();
+        var fields = new HashSet<String>();
+        json.fieldNames().forEachRemaining(fields::add);
+        assertThat(fields).containsExactlyInAnyOrder(expected);
+        assertThat(sql.events()).containsExactlyElementsOf(beforeSerialization);
+    }
+
+    /** Local test setup, not a payment endpoint/commit or authorization proof for the payer. */
+    private final class PaidOrders implements AutoCloseable {
+        private final List<OrderManifest> fixtureOrders;
+        private final List<Long> paidIds = new ArrayList<>();
+        private final PaymentRegistrationDatabaseProbe payments = new PaymentRegistrationDatabaseProbe(stableUrl);
+        private final List<PaymentRow> initialPayments = payments.snapshot().payments();
+
+        private PaidOrders(List<OrderManifest> fixtureOrders) { this.fixtureOrders = List.copyOf(fixtureOrders); }
+
+        private OrderManifest add(OrderManifest original, Instant occurredAt) {
+            noTransaction();
+            assertThat(fixtureOrders).contains(original);
+            assertThat(paidIds).doesNotContain(original.id());
+            assertThat(original.status()).isEqualTo("WAITING_PAYMENT");
+            assertThat(occurredAt).isAfterOrEqualTo(original.createdAt());
+            assertThat(occurredAt.getNano() % 1_000_000).isZero();
+            var before = payments.snapshot();
+            setup().executeWithoutResult(status -> {
+                assertThat(status.isNewTransaction()).isTrue();
+                assertThat(jdbc.update("insert into tb_payment (order_id, occurred_at) values (?, ?)",
+                        original.id(), occurredAt.atOffset(ZoneOffset.UTC))).isEqualTo(1);
+                assertThat(jdbc.update("update tb_order set status = ? where id = ? and status = ?",
+                        "PAID", original.id(), "WAITING_PAYMENT")).isEqualTo(1);
+            });
+            paidIds.add(original.id());
+            var after = payments.snapshot();
+            var expectedPayments = new ArrayList<>(before.payments());
+            expectedPayments.add(new PaymentRow(original.id(), occurredAt));
+            assertThat(after.payments()).containsExactlyInAnyOrderElementsOf(expectedPayments);
+            assertThat(after.previous().data().orders()).isEqualTo(before.previous().data().orders().stream()
+                    .map(row -> row.id() == original.id() ? new OrderRow(row.id(), row.buyerId(), row.createdAt(), "PAID") : row).toList());
+            assertThatThrownBy(() -> OwnOrderQueryDatabaseProbe.assertUnchanged(before.previous(), after.previous()))
+                    .isInstanceOf(AssertionError.class).hasMessage("Observed database state changed: tb_order");
+            return expected(original);
+        }
+
+        private OrderManifest expected(OrderManifest original) {
+            return paidIds.contains(original.id()) ? new OrderManifest(original.id(), original.buyerId(),
+                    original.createdAt(), "PAID", original.total(), original.items()) : original;
+        }
+
+        private <T> T unchanged(Callable<T> operation) throws Exception {
+            noTransaction();
+            var before = payments.snapshot();
+            try { return operation.call(); }
+            finally {
+                noTransaction();
+                PaymentRegistrationDatabaseProbe.assertUnchanged(before, payments.snapshot());
+                assertThat(sql.events()).noneSatisfy(event -> assertThat(event.sql()).contains("tb_payment"));
+            }
+        }
+
+        private TransactionTemplate setup() {
+            var transaction = new TransactionTemplate(transactions);
+            transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+            transaction.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
+            return transaction;
+        }
+
+        @Override public void close() {
+            noTransaction();
+            setup().executeWithoutResult(status -> {
+                for (var id : paidIds) { assertThat(jdbc.update("delete from tb_payment where order_id = ?", id)).isEqualTo(1); }
+            });
+            assertThat(payments.snapshot().payments()).isEqualTo(initialPayments);
+            // Outer try-with-resources closes the historical order fixture after these owned Payments.
+        }
     }
 
     private OwnOrderDetailDTO realDetail(long owner, long id) throws Exception {

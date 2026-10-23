@@ -62,6 +62,39 @@ class OwnOrderQuerySecurityHttpIntegrationTest extends OwnOrderQueryUs3HttpTestS
 /** Adds US3 business assertions while inheriting the original authenticationGate cases unchanged. */
 abstract class OwnOrderQueryUs3HttpTestSupport extends OwnOrderQueryHttpTestSupport {
 
+    @ParameterizedTest(name = "post008 PAID owner {0}; payer remains a third party")
+    @ValueSource(strings = {"client", "admin", "both"})
+    void ownershipPost008AdminPaymentDoesNotGrantForeignQueriesOrChangeGetHeadErrors(String identity) {
+        try (var journey = new PaidOwnOrderHttpJourney(context, mapper, port, expectedContextPath(), sql)) {
+            journey.prepare(identity);
+            var target = journey.orders.getLast();
+            journey.pay(target, OwnOrderQueryTestFixture.FIRST_INSTANT.plusSeconds(7200));
+            journey.assertPages();
+            journey.assertDetail(journey.ownerToken, journey.order(target.id()));
+            journey.assertPage(journey.payerToken, 0, 2, List.of(journey.payerOrder),
+                    "&buyerId=" + journey.owner.id() + "&accountId=" + journey.owner.id() + "&sort=id,asc");
+            journey.assertPage(journey.payerToken, 1, 2, List.of(journey.payerOrder), "");
+            journey.assertDetail(journey.payerToken, journey.payerOrder);
+            journey.assertForeignEqualsAbsent(target.id());
+            for (var method : List.of("GET", "HEAD")) {
+                for (var path : List.of("/orders?page=0&size=2", "/orders/" + target.id(),
+                        "/orders?page=-1&size=2", "/orders/0")) {
+                    journey.assertError(method, path, null, 401, "Unauthorized", "Authentication required or invalid");
+                    journey.assertError(method, path, "invalid.jwt.value", 401, "Unauthorized", "Authentication required or invalid");
+                    journey.assertError(method, path, journey.deniedToken, 403, "Forbidden", "Order query not permitted");
+                }
+                for (var path : List.of("/orders?page=-1&size=2", "/orders/0")) {
+                    journey.assertError(method, path, journey.ownerToken, 400, "Bad Request", "Invalid order query data");
+                }
+            }
+            journey.assertHead("/orders?page=0&size=2", journey.ownerToken, 200);
+            journey.assertHead("/orders/" + target.id(), journey.ownerToken, 200);
+            journey.assertHead("/orders?page=0&size=2", journey.payerToken, 200);
+            journey.assertHead("/orders/" + journey.payerOrder.id(), journey.payerToken, 200);
+            journey.assertDetail(journey.ownerToken, journey.order(target.id()));
+        }
+    }
+
     @Autowired private JwtDecoder decoder;
     @Autowired private JwtEncoder encoder;
     @Autowired private JdbcTemplate jdbc;

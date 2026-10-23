@@ -10,6 +10,8 @@ import com.devsuperior.dscommerce.fixtures.AdminProductDatabaseProbe.Snapshot;
 import com.devsuperior.dscommerce.fixtures.AdminProductTestFixture;
 import com.devsuperior.dscommerce.fixtures.AdminProductTestFixture.ProductCategory;
 import com.devsuperior.dscommerce.fixtures.AdminProductTestFixture.ProductData;
+import com.devsuperior.dscommerce.fixtures.PaymentRegistrationDatabaseProbe;
+import com.devsuperior.dscommerce.fixtures.PaymentRegistrationDatabaseProbe.PaymentRow;
 import com.devsuperior.dscommerce.services.exceptions.ProductDeletionIntegrityException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -35,6 +37,8 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.web.context.WebApplicationContext;
 
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.format.DateTimeFormatterBuilder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -57,6 +61,7 @@ class AdminProductDeletionIntegrationTest {
     @Autowired private WebApplicationContext context;
     @Autowired private ObjectMapper mapper;
     private AdminProductDatabaseProbe database;
+    private PaymentRegistrationDatabaseProbe payments;
     private AdminProductTestFixture fixture;
     private MockMvc mvc;
     private String adminToken;
@@ -72,6 +77,7 @@ class AdminProductDeletionIntegrationTest {
     void prepareOwnedCommittedCatalogAndRealAuthentication() throws Exception {
         outsideTransaction();
         database = new AdminProductDatabaseProbe(context.getEnvironment().getRequiredProperty("spring.datasource.url"));
+        payments = new PaymentRegistrationDatabaseProbe(context.getEnvironment().getRequiredProperty("spring.datasource.url"));
         assertEmpty();
         fixture = new AdminProductTestFixture(context);
         ownedOrders.clear(); extraTable = false;
@@ -178,7 +184,7 @@ class AdminProductDeletionIntegrationTest {
     }
 
     static Stream<Arguments> orderReferences() {
-        // Enumerate every state the current model supports; currently only WAITING_PAYMENT exists.
+        // Keep every supported state; PAID requires a real settlement after order creation.
         return Stream.of("ROOT", "/api").flatMap(prefix -> Arrays.stream(OrderStatus.values())
                 .flatMap(status -> Stream.of(1, 2).map(count -> Arguments.of(prefix, status, count))));
     }
@@ -189,8 +195,8 @@ class AdminProductDeletionIntegrationTest {
         String prefix = prefix(external);
         // Target appears at position 1 of a multi-item order, not just as its first/only line.
         registerOrder(List.of(new Line(other.id(), 3, new BigDecimal("3.25")),
-                new Line(target.id(), 2, new BigDecimal("10.00"))), status);
-        if (orders == 2) registerOrder(List.of(new Line(target.id(), 1, new BigDecimal("10.00"))), status);
+                new Line(target.id(), 2, new BigDecimal("10.00"))), status, prefix);
+        if (orders == 2) registerOrder(List.of(new Line(target.id(), 1, new BigDecimal("10.00"))), status, prefix);
         var before = database.snapshot();
         assertThat(before.items().stream().filter(item -> item.productId() == target.id())).hasSize(orders);
         assertThat(before.orders().stream().filter(order -> before.items().stream()
@@ -236,6 +242,10 @@ class AdminProductDeletionIntegrationTest {
     }
 
     private void registerOrder(List<Line> lines, OrderStatus status) throws Exception {
+        registerOrder(lines, status, "");
+    }
+
+    private void registerOrder(List<Line> lines, OrderStatus status, String prefix) throws Exception {
         var body = mapper.createObjectNode(); var items = body.putArray("items");
         lines.forEach(line -> items.addObject().put("productId", line.product()).put("quantity", line.quantity()));
         var before = database.snapshot();
@@ -251,7 +261,9 @@ class AdminProductDeletionIntegrationTest {
         assertThat(observed.after().items().stream().filter(item -> item.orderId() != id).toList()).isEqualTo(before.items());
         var stored = database.snapshot();
         var order = stored.orders().stream().filter(row -> row.id() == id).findFirst().orElseThrow();
-        assertThat(order.buyerId()).isEqualTo(buyer); assertThat(order.status()).isEqualTo(status.name());
+        assertThat(order.buyerId()).isEqualTo(buyer);
+        assertThat(response.path("status").asText()).isEqualTo(OrderStatus.WAITING_PAYMENT.name());
+        assertThat(order.status()).isEqualTo(OrderStatus.WAITING_PAYMENT.name());
         var actualItems = stored.items().stream().filter(item -> item.orderId() == id).toList();
         assertThat(actualItems).hasSize(lines.size());
         BigDecimal total = new BigDecimal("0.00");
@@ -265,14 +277,57 @@ class AdminProductDeletionIntegrationTest {
         assertThat(response.path("total").asText()).isEqualTo(total.toPlainString());
         assertThat(stored.products()).isEqualTo(before.products()); assertThat(stored.categories()).isEqualTo(before.categories());
         assertThat(stored.associations()).isEqualTo(before.associations());
-        System.out.printf("T055_ORDER id=%d status=%s items=%d independentTotal=%s%n", id, status, lines.size(), total.toPlainString());
+        if (status == OrderStatus.PAID) {
+            settleOwnedOrder(prefix, id, order.createdAt(), stored);
+        } else {
+            assertThat(status).isEqualTo(OrderStatus.WAITING_PAYMENT);
+        }
+        assertThat(database.snapshot().orders().stream().filter(row -> row.id() == id).findFirst().orElseThrow().status())
+                .isEqualTo(status.name());
+        System.out.printf("T055_ORDER id=%d createdStatus=WAITING_PAYMENT preparedStatus=%s items=%d independentTotal=%s%n",
+                id, status, lines.size(), total.toPlainString());
+    }
+
+    private void settleOwnedOrder(String prefix, long id, Instant occurredAt, Snapshot before) throws Exception {
+        outsideTransaction();
+        var paymentBefore = payments.snapshot().payments();
+        var path = "/admin/orders/" + id + "/payments";
+        var result = mvc.perform(post(prefix + path).contextPath(prefix).servletPath(path)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                .contentType(MediaType.APPLICATION_JSON).accept(MediaType.APPLICATION_JSON)
+                .content(mapper.writeValueAsBytes(mapper.createObjectNode().put("occurredAt", occurredAt.toString()))))
+                .andReturn();
+        outsideTransaction();
+        assertThat(result.getResponse().getStatus()).isEqualTo(201);
+        assertThat(result.getResolvedException()).isNull();
+        assertThat(result.getResponse().getHeader(HttpHeaders.LOCATION)).isNull();
+        var confirmation = json(result);
+        fields(confirmation, "orderId", "occurredAt", "status");
+        assertThat(confirmation.path("orderId").isIntegralNumber()).isTrue();
+        assertThat(confirmation.path("orderId").longValue()).isEqualTo(id);
+        assertThat(confirmation.path("occurredAt").asText()).isEqualTo(
+                new DateTimeFormatterBuilder().appendInstant(3).toFormatter().format(occurredAt));
+        assertThat(confirmation.path("status").asText()).isEqualTo("PAID");
+        assertThat(payments.snapshot().payments()).containsExactlyInAnyOrderElementsOf(Stream.concat(
+                paymentBefore.stream(), Stream.of(new PaymentRow(id, occurredAt))).toList());
+        var after = database.snapshot();
+        assertThat(after.orders()).isEqualTo(before.orders().stream().map(row -> row.id() == id
+                ? new AdminProductDatabaseProbe.OrderRow(row.id(), row.buyerId(), row.createdAt(), "PAID") : row).toList());
+        assertThat(after.items()).isEqualTo(before.items());
+        assertThat(after.products()).isEqualTo(before.products());
+        assertThat(after.categories()).isEqualTo(before.categories());
+        assertThat(after.associations()).isEqualTo(before.associations());
+        System.out.printf("T034_SETTLED context=%s order=%d status=201 payment=1 occurredAtPreserved=true%n",
+                prefix.isEmpty() ? "ROOT" : prefix, id);
     }
 
     private Observation observe(MockHttpServletRequestBuilder request, String label, int expected) throws Exception {
         outsideTransaction(); var before = database.snapshot(); var accounts = database.accountIds();
+        var paymentBefore = payments.snapshot().payments();
         var result = mvc.perform(request.accept(MediaType.APPLICATION_JSON)).andReturn();
         outsideTransaction(); var after = database.snapshot();
         assertThat(database.accountIds()).isEqualTo(accounts);
+        assertThat(payments.snapshot().payments()).isEqualTo(paymentBefore);
         assertThat(result.getResponse().getHeader(HttpHeaders.LOCATION)).isNull();
         System.out.printf("T055_HTTP case=%s context=%s method=%s expected=%d actual=%d snapshotEqual=%s cause=%s%n",
                 label, result.getRequest().getContextPath().isEmpty() ? "ROOT" : "/api", result.getRequest().getMethod(),
@@ -373,6 +428,7 @@ class AdminProductDeletionIntegrationTest {
         var state = database.snapshot();
         assertThat(state.products()).isEmpty(); assertThat(state.categories()).isEmpty(); assertThat(state.associations()).isEmpty();
         assertThat(state.orders()).isEmpty(); assertThat(state.items()).isEmpty(); assertThat(database.accountIds()).isEmpty();
+        assertThat(payments.snapshot().payments()).isEmpty();
     }
 
     @AfterEach
@@ -381,9 +437,13 @@ class AdminProductDeletionIntegrationTest {
         try (var connection = database.openConnection()) {
             if (extraTable) try (var statement = connection.createStatement()) { statement.execute("drop table tb_t055_product_reference"); }
             connection.setAutoCommit(false);
-            try (var items = connection.prepareStatement("delete from tb_order_item where order_id = ?");
+            try (var payment = connection.prepareStatement("delete from tb_payment where order_id = ?");
+                 var items = connection.prepareStatement("delete from tb_order_item where order_id = ?");
                  var orders = connection.prepareStatement("delete from tb_order where id = ?")) {
-                for (long id : ownedOrders) { items.setLong(1, id); items.executeUpdate(); orders.setLong(1, id); orders.executeUpdate(); }
+                for (long id : ownedOrders) {
+                    payment.setLong(1, id); payment.executeUpdate();
+                    items.setLong(1, id); items.executeUpdate(); orders.setLong(1, id); orders.executeUpdate();
+                }
                 connection.commit();
             } catch (Exception failure) { connection.rollback(); throw failure; }
         }

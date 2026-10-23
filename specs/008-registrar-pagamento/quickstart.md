@@ -2505,3 +2505,542 @@ Auxiliares ignorados prepare.py/run.ps1/analyze.py/verify-prior.py/review.py, pe
 Critérios T032 atendidos: somente T032 passa a[X], T033–T036 permanecem abertas. Sem stage, commit, push, merge, alteração de branch/main ou trabalho T033+.
 
 Revisão final executada: `review.py` exit0/PASS e `git diff --check` exit0. Confirmados 360 rastreados fora destes dois documentos idênticos ao recebimento, incluindo os sete testes Java e classes Api; prefixo de 457302 bytes do quickstart recebido intacto; única mudança adicional em tasks.md é T032 marcada. Conferidos 183 links locais existentes, diff, referências, comandos, arquivos novos (nenhum não rastreado) e whitespace. Permanecem 482 relatórios Surefire (460 anteriores intactos + 22 próprios desta execução), 10365 arquivos de evidência anterior preservados e os mesmos nove arquivos modificados no Git. Índice vazio; nenhum stage/commit/push ou alteração de main. Resultado guardado em `target/feature008-evidence/T032-20261023/final-review.json`; sem impedimentos para T032 e sem executar os fechamentos T033–T036.
+
+
+## T033 — auditoria conjunta e retomada após interrupção (2026-10-23)
+
+Executada exclusivamente [T033](tasks.md), dependente de T032/C5. Conferências iniciais por `git rev-parse --show-toplevel`, `git branch --show-current`, `git rev-parse HEAD`, `git status --short --untracked-files=all` e `git diff --cached --name-only`: raiz `C:/Users/ronal/dscommerce-speckit`, branch `008-registrar-pagamento`, HEAD `96126dbfb8c01cbe8ae6b005d6226a6c7503bffd`, Git limpo e índice vazio. Seleção local `.specify/feature.json` aponta a008; SHA256 `ff185e0ff10d010a4e45b56a3666c1829f365ef09898107aa374d6cac34e4bf4`. Main permanece `5cd16709ea531ccae27230db19753e6c5533d12d`.
+
+Lidos tarefa, dependências e procedimentos, [spec](spec.md), [plano](plan.md), [pesquisa](research.md), [modelo](data-model.md), os dois contratos e sua [precedência](contracts/README.md), matriz de tasks e procedimentos/evidências deste quickstart, sob [constituição](../../.specify/memory/constitution.md), [AGENTS](../../AGENTS.md) e [harness](../../docs/harness.md). Pré-requisitos `.\.specify\scripts\powershell\check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks`: exit0, FEATURE_DIR absoluto008 e documentos esperados. Checklist requirements.md:16/16, zero aberto, somente leitura. Ignore Java adequado; nenhum outro stack exige ignore novo. `.specify/extensions.yml` ausente antes/depois, sem hooks before/after_implement.
+
+**Esta T033 é auditoria por leitura de código e relatórios existentes.** FINAL está expressamente atribuído à T034; não houve chamada Maven/Wrapper, javac, descoberta JUnit, servidor, request HTTP, baseline, checkpoint repetido, validador OpenAPI ou trabalho T034+. Nesta retomada, a consulta de processos Win32_Process não encontrou Maven/Java/Surefire ativo; nenhuma execução precisou ser acompanhada ou encerrada. Os resultados abaixo são históricos identificados, reconciliados agora; não são testes recém-executados nem aprovação da revisão atual por uma suíte completa.
+
+### Estado recuperado e trabalho desta retomada
+
+A interrupção por limite de uso ocorreu durante a auditoria documental: `T033-AUDIT-20261023/` contém initial.json, inventários, evidence.py, evidence-reconciliation.json, methods.txt e appendix.md, mas nenhum run/console/exit de Maven da T033 nem review.py concluído. O appendix.md era rascunho, não conclusão publicada: quickstart ainda terminava em T032 e T033 estava aberta. Todos esses arquivos foram preservados; esta seção aproveita o rascunho somente depois de conferir código, requisitos e relatórios novamente.
+
+O inventário da retomada não encontrou mudanças rastreadas, staged ou não rastreadas desde HEAD96126db; os362 arquivos rastreados conferem byte a byte com tracked.json da auditoria interrompida. Também conferem os482 relatórios Surefire e10876 arquivos de evidências anteriores dos inventários originais. O novo recibo ignorado é `target/feature008-evidence/T033-RESUME-20261023/`; os auxiliares novos produzem seus próprios relatórios e não sobrescrevem os anteriores.
+
+Foram examinados24 recibos run.json da008 por identificação, comando, seletor/argumentos e relatórios próprios: nenhum corresponde a FINAL sem filtro. Há109 XML históricos com sufixo `t030-final-green-20261021` em target/surefire-reports e cópias de evidência:3991/0/0/0, da Feature007. Sua origem está registrada no [quickstart007](../007-consultar-meus-pedidos/quickstart.md): comando `mvnw.cmd '-Dsurefire.reportNameSuffix=t030-final-green-20261021' test`, revisão fb7b77625e44fe5832d73bb87f713a77840d3e1e mais diff depois incorporado em a9ccf94. Não correspondem ao código008 atual nem substituem FINAL/T034. Nenhuma soma dos checkpoints foi tratada como suíte completa.
+
+A execução mais recente aplicável é C5/S5-T032-110331965, iniciada às11:03:31.9808969-03:00 e encerrada pelo runner às11:08:48.3249369-03:00: seletor explícito,22 relatórios próprios,758/0/0/0, BUILD SUCCESS e exitCode0 em exit.json. O manifesto C5 coincide com o código/build e os testes atuais; nenhum arquivo de src tem LastWriteTime posterior ao início dessa execução. Esse cruzamento com hashes/histórico não indica mudança de código/testes durante ou após a execução. Nas provas C1–C4, as sete extensões OwnOrderQuery posteriores são identificadas separadamente abaixo e aprovadas pela execução C5, sem retroagir sua aprovação. O commit96126db incorporou o estado testado de US5.
+
+Nesta retomada foram executados somente leitura/reconciliação estática, comparação de hashes, revisão de fontes/documentos e conferências Git. recover2.py terminou com exit0; o leitor recuperado conferiu console completo, comandos, seletores, XML/TXT próprios, totais, conclusão e exit disponível das sete execuções abaixo. Não houve Maven, novo teste, correção de código/asserção, execução funcional interrompida a repetir ou tentativa de reconstruir documentação por testes. A interrupção recuperada é da auditoria; os limites e resultados parciais históricos continuam preservados em suas seções. FINAL e T034–T036 permanecem pendentes.
+
+### Revisões e execuções existentes conciliadas
+
+Recibo ignorado `target/feature008-evidence/T033-AUDIT-20261023/`: o inventário recuperado de prepare.py contém362 rastreados,482 arquivos Surefire e10876 arquivos anteriores de evidência, com hashes e cópias dos dois documentos recebidos. `initial.json` registra coleta às `2026-10-23T11:56:07.863833-03:00`. Nenhum relatório foi limpo, sobrescrito ou regenerado.
+
+| Referência desta auditoria | Diretório de execução anterior, relativo a target/feature008-evidence | HEAD do run (inclui diff então registrado) | XML/TXT próprios | Resultado anterior conferido agora |
+| --- | --- | --- | ---: | --- |
+| C1/T013 | S1-T013-GREEN-20261022T081608099 | 3d8d1a4a99cfa3ea28e9aa7acff19e1d0008c279 | 11+11 | 371/0/0/0, exit0 |
+| C2/T018 | S2-T018-20261022T162604150 | 2f053fef08725da34ed04f28d77b2fe52b90cec4 | 17+17 | 839/0/0/0, exit0 |
+| C3/T022 | S3-T022-20261022T172253803 | 1b49dc1b61f27ccecbe7aa561dfc56fc4da93125 | 5+5 | 37/0/0/0, exit0 |
+| Diagnóstico T026 | T026-DIAG-091925077 | 6111c6ba04b9f642bb2963f81c2b7bf333e4eb40 | 4+4 | 32/0/0/0, exit0 |
+| C4/T027 | S4-T027-093159353 | 6111c6ba04b9f642bb2963f81c2b7bf333e4eb40 | 7+7 | 77/0/0/0, exit0 |
+| S5 anterior/T030 | T030-20261023/S5-T030-102637807 | cf19e90747ad57565081fcc8b03b644dfdbe6fb1 | 11+11 | 750/0/0/0, exit0 |
+| C5/T032 | T032-20261023/S5-T032-110331965 | cf19e90747ad57565081fcc8b03b644dfdbe6fb1 | 11+11 | 758/0/0/0, exit0 |
+
+Notação resultado: testes/falhas/erros/ignorados, sem somar execuções que se sobrepõem. `run.json` conserva comandos Wrapper, seletores, horários e revisão; `exit.json`, console e XML/TXT concordam. Comandos originais permanecem nas respectivas seções T013/T018/T022/T026/T027/T030/T032, sem reescrita. Na leitura atual, selecionou-se exclusivamente o sufixo de cada run, inclusive nos arquivos cujo classname recebe esse sufixo. Os371 do núcleo aparecem em C2; T02632 não é C477; S5/T030750 não aprova os oito casos escritos posteriormente em T031, efetivamente aprovados em C5758.
+
+O leitor evidence-recovered.py, executado por recover2.py com exit0 nesta retomada, reconciliou essas sete execuções: quantidades de testcase iguais aos resumos console/XML/TXT, nenhum failure/error/skipped, identidades únicas dentro de cada execução, classes concretas selecionadas iguais às fontes alcançadas pelos seletores e matrizes ROOT/Api iguais onde previstas. Cada método observado existe nas fontes; a conferência de métodos/providers e índices dos recibos originais complementa esse inventário, sem tratar contagem de compilação como execução. `evidence-reconciliation.json` e `methods.txt` guardam classes/métodos/multiplicidades e metadados completos. A análise estática não executou os métodos.
+
+Hashes produtivos/build comparados com os manifestos dos runs: C1 possui21 arquivos inventariados desse recorte, todos idênticos; C2/C3/C4/C5 possuem106 cada, todos idênticos, incluindo src/main, POM e Wrapper quando presentes. Não se atribui ao manifesto C1 cobertura de arquivos que ele não inventariou. Nenhum teste inventariado do C1 mudou; nos manifestos C2–C4, somente os sete OwnOrderQuery de US5 mudaram depois desses checkpoints, fora das seleções de pagamento então executadas. O manifesto C5 já contém os sete testes atuais, todos idênticos. O commit96126db registra o checkpoint US5 sem alterar seu conteúdo testado; mudança de SHA não foi apresentada como nova execução.
+
+### Classes, herança, aninhados e contextos
+
+| Grupo de classes (nomes sem prefixo de pacote) | Quantidade efetiva e métodos | Contexto e alcance |
+| --- | --- | --- |
+| PaymentRegistrationHttpIntegrationTest / PaymentRegistrationApiHttpIntegrationTest | 16 cada;11 métodos herdados | HTTP ROOT e /api, serviço/proxy/JPA reais; C1/C2/C4. Os seis métodos US1 produzem8 invocações por contexto, as cinco guardas/repetição outras8. |
+| PaymentRegistrationEndpointHttpTest / PaymentRegistrationEndpointApiHttpTest | 48 cada;17 métodos herdados | HTTP ROOT e /api, segurança/MVC reais e registro simulado; C1/C2. Não provam persistência por si. |
+| PaymentRegistrationDtoContractTest | 141;11 métodos | JSON/Bean Validation local, sem banco/MVC; C1/C2. |
+| PaymentRegistrationServiceTest | container0; CurrentAccess18 + RegistrationRules51 + TransactionAndCategories8 =77 | Três @Nested reais, regras/interações locais com mocks; C1/C2. Container não é contado novamente. |
+| PaymentRegistrationDatabaseProbeTest / PaymentPersistenceIntegrationTest | 12/13;6/10 métodos | Probe de oito tabelas, sensibilidade/limpeza e schema/JDBC H2; C1/C2; persistência também C3. |
+| PaymentAuthorizationHttpIntegrationTest / Api | 40 cada;10 herdados | HTTP ROOT e /api, perfis atuais/claims/revogação/lookup; C2. |
+| PaymentInputHttpIntegrationTest / Api | 129 cada;9 herdados | HTTP ROOT e /api; documentos39, ocorrências inválidas48, válidas24 e outros18 por contexto; C2. |
+| PaymentBoundaryValidationTest | 122;10 métodos | MVC local e serviço mock, reader/Bean Validation/advice reais; C2. |
+| PaymentTemporalAndCurrentRolesIntegrationTest | 8;2 métodos (6 temporais+2 revogações) | HTTP ROOT, espera H2 observada; C2/C3. Sem variante /api. |
+| PaymentConcurrencyIntegrationTest | 13;4 métodos (4+4+4+1) | HTTP ROOT, disputa/repetição e duas raízes sobrepostas; C3/C4. |
+| PaymentDistinctOrdersIntegrationTest / OrderPaymentLockRepositoryTest | 2/1;1 método cada | ROOT enquanto outra raiz está BLOCKED; repository/JPA com contexto obsoleto; C3. |
+| PaymentRollbackIntegrationTest / PaymentRollbackApiHttpIntegrationTest | 14 cada;5 herdados (6+1+1+5+1) | HTTP ROOT e /api com transação/driver reais e falhas de teste scoped; T026/C4. |
+| PaymentResponseDeliveryIntegrationTest / PaymentResponseTransportHttpIntegrationTest | 2 cada;1 método parametrizado FORWARD/WITHHOLD | Somente ROOT: buffer MockMvc e socket/proxy HTTP local respectivamente; T026/C4. Recuperação por HTTP real/JDBC. |
+| OwnOrderQueryDtoContractTest / RepositoryTest / ServiceTest | 130/41/91;22/20/29 métodos | JSON sem banco; JPA/MOCK de repository; serviço/JPA e cenários controlados; C5. |
+| OwnOrderQueryListHttpIntegrationTest / ListApiHttpIntegrationTest | 116 cada;12 herdados | HTTP ROOT e /api; C5. |
+| OwnOrderQueryDetailHttpIntegrationTest / DetailApiHttpIntegrationTest | 12 cada;8 herdados | HTTP ROOT e /api; C5. |
+| OwnOrderQuerySecurityHttpIntegrationTest / SecurityApiHttpIntegrationTest | 82 cada;9 efetivos | HTTP ROOT e /api; inclui os3 métodos de autenticação herdados (60 casos) +19 antigos de negócio+3 novos; C5. |
+| OwnOrderQueryRegressionHttpIntegrationTest / RegressionApiHttpIntegrationTest | 38 cada;9 herdados | HTTP ROOT e /api;34 antigos+4 novos em cada; C5. |
+
+C3 tem cinco classes/18 grupos método-classe; C4 sete classes/38 grupos; C5 onze classes. Helpers/records/configurações privados e PaidOrders/PaidRegression/ExternalAttemptProbe não são testes @Nested adicionais. Nos grupos selecionados, somente o serviço possui os três @Nested JUnit acima; as outras estruturas aninhadas não acrescentam casos. As fontes/recibos não apresentam exclusão/Disabled/assumption para obter os resultados. Classes Api e todos os providers/asserções foram preservados.
+
+Contextos foram conciliados com os marcadores/URLs/portas dos consoles originais, não inferidos do nome do filtro. C1 usa seis bancos JPA isolados, além de JSON/unitários e controle vazio de probe; ROOT real59683 e /api59627. C2 acrescenta autorização/entrada ROOT/Api e temporal ROOT, mantendo MVC local separado. C3 usa três bancos (HTTP ROOT53537 compartilhado entre as jornadas compatíveis, repository e persistência); não tem HTTP /api. C4 reutiliza registro ROOT/concorrência na porta54501 e possui outros cinco contextos próprios: registro/api54506, entrega/buffer54517, socket54520, rollback/api54528 e rollback/ROOT54544. C5 usa oito contextos HTTP ROOT/Api (lista, detalhe, segurança, regressão) e dois MOCK/JPA, dez H2 distintos mais JsonTest; UUIDs/portas completos permanecem na T032. URL estável e distinta por contexto com create-drop, sem alterar seed, perfil ou cache global. Instanciar HttpClient não cria contexto Spring novo.
+
+### Reconciliação dos 30 cenários
+
+Referências abreviadas nesta matriz: R = PaymentRegistrationHttpIntegrationTest e Api; A = PaymentAuthorizationHttpIntegrationTest e Api; I = PaymentInputHttpIntegrationTest e Api; T = PaymentTemporalAndCurrentRolesIntegrationTest; Q = variantes OwnOrderQuery de C5. Os nomes abaixo são métodos reais conferidos no inventário, com as multiplicidades da tabela anterior; não são novas invocações. Estados aprovados limitam-se às execuções/contextos identificados.
+
+| Cenário | Classe/método principal e prova conciliada |
+| --- | --- |
+| US1.1 | R.us11AdminSettlesForeignOrderWithExactlyThreeConfirmationFieldsAndHistorical4250, uma vez/contexto;201 fechado,42.50, Payment/PAID independentes; C1/C2/C4. |
+| US1.2 | R.us12OwnAdminWithoutClientAndBothProfilesUseTheSameSettlementRules,3/contexto, e A.currentAdminAloneOrWithClientSettlesOwnAndForeignOrders,4/contexto; ADMIN isolado/ambos, próprio/alheio; C1/C2/C4. |
+| US1.3 | R.us13CatalogPriceTwelveDoesNotReplaceHistoricalTwentyOrOrderData; histórico20.00 versus catálogo12.00, comprador/criação/itens intactos; C1/C2/C4. |
+| US1.4 | R.us14EquivalentOffsetWithExtraZerosPreservesOccurrenceRatherThanBusinessReference; Instant exato/UTC.SSS; DTO141 e persistência13 complementam; C1/C2/C4. |
+| US1.5 | R.us15OccurrenceEqualToCreationIsAccepted e T.initialReferenceAndInclusiveWindowSurviveARealRootLockWait/LOWER_EQUAL; limite inclusivo; C2/C3/C4. |
+| US1.6 | R.us16OccurrenceEqualToInitialReferenceSurvivesClockAdvanceBeforeCompletion e T.initialReferenceAndInclusiveWindowSurviveARealRootLockWait/UPPER_EQUAL; distinguir avanço coordenado de Clock em R de espera física em T; C2/C3/C4. |
+| US2.1 | A.missingInvalidExpiredAndRemovedAccountCredentialsAre401WithoutRestrictedReads (5/contexto) e accountRemovedBetweenFilterAndServiceBecomes401WithoutExposingThePurchase;401 Bearer, sem leitura restrita; C2. |
+| US2.2 | A.clientAndNoProfileCannotSettleEvenTheirOwnPurchase (4/contexto);403 sem dados/mutação; C2. |
+| US2.3 | A.revocationAfterIssuanceDefeatsTheSameSignedAdminClaims, currentGrantAllowsTheSamePreviouslyDeniedCredentialWithoutReissuingIt, revocationBetweenFilterAndServiceIsRereadBeforeAnyOrderLookup e signedRoleNameAndAuthorityClaimsCannotGrantOrRemoveDatabasePermission; T.scalarGuardAfterTheWaitRejectsRevocationDespiteInitializedManagedRoles (ADMIN/BOTH), após espera física; C2/C3. |
+| US2.4 | I.absentPositiveIdentityIsBusiness404WithoutCreatingOrChangingAnyRow; ID positivo inexistente, não404 por rota omitida; C2. |
+| US2.5 | I.rejectsMissingNullWrongTypeExtraDuplicateAndTrailingJsonBeforeBusiness (39/contexto), rejectsEveryInvalidR3GrammarCalendarRangeAndPrecisionBeforeBusiness (48/contexto) e selectedPaymentRouteRejectsNonpositiveMalformedOrOutOfRangeIds (7/contexto); MVC122 confirma @Valid/@NotNull/@Positive antes do serviço; C2. |
+| US2.6 | T.initialReferenceAndInclusiveWindowSurviveARealRootLockWait/BEFORE_CREATION e R.basicWindowRejectsInstantsOutsideInclusiveBoundsWithoutChangingHistoricalTables;400 sem correção; C2/C3/C4. |
+| US2.7 | T.initialReferenceAndInclusiveWindowSurviveARealRootLockWait/AFTER_REFERENCE e NATIVE_CEILING; referência nativa conservada durante espera/avanço,400; C2/C3. |
+| US2.8 | I.rejectsMissingNullWrongTypeExtraDuplicateAndTrailingJsonBeforeBusiness e everyQueryParameterIsInvalidAndExcludedFromTheSafePath; só ID no path e occurredAt; C2. |
+| US2.9 | I.paidWithoutPaymentIsIncompatibleState409AndIsNeverAutomaticallyRepaired;409 próprio, sem reparo; C2. |
+| US3.1 | PaymentConcurrencyIntegrationTest.sequentialRepeatNeverReusesSuccessOrOverwritesTheOriginal,4 variantes igual/diferente e mesmo/outro ADMIN;409 e original intacto; C3/C4. |
+| US3.2 | Mesmo método anterior, variantes de outra ocorrência/outro ADMIN; nenhuma confirmação reutilizada; C3/C4. |
+| US3.3 | PaymentConcurrencyIntegrationTest.existingPaymentPrecedesWaitingStateWithoutRepair,4 variantes; inconsistente WAITING_PAYMENT+Payment deliberado somente no setup, rejeição sem reparo; C3/C4. |
+| US3.4 | PaymentConcurrencyIntegrationTest.overlappingTransactionsForTheSameOrderAcceptExactlyOnePayment,4 variantes; BLOCKED/BLOCKER_ID antes/depois de flush,201+409, ocorrência vencedora; C3/C4. |
+| US3.5 | validRequestsForDistinctOrdersBothSettleWithOverlappingTransactions e PaymentDistinctOrdersIntegrationTest.distinctOrderCommitsWhileTheOtherStillWaitsForItsRootLock,2 variantes; ambas201, outra raiz ainda bloqueada, vínculos próprios; C3. |
+| US4.1 | Rollback ROOT/Api.reachedFailurePointReturnsSafe500AndPreservesAllCommittedRows,6/contexto, mais confirmationConstructorFailureAfterRealFlushRollsBackPaymentAndPaidTogether;500/rollback/snapshots independentes; C4. |
+| US4.2 | Rollback ROOT/Api.realDatabaseConstraintRejectsPaymentInsertWithoutBeingClassifiedAsRepeat e os6 Points; primeiro DML realmente executado, flush distinto de commit e conclusão; C4. |
+| US4.3 | PaymentResponseDeliveryIntegrationTest.bufferedConfirmationIsDeliveredOrPreventedOnlyAfterIndependentCommitProof e PaymentResponseTransportHttpIntegrationTest.proxyReceivesCommittedConfirmationThenForwardsOrClosesWithoutDeliveringIt; FORWARD/WITHHOLD em ROOT, commit e JDBC antes de bloquear entrega; novo409 e GET PAID; Q/C5 complementa leitura contratual. |
+| US4.4 | A.controlledRepositoryLookupFailuresStay500RatherThan401OrBusinessConflicts (4/contexto) e Rollback.internalFailureIsNotAuthenticationNotFoundOrRepeatAndLeavesNoCommittedMutation (5/contexto);500 seguro, causas distintas; C2/C4. |
+| US5.1 | Q.listPost008PaidOldPurchaseKeepsTwoTwoOneCreationIdOrderAndOwnCount e detailPost008RealPaymentKeepsCurrentNamesRecordedItemsAndExactMoney, mais DTO/repository/service PAID; C5. |
+| US5.2 | Q.ownershipPost008AdminPaymentDoesNotGrantForeignQueriesOrChangeGetHeadErrors,3/contexto; conteúdo/count/detalhe próprios, ADMIN pagador404 igual ao ausente; C5. |
+| US5.3 | Q.listPost008PaidOldPurchaseKeepsTwoTwoOneCreationIdOrderAndOwnCount e variantes paidListStillPagesTwoTwoOneByCreationAndIdRatherThanPaymentOccurrence / paidRealListAndDetailKeepCreationOrderInsteadOfPaymentOccurrence;2/2/1 por criação/ID, não ocorrência; C5. |
+| US5.4 | Q.regressionPost008RepeatedGetHeadSuccessEmptyAndErrorsKeepAllEightTables,1/contexto, e matrizes lista/detalhe/segurança; leituras repetidas/snapshots008/SQL, dinheiro e campos; C5. |
+| US5.5 | Q.regressionPost008PublicCatalogFilterPagesDetailsAndRealLoginRemainIndependentOfPaidQueries e regressionPost008MaintenanceAndRepeatedRegistrationsPreservePaidHistoryAndCreateNewWaitingOrders;1 de cada/contexto; catálogo/login/manutenção/registro preservados; C5. Regressão integral continua T034. |
+| US5.6 | Q.regressionPost008PaymentRejectionsPreserveAllTablesAndTheOriginalSettlementWithoutExternalAttempts,1/contexto, e20 janelas dos quatro métodos T031; oito tabelas/somente alvo e observer JDK; C5. Carrinho do consumidor não é observado pelo banco; exclusões também verificadas no código. |
+
+### Reconciliação dos22 FR e oito SC
+
+| FR | Código efetivo e evidência aplicável, com limites anteriores |
+| --- | --- |
+| FR-001 | SecurityConfig/PaymentAccessService, projeção escalar atual; US2.1–3/C2 e espera T/C3. |
+| FR-002 | Guarda de escrita sem titular e guarda007 própria; US1.1–2/C1/C2/C4 e US5.2/C5. |
+| FR-003 | DTO/reader exclusivos e path/query no controller; US2.5/8/C2, DTO141 e MVC122. |
+| FR-004 | validateFullHistoricalAmount com BigDecimal/UNNECESSARY/19,2; projeção escalar histórica sem Product; US1.1/3 e serviço RegistrationRules/C2. Não existe amount persistido/selecionável. |
+| FR-005 | Lock/refresh, Payment anterior antes do estado, sem reparo; US2.4/9 e US3.3/C2/C3. |
+| FR-006 | Primeira instrução clock.instant(), referência local única nativa; reader estrito e janela inclusiva no serviço; US1.4–6/US2.5–7, DTO141, T8/C2/C3. |
+| FR-007 | PaymentConfirmationDTO de três campos e controller201 após proxy; R/C1/C2/C4 e fronteira96/C2. |
+| FR-008 | REQUIRED/READ_COMMITTED/rollbackFor Exception, persist+markPaid+flush+DTO, proxy dono/commit físico observado; rollback/controles C4. |
+| FR-009 | Somente markPaid/Payment, snapshots integrais de pedido/itens e sete tabelas opacas; US1.3/C1/C4 e US5.4/C5. |
+| FR-010 | Lookup existente409, sem save/merge/update de Payment; US3.1–3/C3/C4 e pós-entrega US4.3. |
+| FR-011 | PESSIMISTIC_WRITE/find+refresh por raiz e PK final; US3.4–5/C3/C4, sem mutex global ou SLA. |
+| FR-012 | Rejeições anteriores ao DML e snapshots de oito tabelas; C2/C3/C4/C5, setups externos explicitamente separados. |
+| FR-013 | Exceção propaga, advice seguro e rollback C4; SQL23513 real no H2, falhas sintéticas anteriores ao driver e construtor real diferenciados. |
+| FR-014 | Sem compensação/retry; buffer/socket ROOT C4 e leitura C5; resultado de commit indeterminado fora da garantia de rollback. |
+| FR-015 | Reason fixa, advice scoped e handlers de segurança; C2/C4;401 Bearer,403/404/409/500 distintos, sem diagnóstico/segredo no wire. |
+| FR-016 | Status persistido projetado em lista/detalhe, variantes PAID C5; snapshot008 alvo, publicação vigente condicionada a T035. |
+| FR-017 | DTOs007 inalterados, JSON fechado4/5/5 sem Payment; C5. |
+| FR-018 | Mesmo owner em conteúdo/count/lote/detalhe; ADMIN pagador não ganha leitura alheia,404 seguro; C5. |
+| FR-019 | ORDER BY criação DESC/ID DESC e itens position ASC, histórico textual19,2/nome atual; C5. |
+| FR-020 | readOnly, SQL observado e snapshots008, somente alvo no sucesso; C1–C5. Carrinho externo ao backend permanece fora da fotografia. |
+| FR-021 | Jornadas pós-quitação C5 e fronteiras vizinhas C2 preservadas; criação WAITING_PAYMENT e novo pedido por envio válido. Suíte integral001–007 permanece T034. |
+| FR-022 | Caminho produtivo sem cliente/gateway/cobrança; observador JDK nas20 janelas C5, limitado como descrito abaixo; sem chamada financeira externa para testar a exclusão. |
+
+| SC | Estado da auditoria e fronteira de conclusão |
+| --- | --- |
+| SC-001 | Casos válidos US1 reconciliados em C1/C2/C4; não é nova execução nem entrega008. |
+| SC-002 | Matriz de credenciais/perfis atuais e revogações C2, complementada pela espera C3; sem serializar revogação depois da última leitura. |
+| SC-003 | C1+C2 e T8/C3 conferem referência única/precisão/limites; ocorrência não foi substituída por recebimento/commit. |
+| SC-004 | C3+C4: repetições, concorrência e nova tentativa após entrega impedida; pares válidos separados de falhas operacionais. |
+| SC-005 | C2+C3+C4 distinguem rejeição, rollback pré-commit e preservação pós-commit; não garantem rollback de resultado indeterminado. |
+| SC-006 | C1+C5 conferem42.50/histórico20.00 versus catálogo12.00, criação/comprador/itens preservados. |
+| SC-007 | C5 cobre US5.1–4 nos contextos observados; vigência documental pós-entrega ainda depende de T035. |
+| SC-008 | C5 fornece prova focal de US5.5–6; fechamento integral **pendente de FINAL/T034**. Não inferir todos os testes001–007 pela aprovação focal. |
+
+### Gates da008 pelo código e pela prova
+
+| Gate | Resultado desta auditoria, restrito à008 | Fundamento efetivo |
+| --- | --- | --- |
+| I — Java/Spring Boot | Conforme no recorte auditado | Java21/Boot3.3.4, MVC/Security/Validation/Data JPA/Jackson do POM preservado, Wrapper3.9.16; ambientes dos XML/console identificados. |
+| II — camadas | Conforme | AdminPaymentController trata binding/query/HTTP; PaymentRegistrationService decide conta, referência, elegibilidade, dinheiro e transação; fragments fazem find/refresh/persist e projeções de persistência. Sem regra financeira/controller ou DTO público mapeado no repository. |
+| III — DTO | Conforme | PaymentRegistrationRequestDTO/PaymentConfirmationDTO específicos, mapeamento no serviço; nenhum endpoint retorna entidade. DTOs de consultas conservam quatro/cinco campos e itens cinco; C2/C5. |
+| IV — JPA/Bean Validation | Conforme estrito **da008**, no alcance revisado | @Valid/@NotNull/@Positive na fronteira MVC antes do serviço; reader/constraints locais sem serviço/repository/Clock/IO de domínio. PaymentBoundaryValidationTest.controllerAnnotationsAndPureLocalParsingAndValidationNeedNoDomainIo e actualValidAndNotNullRejectMissingOccurrenceBeyondSuccessfulDeserialization passaram em C2; contexto local não possui banco, EntityManagerFactory ou Repository e exige serviço sem interações nas negativas. Mapeamento JPA/precisão/constraints reais em C1/C3 e proxy/commit em C4. |
+| V — REST/erros | Conforme | Advice e handlers centralizados/scoped, categorias fixas e headers, sem catch/continuação de transação falha; método/negociação405/406/415 nativos preservados; C2/C4. |
+| Requisitos, abstrações e governança | Conforme no recorte auditado | Spec/desenho anteriores ao código; fragments, projeção, guarda e probes têm necessidade concreta; nenhuma integração/fluxo excluído acrescentado. Matriz reconciliada sem reescrever requisitos. |
+| Verificações pertinentes | Suficientes para esta auditoria; fechamento ainda aberto | Checkpoints identificados e preservados; FINAL/T034, publicação T035 e revisão T036 continuam obrigatórios. Não registrar PASS funcional global por esta tabela. |
+
+O **Gate IV005 permanece EXCEÇÃO DOCUMENTADA, sem PASS estrito**, com o fundamento FR-012/US2.6 de diagnóstico em serviços durante isValid; seu plano, constituição e evidências não mudaram. A008 não chama esse diagnóstico nem redefine serviço como somente escrita. Consulta de conta/perfil na segurança antes de MVC é infraestrutura de autorização, não IO dentro do reader/validator. Janela dependente da compra é decisão posterior do serviço, distinta de validação local. No flush, a cascata JPA @Valid do agregado pode provocar leitura dos itens já observada em C1; isso não foi apresentado como consulta de domínio durante validação de entrada nem como ausência universal de IO em toda validação persistente.
+
+Schema e SQL foram revistos contra fontes e provas: Payment @MapsId/order_id PK+FK fk_payment_order, ocorrido TIMESTAMP(3) WITH TIME ZONE/NOT NULL, sem ID independente/amount/cascade REMOVE; Order conserva quatro colunas e criação WAITING_PAYMENT. Persist explícito, nunca merge/save; lock/refresh só da raiz por ID, sem estado/titular/coleção/Product na aquisição. Projeção de itens lê FK/posição/quantidade/preço histórico, sem preço atual. BigDecimal exato valida soma/subtotal/total decimal19,2 sem double/arredondamento. PK/FK/NOT NULL não impõem equivalência universal PAID/Payment ou janela temporal entre tabelas; essas garantias pertencem ao serviço transacional.
+
+### Diagnósticos, alcance e pendências preservadas
+
+Nenhuma lacuna funcional nova, falha de compilação/preparação ou necessidade de correção produtiva/de teste foi identificada nesta auditoria. Não foi executado caso novo para obter RED/GREEN artificial. O histórico continua distinguindo: T006 operação ausente/envelope incompatível; T007 schema/modelo ausentes por asserções funcionais (não bootstrap); T011 primeira coleta interrompida por stderr/sem exit confiável versus RED posterior completo77/35 falhas/exit1; T01725 falhas IntNode/LongNode em oráculos, com correção autorizada preservando número inteiro/árvore fechada e posteriores focais/C2 verdes. Não se reclassificaram essas falhas antigas como aprovações ou causas produtivas.
+
+Evolução intencional: contrato007 fechado somente WAITING_PAYMENT permanece histórico/vigente até entrega; testes de criação continuam exigindo WAITING_PAYMENT. Novas variantes PAID usam o snapshot0080.2.0 completo, sem novos campos/privilégios; o POST continua0.1.0. `git diff main HEAD --` nos artefatos007, plano005/constituição, POM/Wrapper/perfis globais e H2ConsoleSecurityIntegrationTest/JwtTokenServiceTest retornou vazio. Não foram editados metadados planned, README ou referências públicas; ajustes de vigência são T035 após FINAL.
+
+Achado de cobertura a levar à **T034**, sem alterar fonte nesta T033: AdminProductDeletionIntegrationTest.orderReferences usa Arrays.stream(OrderStatus.values()), dois contextos e quantidades1/2. Agora enumera8 variantes (quatro WAITING_PAYMENT e quatro PAID), embora seu comentário histórico diga que só existe WAITING_PAYMENT. O provider e as asserções de proteção/histórico estão corretos para enumerar os estados; não existe asserção exigindo enum unitário a remover. C5 não selecionou essa classe, portanto os quatro casos PAID ali gerados **não estão aprovados por C5**. É cobertura de regressão pendente da suíte FINAL, não falha funcional observada. OrderRepositoryTest conserva expectativas de criação e metadados STRING/quatro colunas, sem obrigar enum unitário; não há motivo demonstrado para enfraquecê-las. T034 deve conferir a descoberta integral e eventuais novas multiplicidades, sem fixar o total da suíte pela soma dos focais.
+
+C4 diferencia estágio real de falha: SQL_BEFORE_FIRST_DML é SQLException sintética antes do execute; AFTER_FIRST_DML é posterior a execute real de uma linha; AFTER_FLUSH/AFTER_BODY_DTO e BEFORE_COMMIT são anteriores à efetivação; JDBC_COMMIT_BEFORE_DELEGATE registra tentativa mas zero delegação. CHECK temporário23513 é rejeição real do H2; construtor PaymentConfirmationDTO falhou de fato após corrupção de teste+1ns. Injeções locais de lookup/lock/persist/flush não simulam defeito físico universal. Controles positivos registraram delegação/sucesso JDBC, afterCommit/completion e leitura independente. Buffer MockMvc e socket/proxy ROOT retiveram69 bytes JSON, e no socket389 bytes wire foram recebidos a montante/zero entregues em WITHHOLD; novo409 e Payment/PAID preservados. Nenhuma prova de pane física, crash recovery ou commit delegado de resultado desconhecido foi fabricada. Flush/DTO não equivalem a commit;500/ausência de resposta não demonstram ausência da quitação.
+
+C5 confirmou os oito casos novos T031: quatro métodos herdados em ROOT e /api, uma vez em cada, sem omissões. São20 POSTs/janelas com60 hooks JDK reais, forbiddenAttempts=0; controles diretos DNS/CONNECT/HTTP_PERMISSION ocorreram antes da janela e zeraram contadores, sem DNS/socket/request externo de controle. Zero hooks/instalação/restauração defeituosa falhariam sem skip. A janela cobre envio à resposta completa com SecurityManager Java21/allow, incluindo hooks alcançados pelos workers; não cobre native/processos, UDP/multicast, conexões que contornem hooks ou trabalho assíncrono posterior. Não ampliar a conclusão às18 quitações T029 sem esse sensor, a toda rede ou a outra JVM. Busca produtiva `rg -n -g '*.java' 'HttpClient|RestClient|WebClient|RestTemplate|URLConnection|new Socket|ProcessBuilder|Runtime.getRuntime|gateway|stripe|paypal|adyen' src/main/java`: exit1, zero matches; leitura da cadeia produtiva confirma ausência de gateway/cobrança. Busca estática complementa a observação, não é rastreamento universal de IO.
+
+Leituras independentes do probe008 ocorrem após conclusão dos escritores conhecidos, antes da limpeza seletiva Payment→itens→pedidos. As fotografias de oito tabelas são compostas, não snapshot atômico sob concorrência livre; StatementInspector observa preparação Hibernate, não JDBC direto, e igualdade final não exclui mutação transitória restaurada. Janelas GET/HEAD não incluem setup/login/pagamento/manutenção/limpeza; o registro de hooks refere-se aos POSTs T031. Carrinho continua do consumidor, sem tabela/rota nova ou prova de sua memória remota.
+
+**Ambientes distintos:** provas funcionais conciliadas são locais Windows/Java21/H2 2.2.224; esta auditoria é estática local. Não há PostgreSQL configurado ou executado, modo de compatibilidade não o substitui e não se infere durabilidade/migração/locks/precisão de outro banco. A CI Linux está configurada e o harness registra uma execução remota histórica de79 testes, com sua URL/revisão própria; isso não valida008 ou HEAD96126db. Nenhuma consulta/disparo remoto, push, PR ou CI foi realizado nesta tarefa. FINAL local ainda está pendente; mesmo um futuro FINAL local não se tornará automaticamente prova remota/PostgreSQL.
+
+### Comandos da retomada, revisão e encerramento
+
+Comandos efetivamente usados nesta retomada: conferências Git/seleção e check-prerequisites; Get-CimInstance Win32_Process, Get-Content/rg de artefatos/fontes/relatórios; leitura XML por ElementTree e JSON dos recibos; `git diff main HEAD -- <arquivos preservados>`; leitores Python externos em `target/feature008-evidence/T033-RESUME-20261023/`, com `C:/Users/ronal/AppData/Local/uv/cache/archive-v0/In_Ay6QzfEkllxlV/Scripts/python.exe -B -I -X utf8 <auxiliar>`; revisão de `git diff --`, referências, links e `git diff --check`. Nenhum auxiliar invoca Maven/JUnit ou inicializa banco/aplicação. recover2.py/evidence-recovered.py exit0/PASS fundamentam a reconciliação atual; os resultados da revisão documental final são registrados abaixo após sua execução.
+
+Dois problemas dos leitores desta retomada foram separados dos resultados da aplicação: uma leitura auxiliar tentou ordenar atributos timestamp ausentes nos XML históricos e terminou com TypeError; a leitura corrigida apenas inventariou os109 XML históricos. recover.py confirmou os inventários362/482/10876, mas terminou com exit1 na busca ampla por FINAL porque metadados PowerShell continham IsFinal. A busca foi restringida a identificação/comando/argumentos em recover2.py e confirmou24 execuções focais e zero FINAL008; recovery-attempt1.json conserva a causa e o exit1 observado. Não se atribui aprovação à tentativa incompleta nem se altera qualquer resultado bruto. O rascunho anterior também relata ajustes de leitura de sufixos e grafias exit/exitCode/Path/Hash; somente a reconciliação completa executada agora é usada como conferência atual.
+
+**Critérios da T033 comprovados no escopo de auditoria:** matrizes, classes/métodos/contextos, gates e limites reconciliados, sem lacuna funcional nova que exija correção/reprodução. Após revisão documental, somente T033 passa a[X]; T034–T036 permanecem abertas. SC-008/FINAL, publicação da vigência e fechamento global não são antecipados. Somente esta seção e marcador T033 são mudanças rastreadas; código, testes, asserções, classes Api, contratos, evidências anteriores e prefixo histórico do quickstart preservados. Sem stage, commit, push, PR, merge ou alteração de main.
+
+Revisão efetivamente executada nesta retomada: `review.py` e `review.py --final`, no diretório T033-RESUME-20261023, terminaram com exit0/PASS; `git diff --check` exit0, sem diagnóstico de whitespace. Conferidos diff, comandos e193 links locais existentes nos dois documentos,360 arquivos rastreados fora do recorte idênticos, prefixo de476493 bytes do quickstart intacto,482 relatórios Surefire e11 arquivos da auditoria parcial original idênticos. Os10876 arquivos de evidência anterior já haviam sido conferidos integralmente antes da edição; nenhum comando da retomada os escreveu. tasks.md difere do recebido somente pelo marcador T033. Recibos preliminary-review.json/final-review.json e reconciliação atual ficam em target ignorado, sem arquivos novos não rastreados no projeto. Git final: somente quickstart.md/tasks.md desta feature modificados, índice vazio, branch/HEAD/main/seleção008 mantidos. A interrupção documental foi resolvida; não há impedimento restante da T033. FINAL/T034, publicação T035 e fechamento T036 permanecem pendentes e não foram executados.
+
+## T034 — FINAL completa executada, reprovada e tarefa aberta (2026-10-23)
+
+Executada exclusivamente a seleção de [T034](tasks.md), dependente da auditoria T033 concluída acima. Raiz confirmada `C:/Users/ronal/dscommerce-speckit`, branch real `008-registrar-pagamento`, HEAD `96126dbfb8c01cbe8ae6b005d6226a6c7503bffd`, seleção local008. O estado inicial tinha somente quickstart.md/tasks.md da008 modificados pela T033, nenhum staged ou não rastreado. Main permanece `5cd16709ea531ccae27230db19753e6c5533d12d`. O registro recebido da T033 permanece como prefixo byte a byte, sem revisão retroativa de suas conclusões ou evidências históricas.
+
+Lidos integralmente T034, dependência T033, regras de preservação/execução, seleção FINAL e procedimentos aprovados deste quickstart, com o contexto de spec/plano/modelo/pesquisa/contratos, constituição, AGENTS e harness já auditado na T033. O escopo confirmado antes da chamada foi uma suíte completa sem filtro, seguida de conferência e registro, sem iniciar T035–T036. check-prerequisites retornou FEATURE_DIR absoluto008 e documentos previstos. Checklist requirements.md16/16, zero aberto, somente leitura; ignore Java adequado; extensions.yml ausente, sem hooks before/after_implement.
+
+### Pré-execução, comando e revisão testada
+
+Win32_Process não mostrou Maven/Java/Surefire ativo antes da chamada. A busca por identificação/comando/argumentos nos24 recibos run.json anteriores da008 não encontrou FINAL aplicável. O FINAL007 com3991 casos e os checkpoints focais foram preservados e não reutilizados como aprovação desta revisão nem somados para substituir a suíte completa. Nenhuma seleção focal foi repetida antes de FINAL.
+
+Diretório novo ignorado `target/feature008-evidence/T034-20261023/`: prepare.py exit0 registrou362 hashes de arquivos rastreados, estado inicial e seleção/main; copiou e conferiu por SHA256 os482 relatórios anteriores em surefire-before/; inventariou tamanho/mtime de10899 arquivos de evidências anteriores. received-quickstart.md/received-tasks.md conservam o estado recebido, incluindo T033. Não foi exigida árvore limpa nem descartada qualquer alteração.
+
+Uma chamada Maven, sequencial, por run.ps1, com identificação exclusiva:
+
+~~~powershell
+.\mvnw.cmd "-Dsurefire.reportNameSuffix=FINAL-T034-20261023T162000739" test
+~~~
+
+Não há -Dtest, exclusão, skip ou alteração de asserção. run.json registra início `2026-10-23T16:20:00.7391447-03:00` (valor exato confirmado no recibo), HEAD e os dois documentos modificados. Esse HEAD mais o diff documental recebido identifica o estado executado; código/build/testes eram os do HEAD. Ao terminar, os362 hashes recebidos ainda coincidiam, antes de acrescentar esta seção. Não houve edição de implementação, teste, fixture, configuração, contrato ou documento durante a execução.
+
+Console Maven terminou em `2026-10-23T16:42:24-03:00`, com duração informada `22:17 min`. **BUILD FAILURE:4957 testes,39 falhas,218 erros,0 ignorados.** Console e137 XML+137 TXT próprios concordam. Não é aprovação da008, não é soma de checkpoints e não se confunde teste descoberto/contabilizado com asserções executadas quando o contexto não inicializou.
+
+Ambiente efetivo: Java21.0.12.1 Azul Zulu em `C:/Program Files/Zulu/zulu-21`, os.name `Windows 10`, amd64 e `java.security.manager=allow`, conforme propriedades dos XML. O processo Maven observado usa a distribuição3.9.16 selecionada pelo Wrapper; runtime-processes.json registra sua linha de comando e o único fork Surefire. Boot3.3.4/Hibernate6.5.3.Final/H2 2.2.224 permanecem os do projeto. Não houve Maven concorrente ou servidor externo de banco.
+
+### Arquivamento recuperado e exit code disponível
+
+Após Maven concluir, Copy-Item do runner falhou ao arquivar o TXT de PublicProductDetailSecurityIntegrationTest$DuplicateCategoryNames em um destino longo, com DirectoryNotFoundException/limite de caminho do Windows, na linha32 de run.ps1. Isso aconteceu depois dos testes e não explica suas39 falhas/218 erros. O exit1 observado pela ferramenta é **do runner**, que terminou nessa cópia; não é apresentado como o exit code exato do Maven.
+
+O runner havia guardado LASTEXITCODE apenas em uma variável transitória e não gravou exit.json antes da exceção. **O código numérico do Maven não ficou disponível de forma durável e não foi inferido de BUILD FAILURE.** completion.json registra mavenExitCode=null, runnerExitCode=1, a causa, conclusão e totais do console. Essa limitação adicional permanece explícita; não houve repetição de Maven para reconstruir o exit ausente.
+
+A pasta parcial de80 arquivos permanece intacta em FINAL-T034-20261023T162000739/surefire-reports/. Uma primeira cópia auxiliar por shutil.copy2 no mesmo caminho também encontrou WinError3; o leitor reflect.py então não encontrou XML nessa cópia parcial. A recuperação final usou o caminho mais curto `target/feature008-evidence/T034-20261023/reports/`: recover-archive.py exit0 copiou274 arquivos,137 XML+137 TXT, todos com SHA256 igual aos originais em target/surefire-reports. Console original UTF-16 e run.json continuam preservados no diretório da execução. Não houve limpeza, movimentação ou substituição de resultados anteriores.
+
+### Descoberta, aninhados, herança e preservação
+
+reflect.py/InspectTests.java terminaram com exit0 e inspecionaram metadados das classes compiladas, usando Class.forName com initialize=false. Não houve descoberta JUnit adicional, inicialização de Spring ou nova invocação de teste nesse auxiliar. O inventário resultou em137 classes/containers (127 principais e10 aninhados),906 grupos de método por classe e212 grupos herdados. analyze.py final exit0 conciliou esse inventário com cada testcase e com os resumos XML/TXT/console:4957 identidades classe+nome únicas, nenhum método/classe omitido ou extra e índices parametrizados contínuos.
+
+Foi necessário distinguir o nome do arquivo/suite XML do classname de cada testcase. Por exemplo, o XML físico de H2Console$ServletContextPath contém15 casos:8 do ROOT e7 do aninhado/api, enquanto o arquivo externo tem0. A primeira versão do leitor apontou uma divergência por agrupar somente pelo nome da suite; a conferência final agrupa pelos classnames reais, sem somar casos duas vezes ou interpretar container0 como teste omitido. Isso foi ajuste do leitor, não mudança/reexecução de teste.
+
+Os10 aninhados efetivamente presentes são H2ConsoleSecurityIntegrationTest$ServletContextPath; OrderControllerTest$InputBoundary e $SuccessfulRegistration; PublicCatalogNameFilterIntegrationTest$ApiContext e $RootContext; PublicCatalogSecurityIntegrationTest$EmptyCatalog; PublicProductDetailSecurityIntegrationTest$DuplicateCategoryNames; PaymentRegistrationServiceTest$CurrentAccess, $RegistrationRules e $TransactionAndCategories. Todos os métodos esperados de cada classe concreta, inclusive os herdados pelas variantes Api, aparecem nos testcase. As multiplicidades de método das66 linhas de suite dos sete recibos reconciliados na T033 coincidem individualmente com esta FINAL; essa comparação verifica descoberta e não transfere aprovação de execução antiga.
+
+| Recorte observado nesta FINAL | Casos | Resultado/alcance |
+| --- | ---: | --- |
+| Classes Payment* e OrderPaymentLockRepositoryTest | 913,28 classes/containers | Zero falhas/erros/ignorados; inclui os três Nested do serviço e provas HTTP, MVC, tempo, perfis, schema/JDBC, locks, rollback e transporte nos contextos previstos. Não substitui o resultado global reprovado. |
+| Onze classes concretas de S5/OwnOrderQuery | 758 | Zero falhas/erros/ignorados; lista/detalhe/segurança/regressão ROOT/Api e DTO/repository/service, incluindo os oito casos T031. OwnOrderQuerySecurityConfigurationTest é outro componente e está reprovado abaixo. |
+| H2ConsoleSecurityIntegrationTest e aninhado ServletContextPath | 8+7 | Todos aprovados, ROOT e/api, com servlet/filtros reais e métodos previstos; arquivo e asserções intactos. |
+| JwtTokenServiceTest | 1 | Aprovado; emissão/verificação HS256 e claims seguros; arquivo e asserções intactos. |
+
+Os20 marcadores T031_NETWORK desta execução têm jdkChecks=3 e forbiddenAttempts=0, com controles DNS/CONNECT/HTTP_PERMISSION sem chamadas externas. São20 janelas/60 hooks, não60 testes JUnit. Permanecem os limites do sensor JDK e das fotografias/SQL descritos em T031–T033; MockMvc, socket e leitura JDBC não são provas intercambiáveis. Nenhuma falha física, PostgreSQL, crash recovery ou durabilidade de produção foi simulada por esta execução.
+
+### Diagnóstico completo da reprovação
+
+diagnose.py exit0 classificou os257 resultados não aprovados dos XML sem casos sem classificação. Os exemplos/causas, classes e métodos completos estão em diagnostic.json; analysis.json conserva também os detalhes originais por caso. As categorias abaixo explicam o que foi observado, sem declarar aprovadas as verificações bloqueadas.
+
+| Classe/método | Falhas/erros | Causa observada e classificação |
+| --- | ---: | --- |
+| AdminProductSecurityChainWiringTest.shouldSelectFourScopedChainsInTheRequiredOrderForEveryAdministrativeMethod | 1 falha | Exige hasSize(4)/ordem e índices anteriores; contexto real tem5 cadeias, incluindo paymentSecurityFilterChain antes das quatro existentes conforme plano008. Expectativa anterior superada, não prova de defeito da nova cadeia. |
+| OwnOrderQuerySecurityConfigurationTest | 34 falhas | Seus contextos locais não fornecem PaymentAccessService exigido pela cadeia nova. A asserção de contexto inicializado falha antes de verificar seleção/políticas. Preparação:12 selectsFirstChainForOnlyQueryMethodsAndSingleSegment,10 configuresQueryAndExistingAuthorizationPolicies,2 preservesExistingChainSelectionAndPublicFallback e10 configuredProviderKeepsLookupFailuresDistinct. O arquivo também contém expectativas antigas de quatro cadeias que não chegaram a ser avaliadas nesses casos; não se afirma sua aprovação. |
+| AdminProductDeletionIntegrationTest.anyOrderItemPreventsDeletionAndPreservesTheEntireHistory, índices3/4/7/8 | 4 falhas | Provider enumera PAID, mas registerOrder apenas POSTa/orders e espera PAID imediatamente; o resultado correto de criação é WAITING_PAYMENT. Fixture sem preparação da quitação, falhando antes do DELETE. Não é prova de exclusão de produto referenciado ou falha da transição de pagamento. As quatro variantes WAITING_PAYMENT permanecem aprovadas. |
+| GlobalExceptionHandlerRegressionTest | 84 erros | Slice MVC:1 falha inicial por PaymentAccessService ausente e83 erros por ApplicationContext failure threshold. Asserções não executadas. |
+| LoginControllerTest | 83 erros | Mesmo tipo de preparação:1 erro inicial e82 em cascata. Não demonstra regressão funcional de login; esses casos não estão aprovados. |
+| ProductControllerTest | 51 erros | Mesmo tipo de preparação:1 erro inicial e50 em cascata. Não demonstra regressão funcional de catálogo; esses casos não estão aprovados. |
+
+Totais:1 expectativa anterior+34 falhas de preparação local+4 fixtures incoerentes=39 falhas;3 erros iniciais de slices+215 em cascata=218 erros. OrderSecuritySliceTestConfig fornece os mocks históricos, mas não PaymentAccessService; o SecurityTestConfiguration de OwnOrderQuerySecurityConfigurationTest tem a mesma omissão. Não foi observado conflito de URL/create-drop nos resultados reprovados; suas causas demonstradas são as acima. Os testes bloqueados não permitem excluir defeitos funcionais ainda não exercitados.
+
+O achado de cobertura PAID levado da T033 à T034 foi efetivamente executado e agora tem essas quatro falhas de setup; o registro anterior permanece histórico intacto. Nenhuma asserção foi enfraquecida, nenhum teste excluído/desabilitado, nenhum serviço mockado para substituir uma prova real existente, nenhum limite de tentativas/cache ampliado, nem perfil/seed/OSIV/mapper global alterado. Não foram implementadas correções nesta tarefa de execução, sob a instrução de preservar código e testes. Nenhuma segunda FINAL foi iniciada para obter verde.
+
+### Estado da tarefa, limites e pendências
+
+**T034 permanece aberta**: FINAL foi executada integralmente, mas reprovou, e o exit numérico exato do Maven não foi preservado pelo runner. A conferência de descoberta/arquivamento não transforma reprovação em PASS. Falta uma revisão apropriada de preparação/expectativas, mantendo garantias explícitas das cinco cadeias e rotas, mocks restritos aos contextos locais e PAID+Payment coerentes antes da exclusão; criação de pedido deve continuar exigindo WAITING_PAYMENT. Depois das correções verificadas caberá nova FINAL identificada, gravando seu exit antes de operações de arquivamento. Esses são próximos trabalhos, não executados ou autorizados por efeito deste diagnóstico.
+
+T033 continua marcada e seu texto/evidências preservados; T035–T036 continuam abertas e não foram iniciadas. README e metadados planned/vigência dos contratos não foram alterados: publicação continua condicionada à aprovação. Nenhum resultado local foi apresentado como CI remota/Linux ou PostgreSQL. Não houve consulta/disparo remoto, push, PR, commit, stage ou alteração de main.
+
+Antes da escrita documental, analyze.py confirmou362 rastreados idênticos ao recebimento,482 relatórios anteriores byte-idênticos e10899 arquivos de evidência anterior com tamanho/mtime intactos. target/surefire-reports contém756 arquivos:482 anteriores+274 desta execução, sem outro relatório novo. O único incremento rastreado desta T034 é esta seção no quickstart; tasks.md continua exatamente como recebido, com T034 aberta. Recibos inicial, run.json, console.log, completion.json, reports/, inventories, reflection e analysis/diagnostic ficam no diretório ignorado novo. Revisão de diff/referências/links/whitespace e estado final são registrados abaixo após sua execução.
+
+Revisão documental efetivamente executada: review.py exit0 e `git diff --check` exit0, sem diagnóstico de whitespace. Conferidos o diff completo contra HEAD e o incremento contra received-quickstart.md,194 links locais existentes,361 rastreados fora do incremento idênticos, prefixo de513667 bytes recebido intacto, tasks.md sem alteração nesta T034,482 relatórios anteriores byte-idênticos,756 relatórios atuais preservados após a análise e10899 arquivos anteriores com tamanho/mtime intactos. final-review.json e os dois diffs ficam no diretório novo ignorado. Git final: somente quickstart.md/tasks.md da008 modificados (tasks recebido da T033), índice vazio e nenhum não rastreado; raiz/branch/HEAD/main/seleção008 preservados. T034–T036 continuam abertas. A revisão documental passou; a FINAL permanece reprovada e não houve correção ou nova execução de testes.
+
+## Retomada T034 — correções de testes, focal e FINAL aprovados (2026-10-23)
+
+Retomada exclusivamente a T034 por autorização para corrigir os testes/preparação diagnosticados. Conferidos raiz `C:/Users/ronal/dscommerce-speckit`, branch `008-registrar-pagamento`, HEAD `96126dbfb8c01cbe8ae6b005d6226a6c7503bffd`, seleção local008, somente quickstart.md/tasks.md modificados, índice vazio e nenhum não rastreado. Main permanece `5cd16709ea531ccae27230db19753e6c5533d12d`. T034 e dependências/procedimentos/diagnóstico foram lidos; o contexto aprovado de spec/plano/contratos/constituição/harness continua o auditado na T033. Pré-requisitos confirmaram FEATURE_DIR absoluto008; checklist requirements.md16/16, zero aberto, somente leitura; ignore Java adequado e extensions.yml ausente antes/depois, sem hooks de implementação.
+
+### Causas confirmadas e correções restritas
+
+Antes da edição foram relidos integralmente console (27539380 bytes),137 XML e diagnóstico da FINAL-T034-20261023T162000739:4957 casos únicos,39 falhas,218 erros,0 ignorados e BUILD FAILURE. Esse registro e a T033 permanecem byte a byte como prefixo. A execução antiga conserva **mavenExitCode=null e runnerExitCode=1**; seu exit1 não foi retroativamente atribuído ao Maven e a aprovação abaixo pertence a outra execução, depois das correções.
+
+| Causa e fontes corrigidas | Mudança efetiva, mantendo os oráculos |
+| --- | --- |
+| Expectativa antiga em [AdminProductSecurityChainWiringTest](../../src/test/java/com/devsuperior/dscommerce/config/AdminProductSecurityChainWiringTest.java) e [OwnOrderQuerySecurityConfigurationTest](../../src/test/java/com/devsuperior/dscommerce/config/OwnOrderQuerySecurityConfigurationTest.java) | hasSize(5) e containsExactly das cinco cadeias, índices atualizados, métodos de seleção renomeados para shouldSelectFiveScopedChainsInTheRequiredOrderForEveryAdministrativeMethod e selectsOwnQueryChainForOnlyQueryMethodsAndSingleSegment. Acrescentadas asserções do matcher de pagamento em todos os verbos, incluindo ID inválido antes de MVC e caminhos fora do recorte que continuam na cadeia administrativa. Preservadas seleção de consultas/registro/admin/público e autorização; política ADMIN da cadeia de pagamento incluída na matriz de perfis. |
+| PaymentAccessService ausente em34 contextos locais e nos três slices MVC (84+83+51 erros) | Bean simulado explícito no SecurityTestConfiguration local e em [OrderSecuritySliceTestConfig](../../src/test/java/com/devsuperior/dscommerce/config/OrderSecuritySliceTestConfig.java), este ainda condicional e restrito aos slices públicos existentes. requireAdmin lança FORBIDDEN por padrão: não há permissão silenciosa pelo retorno void do mock. As provas do provider de consultas exigem nenhuma interação com esse bean; suas falhas401/403/500 continuam próprias. GlobalExceptionHandlerRegressionTest, LoginControllerTest e ProductControllerTest não receberam mudanças nem desativação de filtros; a dependência de preparação foi completada pelo suporte compartilhado. |
+| Quatro variantes PAID em [AdminProductDeletionIntegrationTest](../../src/test/java/com/devsuperior/dscommerce/controllers/AdminProductDeletionIntegrationTest.java) | registerOrder exige WAITING_PAYMENT na resposta e no JDBC. Somente a variante que precisa de PAID faz POST real/admin/orders/{id}/payments com ADMIN, filtros/serviço/proxy/transação reais e ocorrência igual à criação. Exige201 com três campos, ocorrência conservada, Payment por leitura independente e alteração somente do status da raiz, mantendo os demais dados. Depois disso exige PAID e a rejeição409 da exclusão, sem reduzir o provider a WAITING_PAYMENT. |
+
+As cadeias produtivas conferidas, sem editar SecurityConfig ou outro código de produção:
+
+| Ordem | Bean/matcher relativo ao contexto | Responsabilidade preservada |
+| ---: | --- | --- |
+| -1 | paymentSecurityFilterChain: /admin/orders/*/payments, todos os métodos | ADMIN atual; tratamento específico de pagamento, antes de MVC. |
+| 0 | ownOrderQuerySecurityFilterChain: GET/HEAD/orders e/orders/* | CLIENT ou ADMIN, com titularidade própria na guarda/consulta. |
+| 1 | orderSecurityFilterChain: POST/orders | Registro por CLIENT ou ADMIN. |
+| 2 | adminProductSecurityFilterChain: /admin/** | Manutenção administrativa com ADMIN. |
+| 3 | securityFilterChain: demais caminhos | Fallback público, preservando catálogo/login/console. |
+
+O mock de pagamento existe somente na configuração local de teste e nos slices indicados; a preparação PAID e as provas008 continuam com a guarda real. Os34 resultados de OwnOrderQuerySecurityConfigurationTest eram falhas de asserção de contexto, antes das políticas; os218 erros dos slices eram3 iniciais e215 em cascata. As quatro variantes de exclusão falhavam no setup, antes de DELETE. Nenhuma dessas causas foi atribuída à regra produtiva de criação ou ocultada como aprovação anterior.
+
+O probe008 foi composto no teste de exclusão, sem modificar os probes históricos. Cada leitura/DELETE e o setup de criação exigem Payment inalterado; a quitação válida é uma etapa separada. Snapshot JDBC verifica Payment, comprador/criação/itens/valores e catálogo; a limpeza remove somente Payment dos IDs próprios antes de itens/pedidos. Cada execução das18 variantes de exclusão fez seis quitações201 (três ROOT, três/api) nos índices3/4/7/8: são requests de preparação dentro dos testes, não seis testes adicionais. O provider, contagens, envelopes e proteção de compras permanecem exigidos. Não se mudou produção, contrato, POM/Wrapper, perfis globais, seed, cache, filtros, H2ConsoleSecurityIntegrationTest ou JwtTokenServiceTest.
+
+### Execuções novas e estado efetivamente testado
+
+Recibo novo ignorado `target/feature008-evidence/T034R-20261023/`. prepare.py exit0 guardou362 hashes rastreados, cópias recebidas dos documentos e756 relatórios anteriores copiados/conferidos por SHA256 em before/; inventariou11767 arquivos anteriores por tamanho/mtime. O RED funcional/preparação utilizado foi a FINAL reprovada já concluída, não uma repetição antes da correção. O focal novo foi exigido expressamente nesta retomada, sem baseline ou checkpoint redundante.
+
+Antes de cada chamada, Win32_Process não encontrou Maven/Surefire ativo. Antes de FINAL, preflight-final.json conferiu que a FINAL antiga não correspondia ao estado corrigido: quatro arquivos de teste/suporte diferentes, produção/build iguais; não havia FINAL concluída aplicável. O hash de todos os rastreados antes de FINAL coincidiu com o do focal aprovado. O HEAD mais esse diff de quatro testes e os documentos recebidos identifica a revisão executada; mudança de SHA não foi presumida nem houve edição durante as execuções.
+
+Comandos efetivos, sequenciais, pelo Wrapper:
+
+~~~powershell
+.\mvnw.cmd "-Dtest=AdminProductSecurityChainWiringTest,OwnOrderQuerySecurityConfigurationTest,AdminProductDeletionIntegrationTest,GlobalExceptionHandlerRegressionTest,LoginControllerTest,ProductControllerTest" "-Dsurefire.reportNameSuffix=FOCAL-T034R-20261023T170156614" test
+.\mvnw.cmd "-Dsurefire.reportNameSuffix=FINAL-T034R-20261023T170507809" test
+~~~
+
+| Execução | Início e término (-03:00) | Resultado console/XML/TXT | Exit Maven |
+| --- | --- | --- | ---: |
+| FOCAL-T034R-20261023T170156614 | 17:01:56.614295 → runner17:04:03.289584; Maven02:00 min | 307/0/0/0, BUILD SUCCESS;6 XML+6 TXT | 0 |
+| FINAL-T034R-20261023T170507809 | 17:05:07.809670 → runner17:26:25.018445; Maven terminou17:26:22,21:08 min | 4957/0/0/0, BUILD SUCCESS;137 XML+137 TXT | 0 |
+
+Notação: testes/falhas/erros/ignorados. Focal e FINAL são execuções distintas; os307 estão incluídos na FINAL, não são somados aos4957. O focal selecionou exatamente seis classes concretas,62 grupos de método, nenhum aninhado ou herdado, sem seleção vazia/extra. Todos os307 casos passaram e foram conferidos antes de iniciar FINAL. Seus métodos/multiplicidades coincidem com os observados nas mesmas seis classes da FINAL.
+
+O novo runner Python captura o resultado numérico do processo Wrapper/Maven e grava **exit.json imediatamente após wait(), antes de qualquer cópia**, com capturedBeforeArchiving=true. Arquivamento e integridade ficam em archive.json, separados. FOCAL/ e FINAL/ guardam run.json, console.log UTF-8, exit.json, fontes antes, inventários de relatórios, reports/ e analysis.json. Diretórios curtos e sufixos exclusivos evitaram a falha de caminho anterior;12 e274 relatórios foram arquivados integralmente com hashes iguais aos originais. Nenhuma limpeza ou sobrescrita de arquivo anterior.
+
+### Conferência completa e critérios da T034
+
+reflect.py/InspectTests.java exit0 inspecionou metadados compilados sem inicializar as classes ou executar JUnit;137 classes/containers,906 grupos de método por classe e212 herdados. analyze.py FOCAL e FINAL exit0 reconciliaram console completo, totais e nós de falha/erro/skip, cada TXT/XML e testcase classname. A FINAL tem **4957 identidades classe+nome únicas**,127 classes/containers principais e10 aninhados, nenhum método/classe esperado omitido ou extra, índices parametrizados contínuos e nenhum teste ignorado. Containers e arquivos físicos não foram contados novamente como testes: ROOT/aninhados são atribuídos pelo classname de cada caso, inclusive o H2 Console. O código compilado é o mesmo entre focal e FINAL.
+
+Os10 aninhados continuam os identificados na FINAL anterior: H2Console$ServletContextPath; OrderController$InputBoundary/$SuccessfulRegistration; PublicCatalogNameFilter$ApiContext/$RootContext; PublicCatalogSecurity$EmptyCatalog; PublicProductDetailSecurity$DuplicateCategoryNames; PaymentRegistrationService$CurrentAccess/$RegistrationRules/$TransactionAndCategories. As variantes Api herdam os métodos previstos. A comparação individual de multiplicidades com C1–C5/recibos da T033 permaneceu idêntica; ela verifica descoberta, sem importar sua aprovação nem somar checkpoints para substituir FINAL.
+
+| Casos afetados, aprovados novamente dentro da FINAL | Casos |
+| --- | ---: |
+| AdminProductSecurityChainWiringTest | 13 |
+| OwnOrderQuerySecurityConfigurationTest | 58 |
+| AdminProductDeletionIntegrationTest | 18 |
+| GlobalExceptionHandlerRegressionTest | 84 |
+| LoginControllerTest | 83 |
+| ProductControllerTest | 51 |
+| Total desse recorte, já incluído nos4957 | 307 |
+
+H2ConsoleSecurityIntegrationTest executou8 casos ROOT e7 do aninhado/api; JwtTokenServiceTest executou1: todos aprovados e ambos os arquivos byte-idênticos ao recebimento. As classes008 e regressões001–007 foram incluídas na suíte sem filtro, preservando os métodos de concorrência, precisão, SQL, rollback/commit, transmissão e consultas ROOT/Api. Os seis marcadores T034_SETTLED da FINAL comprovam o alcance da nova preparação; os20 T031_NETWORK existentes mantiveram jdkChecks=3 e forbiddenAttempts=0. Não se confundem requests, hooks ou failpoints com contagem JUnit; permanecem os limites do sensor, dos snapshots e da distinção entre MockMvc, socket e JDBC já documentados. Não houve falha nova a diagnosticar ou repetição para obter verde depois desta revisão.
+
+Ambiente efetivo dos XML: Windows10/amd64, Java21.0.12.1 Azul Zulu em C:/Program Files/Zulu/zulu-21, java.security.manager=allow, Wrapper Maven3.9.16 e stack/H2 do projeto preservados. É validação **local Windows/Java21/H2**, sem nova execução remota/CI/Linux ou PostgreSQL, sem prova de outro SGBD, crash recovery ou durabilidade de produção. Nenhum gateway/cobrança foi introduzido pelas correções; os mocks locais não constituem prova de banco ou JWT real.
+
+### Preservação e fechamento restrito
+
+A análise confirmou os fontes iguais durante cada execução, os756 relatórios recebidos preservados byte a byte e os768 anteriores à FINAL (incluindo os12 focais) idênticos. Agora target/surefire-reports tem1042 arquivos:756 recebidos+12 focais+274 da nova FINAL; nenhum extra, parcial ou histórico foi misturado ao resultado novo. Os11767 arquivos anteriores mantêm tamanho/mtime e os recibos da FINAL reprovada permanecem intactos. O prefixo recebido inteiro do quickstart, incluindo T033 e a reprovação, foi preservado.
+
+Critérios da T034 comprovados: causas confirmadas antes das quatro correções de teste, focal aprovado, nova FINAL da revisão estabilizada aprovada sem filtro/omissões/duplicatas, H2 Console/JWT íntegros e exit numérico disponível. Após revisão documental, somente T034 passa a[X]. **T035–T036 permanecem abertas**; README, metadados planned/vigência e contratos não foram alterados nem publicados. A entrega documental/global dessas etapas não é antecipada pela aprovação local. Sem stage, commit, push, PR, merge ou alteração de main.
+
+Revisão efetivamente executada: review.py exit0/PASS, diff de código e documentos revisado e `git diff --check` exit0, sem diagnóstico de whitespace. Confirmados356 rastreados fora do recorte idênticos, os quatro testes/suportes iguais aos hashes aprovados na FINAL, prefixo de528623 bytes recebido intacto e198 links locais existentes. tasks.md difere do recebido somente pelo marcador T034; T033 preservada e T035–T036 abertas. Os756 relatórios recebidos são byte-idênticos,1042 atuais conferem com o inventário após FINAL e11767 arquivos anteriores conservam tamanho/mtime. Não há arquivo novo não rastreado; os auxiliares/evidências novos ficam em target ignorado. Git final tem seis modificados: quickstart.md/tasks.md da008 e os quatro Java deste recorte; índice vazio, raiz/branch/HEAD/main/seleção008 mantidos, nenhum Maven ativo. Sem impedimento restante da T034; pendências limitadas às etapas T035–T036 e aos ambientes não executados, sem publicação ou integração presumida. final-review.json e reviewed.diff conservam a revisão.
+
+
+## T035 — consolidação documental das evidências (2026-10-23)
+
+Escopo exclusivo de [T035](tasks.md), dependente da T034 aprovada; T036 não iniciada. Aplicada a skill speckit-implement ao recorte solicitado. Confirmados raiz `C:/Users/ronal/dscommerce-speckit`, branch real `008-registrar-pagamento`, HEAD `96126dbfb8c01cbe8ae6b005d6226a6c7503bffd` e seleção local008. Estado inicial: exatamente seis modificados — este quickstart, tasks.md e os quatro testes/suportes da retomada T034 acima —, índice vazio e nenhum não rastreado. Main `5cd16709ea531ccae27230db19753e6c5533d12d` preservada. Lidos T035, dependências, procedimentos, contratos e registros existentes. Pré-requisitos confirmaram FEATURE_DIR008; checklist requirements.md:16/16 concluídos, zero aberto, somente leitura. Ignore Java suficiente; extensions.yml ausente, sem hooks.
+
+Esta tarefa consolida provas existentes: **nenhum Maven, JUnit, aplicação ou validador OpenAPI foi executado novamente**. Revisão de texto, XML/TXT e hashes não constitui nova comprovação funcional. prepare.py registrou362 hashes rastreados,1042 relatórios atuais e tamanho/mtime dos12850 arquivos de evidência anteriores; os258 arquivos de fonte/teste/build conferem byte a byte com sources-before.json da FINAL aprovada. Os quatro Java recebidos, produção, contratos, asserções e artefatos007 permanecem preservados. Recibo novo ignorado: `target/feature008-evidence/T035-20261023/`.
+
+### Catálogo das execuções reutilizadas e revisão
+
+**S** identifica HEAD `96126dbfb8c01cbe8ae6b005d6226a6c7503bffd` mais o diff dos quatro Java recebido da T034: AdminProductSecurityChainWiringTest, OwnOrderQuerySecurityConfigurationTest, OrderSecuritySliceTestConfig e AdminProductDeletionIntegrationTest. Não há commit novo. Os hashes em `target/feature008-evidence/T034R-20261023/FINAL/sources-before.json` identificam os conteúdos efetivamente testados; initial.json/tracked.json desta T035 conferem sua igualdade atual. As únicas mudanças desta T035 são documentais. **F** é exclusivamente FINAL-T034R-20261023T170507809, não a FINAL reprovada ou FINAL007.
+
+Comandos históricos efetivos, já concluídos na T034, exibidos para rastreabilidade e **não reexecutados**:
+
+~~~powershell
+.\mvnw.cmd "-Dtest=AdminProductSecurityChainWiringTest,OwnOrderQuerySecurityConfigurationTest,AdminProductDeletionIntegrationTest,GlobalExceptionHandlerRegressionTest,LoginControllerTest,ProductControllerTest" "-Dsurefire.reportNameSuffix=FOCAL-T034R-20261023T170156614" test
+.\mvnw.cmd "-Dsurefire.reportNameSuffix=FINAL-T034R-20261023T170507809" test
+~~~
+
+| Execução/revisão | Seleção, conclusão e resultado reutilizado | Evidência local | Exit Maven |
+| --- | --- | --- | ---: |
+| FOCAL-T034R-20261023T170156614 / S | Seis classes concretas selecionadas acima,62 grupos de método;307/0/0/0; BUILD SUCCESS;2026-10-23 de17:01:56.614295 a17:04:03.289584 -03:00 | T034R-20261023/FOCAL: run.json, console.log UTF-8, exit.json, analysis.json e reports/ (6 XML+6 TXT) | 0 |
+| F / S | Suíte completa sem filtro,4957/0/0/0; BUILD SUCCESS;2026-10-23 de17:05:07.809670 a17:26:25.018445 -03:00; Maven terminou17:26:22 | T034R-20261023/FINAL: run.json, console.log UTF-8, exit.json, archive.json, analysis.json, sources-before.json e reports/ (137 XML+137 TXT) | 0 |
+| FINAL-T034-20261023T162000739 / revisão anterior às quatro correções | 4957/39/218/0; BUILD FAILURE; Maven terminou16:42:24 -03:00; reprovação histórica preservada | T034-20261023/FINAL-T034-20261023T162000739: console.log UTF-16, run.json, completion.json e cópia parcial intacta; relatórios completos recuperados em T034-20261023/reports/ | Indisponível; runner=1 |
+
+Notação: testes/falhas/erros/ignorados. Todas as bases acima são relativas a `target/feature008-evidence/`. Focal307 está incluído em F4957 e não é somado. C1–C5 e FINAL007 não substituem F. O exit1 histórico pertence ao runner que falhou no arquivamento; não foi atribuído ao Maven. Os exits0 das duas execuções aprovadas foram capturados numericamente antes do arquivamento, com capturedBeforeArchiving=true.
+
+verify-evidence.py exit0 releu os consoles, cada XML/TXT e exits já existentes: totais coincidentes, zero nós failure/error/skipped,307 e4957 identidades classe+nome únicas, sem duplicata entre arquivos da mesma execução. A reconciliação de descoberta já concluída na T034 permanece aplicável: F tem127 classes/containers principais+10 aninhados,906 grupos de método por classe e212 herdados; nenhum método/classe esperado omitido/extra e índices parametrizados contínuos. H2ConsoleSecurityIntegrationTest (8 ROOT+7 no aninhado/api) e JwtTokenServiceTest (1) permanecem íntegros/aprovados. O manifesto compilado foi apenas reutilizado; não se inicializou classe nem se executou reflexão/compilação nesta tarefa. reused-evidence.json conserva a conferência documental atual.
+
+matrix.py exit0 reconciliou30 cenários com21 classes concretas e91 referências método/contexto nos137 XML existentes de F. Não é contagem nova de testes nem nova execução. ROOT e/api têm relatórios concretos distintos quando indicados; temporal/concorrência/socket somente ROOT não são apresentados como cobertura/api.
+
+### Matriz final dos 30 cenários
+
+Todas as linhas abaixo se referem à execução **F**, revisão **S**, resultado **PASS**, com os XML/TXT arquivados de F; não houve nova execução nesta T035. Métodos repetidos em mais de um cenário representam as mesmas invocações, sem somá-las novamente. Os índices entre colchetes são os índices JUnit efetivos. Os demais métodos parametrizados incluem todas as invocações indicadas pelos XML.
+
+| Cenário | Classe abreviada e método/invocações efetivas | Contexto e quantidade | Execução/revisão/resultado e relatório | Prova/limite |
+| --- | --- | --- | --- | --- |
+| US1.1 | `R.us11AdminSettlesForeignOrderWithExactlyThreeConfirmationFieldsAndHistorical4250` | R: 1 ROOT, 1 /api | F/S, PASS; relatórios R | 201 fechado,42.50 e commit observado |
+| US1.2 | `R.us12OwnAdminWithoutClientAndBothProfilesUseTheSameSettlementRules` | R: 3 ROOT, 3 /api | F/S, PASS; relatórios R | ADMIN isolado/ambos; próprio/alheio |
+| US1.3 | `R.us13CatalogPriceTwelveDoesNotReplaceHistoricalTwentyOrOrderData` | R: 1 ROOT, 1 /api | F/S, PASS; relatórios R | Histórico20.00 versus catálogo12.00 |
+| US1.4 | `R.us14EquivalentOffsetWithExtraZerosPreservesOccurrenceRatherThanBusinessReference` | R: 1 ROOT, 1 /api | F/S, PASS; relatórios R | Mesmo Instant, sem substituir ocorrência |
+| US1.5 | `R.us15OccurrenceEqualToCreationIsAccepted`; `T.initialReferenceAndInclusiveWindowSurviveARealRootLockWait[1]` | R: 1 ROOT, 1 /api; T: 1 ROOT | F/S, PASS; relatórios R,T | LOWER_EQUAL inclusive, também após espera |
+| US1.6 | `R.us16OccurrenceEqualToInitialReferenceSurvivesClockAdvanceBeforeCompletion`; `T.initialReferenceAndInclusiveWindowSurviveARealRootLockWait[3]` | R: 1 ROOT, 1 /api; T: 1 ROOT | F/S, PASS; relatórios R,T | UPPER_EQUAL, referência fixa durante espera |
+| US2.1 | `A.missingInvalidExpiredAndRemovedAccountCredentialsAre401WithoutRestrictedReads`; `A.accountRemovedBetweenFilterAndServiceBecomes401WithoutExposingThePurchase` | A: 5 ROOT, 5 /api; A: 1 ROOT, 1 /api | F/S, PASS; relatórios A | 401 sem leitura restrita; conta removida também após filtro |
+| US2.2 | `A.clientAndNoProfileCannotSettleEvenTheirOwnPurchase` | A: 4 ROOT, 4 /api | F/S, PASS; relatórios A | 403 sem ADMIN |
+| US2.3 | `A.revocationAfterIssuanceDefeatsTheSameSignedAdminClaims`; `A.currentGrantAllowsTheSamePreviouslyDeniedCredentialWithoutReissuingIt`; `A.revocationBetweenFilterAndServiceIsRereadBeforeAnyOrderLookup`; `A.signedRoleNameAndAuthorityClaimsCannotGrantOrRemoveDatabasePermission`; `T.scalarGuardAfterTheWaitRejectsRevocationDespiteInitializedManagedRoles` | A: 4 ROOT, 4 /api; A: 4 ROOT, 4 /api; A: 4 ROOT, 4 /api; A: 4 ROOT, 4 /api; T: 2 ROOT | F/S, PASS; relatórios A,T | Perfil atual e releitura escalar após espera; não serializa revogação depois da última leitura |
+| US2.4 | `I.absentPositiveIdentityIsBusiness404WithoutCreatingOrChangingAnyRow` | I: 1 ROOT, 1 /api | F/S, PASS; relatórios I | 404 de negócio para ID positivo ausente |
+| US2.5 | `I.rejectsMissingNullWrongTypeExtraDuplicateAndTrailingJsonBeforeBusiness`; `I.rejectsEveryInvalidR3GrammarCalendarRangeAndPrecisionBeforeBusiness`; `I.selectedPaymentRouteRejectsNonpositiveMalformedOrOutOfRangeIds` | I: 39 ROOT, 39 /api; I: 48 ROOT, 48 /api; I: 7 ROOT, 7 /api | F/S, PASS; relatórios I | Documento/gramática/ID inválidos antes de negócio |
+| US2.6 | `R.basicWindowRejectsInstantsOutsideInclusiveBoundsWithoutChangingHistoricalTables[1]`; `T.initialReferenceAndInclusiveWindowSurviveARealRootLockWait[2]` | R: 1 ROOT, 1 /api; T: 1 ROOT | F/S, PASS; relatórios R,T | BEFORE_CREATION;400 sem ajuste |
+| US2.7 | `R.basicWindowRejectsInstantsOutsideInclusiveBoundsWithoutChangingHistoricalTables[2]`; `T.initialReferenceAndInclusiveWindowSurviveARealRootLockWait[4,6]` | R: 1 ROOT, 1 /api; T: 2 ROOT | F/S, PASS; relatórios R,T | AFTER_REFERENCE e NATIVE_CEILING;400 conservando referência |
+| US2.8 | `I.rejectsMissingNullWrongTypeExtraDuplicateAndTrailingJsonBeforeBusiness`; `I.everyQueryParameterIsInvalidAndExcludedFromTheSafePath` | I: 39 ROOT, 39 /api; I: 5 ROOT, 5 /api | F/S, PASS; relatórios I | Somente path e occurredAt; nenhum query aceito |
+| US2.9 | `I.paidWithoutPaymentIsIncompatibleState409AndIsNeverAutomaticallyRepaired` | I: 1 ROOT, 1 /api | F/S, PASS; relatórios I | 409 sem reparo de PAID sem Payment |
+| US3.1 | `C.sequentialRepeatNeverReusesSuccessOrOverwritesTheOriginal` | C: 4 ROOT | F/S, PASS; relatórios C | 409, mesma ocorrência ou outra e mesmo/outro ADMIN; casos compartilhados comUS3.2 |
+| US3.2 | `C.sequentialRepeatNeverReusesSuccessOrOverwritesTheOriginal` | C: 4 ROOT | F/S, PASS; relatórios C | Ocorrência original conservada; mesmas quatro invocações deUS3.1 |
+| US3.3 | `C.existingPaymentPrecedesWaitingStateWithoutRepair` | C: 4 ROOT | F/S, PASS; relatórios C | Payment anterior prevalece sobre WAITING_PAYMENT, sem reparo |
+| US3.4 | `C.overlappingTransactionsForTheSameOrderAcceptExactlyOnePayment` | C: 4 ROOT | F/S, PASS; relatórios C | Disputa real na mesma raiz:201+409, uma ocorrência vencedora |
+| US3.5 | `C.validRequestsForDistinctOrdersBothSettleWithOverlappingTransactions`; `O.distinctOrderCommitsWhileTheOtherStillWaitsForItsRootLock` | C: 1 ROOT; O: 2 ROOT | F/S, PASS; relatórios C,O | Duas raízes aceitas; uma conclui enquanto outra espera |
+| US4.1 | `B.reachedFailurePointReturnsSafe500AndPreservesAllCommittedRows`; `B.confirmationConstructorFailureAfterRealFlushRollsBackPaymentAndPaidTogether` | B: 6 ROOT, 6 /api; B: 1 ROOT, 1 /api | F/S, PASS; relatórios B | 500/rollback antes da efetivação conhecida |
+| US4.2 | `B.reachedFailurePointReturnsSafe500AndPreservesAllCommittedRows`; `B.realDatabaseConstraintRejectsPaymentInsertWithoutBeingClassifiedAsRepeat` | B: 6 ROOT, 6 /api; B: 1 ROOT, 1 /api | F/S, PASS; relatórios B | Primeiro DML real, flush, beforeCommit, pré-delegação e constraint H2 |
+| US4.3 | `M.bufferedConfirmationIsDeliveredOrPreventedOnlyAfterIndependentCommitProof`; `W.proxyReceivesCommittedConfirmationThenForwardsOrClosesWithoutDeliveringIt` | M: 2 ROOT; W: 2 ROOT | F/S, PASS; relatórios M,W | FORWARD/WITHHOLD; MockMvc e socket ROOT separados; commit, novo409 e GET PAID |
+| US4.4 | `A.controlledRepositoryLookupFailuresStay500RatherThan401OrBusinessConflicts`; `B.internalFailureIsNotAuthenticationNotFoundOrRepeatAndLeavesNoCommittedMutation` | A: 4 ROOT, 4 /api; B: 5 ROOT, 5 /api | F/S, PASS; relatórios A,B | 500 seguro, sem conversão em401/404/409 |
+| US5.1 | `L.listPost008PaidOldPurchaseKeepsTwoTwoOneCreationIdOrderAndOwnCount`; `D.detailPost008RealPaymentKeepsCurrentNamesRecordedItemsAndExactMoney` | L: 1 ROOT, 1 /api; D: 3 ROOT, 3 /api | F/S, PASS; relatórios L,D | PAID em lista/detalhe, mesmos campos e dinheiro |
+| US5.2 | `S.ownershipPost008AdminPaymentDoesNotGrantForeignQueriesOrChangeGetHeadErrors` | S: 3 ROOT, 3 /api | F/S, PASS; relatórios S | ADMIN pagador sem leitura/count alheios;404 seguro |
+| US5.3 | `L.listPost008PaidOldPurchaseKeepsTwoTwoOneCreationIdOrderAndOwnCount` | L: 1 ROOT, 1 /api | F/S, PASS; relatórios L | Cinco pedidos2/2/1 por criação/ID; mesmas invocações também emUS5.1 |
+| US5.4 | `G.regressionPost008RepeatedGetHeadSuccessEmptyAndErrorsKeepAllEightTables` | G: 1 ROOT, 1 /api | F/S, PASS; relatórios G | GET/HEAD repetidos, oito tabelas e ausência de DML nas janelas |
+| US5.5 | `G.regressionPost008PublicCatalogFilterPagesDetailsAndRealLoginRemainIndependentOfPaidQueries`; `G.regressionPost008MaintenanceAndRepeatedRegistrationsPreservePaidHistoryAndCreateNewWaitingOrders` | G: 1 ROOT, 1 /api; G: 1 ROOT, 1 /api | F/S, PASS; relatórios G | Catálogo/login/manutenção/registro preservados; suíte F completa aprovada |
+| US5.6 | `G.regressionPost008RepeatedGetHeadSuccessEmptyAndErrorsKeepAllEightTables`; `G.regressionPost008PaymentRejectionsPreserveAllTablesAndTheOriginalSettlementWithoutExternalAttempts`; `G.regressionPost008PublicCatalogFilterPagesDetailsAndRealLoginRemainIndependentOfPaidQueries`; `G.regressionPost008MaintenanceAndRepeatedRegistrationsPreservePaidHistoryAndCreateNewWaitingOrders` | G: 1 ROOT, 1 /api; G: 1 ROOT, 1 /api; G: 1 ROOT, 1 /api; G: 1 ROOT, 1 /api | F/S, PASS; relatórios G | Somente alvo no sucesso;20 janelas/60 hooks JDK, sem tentativas externas no alcance; carrinho externo não observado |
+
+### Chave de classes e relatórios da matriz
+
+Base local dos relatórios: `target/feature008-evidence/T034R-20261023/FINAL/reports/`. Cada classe qualificada abaixo corresponde exatamente a `TEST-<classe>-FINAL-T034R-20261023T170507809.xml` e `<classe>-FINAL-T034R-20261023T170507809.txt`, conferidos nesta consolidação. São arquivos locais ignorados pelo Git; este resumo e a matriz ficam versionados, mas os recibos precisam ser preservados/transferidos separadamente para outro checkout. Nenhum nome é uma classe futura ou somente um filtro.
+
+| Chave | Classe qualificada real e contexto |
+| --- | --- |
+| R | `com.devsuperior.dscommerce.controllers.PaymentRegistrationHttpIntegrationTest` — ROOT |
+| R | `com.devsuperior.dscommerce.controllers.PaymentRegistrationApiHttpIntegrationTest` — /api |
+| A | `com.devsuperior.dscommerce.controllers.PaymentAuthorizationHttpIntegrationTest` — ROOT |
+| A | `com.devsuperior.dscommerce.controllers.PaymentAuthorizationApiHttpIntegrationTest` — /api |
+| I | `com.devsuperior.dscommerce.controllers.PaymentInputHttpIntegrationTest` — ROOT |
+| I | `com.devsuperior.dscommerce.controllers.PaymentInputApiHttpIntegrationTest` — /api |
+| T | `com.devsuperior.dscommerce.services.PaymentTemporalAndCurrentRolesIntegrationTest` — ROOT, HTTP e espera física H2 |
+| C | `com.devsuperior.dscommerce.controllers.PaymentConcurrencyIntegrationTest` — ROOT |
+| O | `com.devsuperior.dscommerce.controllers.PaymentDistinctOrdersIntegrationTest` — ROOT |
+| B | `com.devsuperior.dscommerce.controllers.PaymentRollbackIntegrationTest` — ROOT |
+| B | `com.devsuperior.dscommerce.controllers.PaymentRollbackApiHttpIntegrationTest` — /api |
+| M | `com.devsuperior.dscommerce.controllers.PaymentResponseDeliveryIntegrationTest` — ROOT, MockMvc/buffer; recuperação HTTP/JDBC |
+| W | `com.devsuperior.dscommerce.controllers.PaymentResponseTransportHttpIntegrationTest` — ROOT, socket/proxy HTTP e JDBC |
+| L | `com.devsuperior.dscommerce.controllers.OwnOrderQueryListHttpIntegrationTest` — ROOT |
+| L | `com.devsuperior.dscommerce.controllers.OwnOrderQueryListApiHttpIntegrationTest` — /api |
+| D | `com.devsuperior.dscommerce.controllers.OwnOrderQueryDetailHttpIntegrationTest` — ROOT |
+| D | `com.devsuperior.dscommerce.controllers.OwnOrderQueryDetailApiHttpIntegrationTest` — /api |
+| S | `com.devsuperior.dscommerce.controllers.OwnOrderQuerySecurityHttpIntegrationTest` — ROOT |
+| S | `com.devsuperior.dscommerce.controllers.OwnOrderQuerySecurityApiHttpIntegrationTest` — /api |
+| G | `com.devsuperior.dscommerce.controllers.OwnOrderQueryRegressionHttpIntegrationTest` — ROOT |
+| G | `com.devsuperior.dscommerce.controllers.OwnOrderQueryRegressionApiHttpIntegrationTest` — /api |
+
+### Procedimentos, preservação e limites da T035
+
+Procedimento efetivo desta consolidação: comandos Git de raiz/branch/HEAD/status/índice/não rastreados/seleção; check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks; leitura integral dos artefatos e registros; comparação de hashes e leitura de XML/TXT/JSON por auxiliares Python externos. Comando dos auxiliares: `C:/Users/ronal/AppData/Local/uv/cache/archive-v0/In_Ay6QzfEkllxlV/Scripts/python.exe -B -I -X utf8 target/feature008-evidence/T035-20261023/<auxiliar>.py`, para prepare.py, verify-evidence.py e matrix.py, todos exit0. São inventário/reconciliação documental; não iniciam Maven, validadores, banco ou servidor. A revisão final de diff, links, arquivos novos e whitespace será registrada abaixo após executada.
+
+O README da raiz passa a apontar explicitamente POST008, snapshot completo de consultas008, regras de precedência e esta matriz. Corrigida sua afirmação antiga de que JWT não autoriza rota protegida: catálogo continua público e pedidos/admin usam bearer/perfis atuais. Isso descreve implementação já testada, sem mudar contrato ou código. O snapshot008 é o substituto completo previsto para consultas007 após entrega, não um complemento simultaneamente vigente. Entretanto a publicação da vigência continua impedida pelo conflito descrito abaixo; os contratos007 permanecem históricos intocados.
+
+**Impedimento documental: T035 permanece aberta.** A instrução atual manda preservar integralmente contratos; T035 exige metadados públicos sem contradição de vigência. contracts/README.md ainda diz desenho futuro/ausência de runtime e os dois YAML008 conservam x-status planned e descrições não implementado/não testado. Alterar apenas esses metadados editoriais conciliaria a entrega local comprovada com a vigência, mantendo schemas/regras, mas exige esclarecer se essa alteração está incluída na preservação solicitada. A clarificação foi apresentada; até resposta, contratos preservados byte a byte e nenhuma declaração de vigência concluída. A checkbox T035 continua aberta e T036 não foi iniciada. Não se presume aprovação por tempo decorrido.
+
+Conteúdo normativo dos contratos não mudou. Reutilizada a validação estrutural documental registrada em **Validação documental desta fase** (2026-10-21): openapi-spec-validator0.9.0/openapi-schema-validator0.9.0/PyYAML6.0.3/jsonschema4.26.0, exit0; POST:5 schemas/12 exemplos/0 defaults/16 refs; consultas:7 schemas/15 exemplos/2 defaults/26 refs. Preservados os7 negativos de schema e o oráculo temporal documental8 aceitos/11 rejeitados. Não são provas novas nem substituem parser/segurança/transação/runtime; não houve nova chamada desses validadores.
+
+F comprova **local Windows10/amd64, Java21.0.12.1 Azul Zulu, Maven Wrapper3.9.16/H2** nos limites do projeto. Nenhuma validação remota da008 foi realizada ou disparada nesta T035; o CI histórico Linux do harness não aprova esta revisão. **PostgreSQL não validado**, sem inferência sobre outro SGBD, produção/crash recovery/durabilidade. Não houve push/consulta/disparo de CI ou publicação externa. Mocks de slices, teste de buffer MockMvc, socket/proxy HTTP e leitura JDBC mantêm seus alcances distintos; failpoints não provam falha física do commit. Os20 marcadores T031_NETWORK/60 hooks JDK sem tentativa externa valem nas janelas observadas e não constituem60 casos JUnit ou monitoramento ilimitado de qualquer integração/carrinho externo.
+
+O Gate IV da Feature005 permanece **EXCEÇÃO DOCUMENTADA**, conforme [plano005](../005-manter-produtos/plan.md); não foi promovido a PASS estrito nem herdado pela008. T033 e seus gates/provas locais permanecem como auditados. A reprovação anterior, sua recuperação e as correções da T034 continuam integralmente no prefixo recebido. Os quatro arquivos de teste/suporte da T034 não receberam alteração nesta T035. Nenhum stage, commit, push, PR, merge ou alteração de main.
+
+Revisão documental executada: review.py exit0 e `git diff --check` exit0, sem diagnóstico de whitespace. Conferidos o diff de código/documentos e os auxiliares novos ignorados,216 links locais e a âncora do README para esta seção. Os360 rastreados fora do incremento desta T035,258 fontes/testes/build iguais aos testados, prefixo recebido de542563 bytes,1042 relatórios Surefire e tamanho/mtime dos12850 arquivos anteriores permanecem íntegros. Contracts/README.md e os dois YAML008 byte-idênticos; nenhum artefato007 alterado. tasks.md byte-idêntico ao recebido, com T033/T034 concluídas e T035/T036 abertas. Get-CimInstance Win32_Process não encontrou Maven/Surefire ativo. final-review.json, reviewed.diff e quickstart-increment.md registram esta conferência documental, sem aprovação funcional nova.
+
+Estado final desta execução limitada pelo impedimento editorial: somente README.md e o incremento deste quickstart foram alterados nesta T035. Git tem sete modificados no total: README.md, quickstart.md/tasks.md da008 e os quatro Java recebidos da T034, índice vazio e nenhum não rastreado. Raiz/branch/HEAD/main/seleção008 preservados; nenhum contrato publicado como vigente, sem alteração de produção/contratos/testes ou início da T036. Falta esclarecer o ajuste restrito dos metadados editoriais e, se autorizado, alinhar vigência e concluir os critérios restantes da T035. Validações remota008 e PostgreSQL continuam não realizadas.
+
+## Retomada T035 — vigência editorial alinhada à implementação local (2026-10-23)
+
+Retomada somente a pendência editorial da T035, expressamente esclarecida pelo usuário: autorizada a correção de planned e de alegações de ausência de implementação/runtime incompatíveis com as provas locais. A seção anterior conserva o histórico do impedimento; **ele está resolvido nesta retomada**, sem reescrever suas evidências. T036 não foi iniciada e permanece aberta.
+
+Confirmados novamente raiz `C:/Users/ronal/dscommerce-speckit`, branch `008-registrar-pagamento`, HEAD `96126dbfb8c01cbe8ae6b005d6226a6c7503bffd`, seleção local008 e exatamente os sete modificados recebidos: README.md; quickstart.md/tasks.md da008; AdminProductSecurityChainWiringTest.java, OwnOrderQuerySecurityConfigurationTest.java, OrderSecuritySliceTestConfig.java e AdminProductDeletionIntegrationTest.java. Nada staged ou não rastreado. Main permanece `5cd16709ea531ccae27230db19753e6c5533d12d`. T035, dependência T034, procedimentos e pendência registrados foram relidos. check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks confirmou FEATURE_DIR008; requirements.md16/16 concluídos, zero aberto, somente leitura. Ignore Java adequado e extensions.yml ausente, sem hooks.
+
+### Ajustes editoriais e precedência preservada
+
+| Arquivo | Incremento desta retomada |
+| --- | --- |
+| [payment-registration-openapi.yaml](contracts/payment-registration-openapi.yaml) | Prefixo editorial de info.description informa implementado e testado localmente em Windows/Java21/H2; declara ausência de validação remota/PostgreSQL e integração em main. x-status passa de planned para implemented-and-validated-locally. Versão0.1.0 preservada. |
+| [own-orders-openapi.yaml](contracts/own-orders-openapi.yaml) | Mesmo estado/limites locais, mantendo o snapshot completo como contrato vigente para a revisão008 validada localmente. Substituição do contrato007 continua condicionada à entrega008 na revisão/ambiente considerado. x-status editorial atualizado; versão0.2.0 e x-effective-after-delivery intactos. |
+| [README dos contratos](contracts/README.md) | Estado, tabela de referência, texto de vigência, título editorial e identificação das evidências locais alinhados à entrega comprovada. Contrato007 permanece histórico das revisões anteriores, sem dois snapshots alternativos simultaneamente vigentes. Aplicação em outro ambiente não é presumida. Corpo normativo e parágrafo de origem mantidos. T036, remoto e PostgreSQL continuam pendentes. |
+| [README da raiz](../../README.md) | Preservados links008, descrição pública, resultados e limites recebidos; apenas o parágrafo de impedimento foi alinhado à vigência local e à condição de aplicação após entrega008. |
+| Este quickstart e [tasks.md](tasks.md) | Somente este registro adicional e, após conferência dos critérios, marcador T035. Matriz dos30 cenários e registros T033/T034 preservados. T036 aberta. |
+
+editorial-check.py exit0 comparou os dois YAML com cópias recebidas: somente os dois prefixos de descrição e x-status diferem; a reversão dessas substituições recompõe exatamente os bytes originais, inclusive quebras de linha. Todo o restante é idêntico: rotas, métodos, schemas, campos/tipos, regras, respostas, exemplos, segurança, requisitos, origem e demais extensões, incluindo x-effective-after-delivery. No README dos contratos, corpo normativo de POST/erros/parser/consultas/commit e parágrafo de origem são byte-idênticos. A conferência do texto de precedência mantém substituição integral após entrega008 e007 aplicável às revisões anteriores; não remove a condição nem anuncia integração em main. É comparação documental, sem parser/validador OpenAPI ou teste funcional novo.
+
+### Evidências reutilizadas, procedimentos e limites
+
+Mantidos os comandos, revisão **S**, execução **F**, catálogo e matriz dos30 cenários da seção T035 acima. Os258 arquivos de fonte/teste/build atuais são byte-idênticos aos hashes da FINAL aprovada; nenhum dos quatro Java da T034 recebeu alteração. As bases e os resultados reutilizados continuam distintos:
+
+| Evidência existente | Resultado preservado | Exit/conclusão |
+| --- | --- | --- |
+| FOCAL-T034R-20261023T170156614 | 307 aprovados,0 falhas/erros/ignorados;6 XML+6 TXT; casos incluídos na FINAL, sem soma | Maven0 capturado antes do arquivamento; BUILD SUCCESS |
+| FINAL-T034R-20261023T170507809 (**F**, revisão **S**) | 4957 aprovados,0 falhas/erros/ignorados;137 XML+137 TXT; suíte completa; aninhados/herança/omissões/duplicatas já reconciliados na T034/T035 | Maven0 capturado antes do arquivamento; BUILD SUCCESS |
+| FINAL-T034-20261023T162000739, anterior às correções | 4957/39/218/0, reprovação histórica e recuperação preservadas | BUILD FAILURE; exit Maven indisponível/null, runner1; nenhum exit atribuído retroativamente ao Maven |
+
+**Nenhum Maven, JUnit, aplicação ou validador estrutural foi executado nesta retomada.** Reutilizados os recibos/conferências existentes, sem repetir verify-evidence.py, matrix.py ou os validadores OpenAPI. Como o conteúdo normativo não mudou, permanece aplicável a validação estrutural documental de2026-10-21 identificada acima; ela não prova runtime. Comparação de bytes, hashes, recibos e links nesta retomada apenas comprova preservação/coerência documental.
+
+Recibo novo ignorado `target/feature008-evidence/T035R-20261023/`: prepare.py exit0 salvou362 hashes rastreados, cópias recebidas dos seis documentos afetáveis, inventário/hash dos1042 relatórios Surefire e tamanho/mtime dos12871 arquivos de evidência anteriores. Comando efetivo dos auxiliares documentais: `C:/Users/ronal/AppData/Local/uv/cache/archive-v0/In_Ay6QzfEkllxlV/Scripts/python.exe -B -I -X utf8 target/feature008-evidence/T035R-20261023/<auxiliar>.py`, para prepare.py, editorial-check.py e review.py. Outros procedimentos: comandos Git de raiz/branch/HEAD/status/índice/não rastreados/main, leitura da seleção local, pré-requisitos, checklist, artefatos e recibos; revisão de diff/referências/links e git diff --check. Não há novo comando funcional disfarçado de revisão documental.
+
+O estado comprovado é **implementado e validado localmente em Windows/Java21/H2**, sem validação remota008, PostgreSQL ou integração em main. A documentação de vigência nesta revisão não anuncia implantação em outro ambiente. Permanecem os limites de SQL/snapshots, sensor JDK, concorrência H2, falhas controladas, MockMvc versus socket e commit/transmissão já registrados; nenhuma prova foi ampliada para produção ou outro SGBD. T036 continua trabalho futuro verdadeiro. Não se disparou CI, consulta remota, stage, commit, push, PR ou merge.
+
+O Gate IV da Feature005 permanece **EXCEÇÃO DOCUMENTADA**, conforme [plano005](../005-manter-produtos/plan.md), sem promoção a PASS estrito ou herança pela008. Artefatos/contratos históricos001–007, implementação, testes, asserções, prefixo recebido deste quickstart e evidências anteriores preservados. A matriz dos30 cenários continua íntegra e vinculada à mesma FINAL aprovada, sem apresentação de revisão documental como nova comprovação funcional.
+
+Os critérios restantes da T035 estão atendidos: resultados/matriz/comandos/revisão/relatórios já consolidados, README aponta POST008 e snapshot completo vigente na revisão local, precedência e limites explícitos, metadados compatíveis com as provas e conteúdo normativo intacto. Após a revisão documental abaixo, somente T035 passa a[X]; T036 permanece aberta, sem antecipar o fechamento global.
+
+Revisão documental executada nesta retomada: editorial-check.py exit0, review.py exit0/PASS e `git diff --check` exit0, sem diagnóstico de whitespace. Conferidos o incremento contra as cópias recebidas, diff completo e diff dos contratos,223 links Markdown locais/âncoras e11 referências locais dos metadados YAML. Confirmados356 rastreados fora dos seis documentos idênticos,258 fontes/testes/build iguais à FINAL,58 artefatos históricos001–007 intactos, prefixo recebido de564416 bytes e matriz dos30 cenários preservados. Os1042 relatórios Surefire permanecem byte-idênticos e os12871 arquivos de evidências anteriores conservam tamanho/mtime, incluindo a revisão T035 interrompida pelo impedimento e ambas as FINAL. Auxiliares novos foram revisados e ficam somente em target ignorado; nenhum arquivo novo não rastreado. Recibos editorial-check.json, preliminary-review.json/final-review.json, reviewed.diff, contracts-reviewed.diff e quickstart-increment.md ficam na pasta T035R nova, sem sobrescrever recibos anteriores.
+
+**T035 concluída; T036 aberta.** tasks.md difere do recebido somente no marcador T035; T033/T034 e todos os demais marcadores preservados. Estado Git final: dez modificados — README.md; contracts/README.md, own-orders-openapi.yaml, payment-registration-openapi.yaml, quickstart.md e tasks.md da008; os quatro Java recebidos da T034, sem nova edição. Índice vazio, nenhum não rastreado; raiz/branch/HEAD/main/seleção008 mantidos. Sem impedimento restante da T035; pendentes T036 e as validações remota/PostgreSQL/integração em main, sem afirmar execução ou autorização para essas etapas. A exceção histórica do Gate IV005 permanece documentada.
+
+## T036 — revisão final e encerramento local (2026-10-23)
+
+Executada exclusivamente [T036](tasks.md), dependente da T035 concluída. Confirmados inicialmente raiz `C:/Users/ronal/dscommerce-speckit`, branch real `008-registrar-pagamento`, HEAD `96126dbfb8c01cbe8ae6b005d6226a6c7503bffd`, seleção local008 e exatamente os dez arquivos modificados informados: README.md; quickstart.md/tasks.md, contracts/README.md e os dois YAML da008; AdminProductSecurityChainWiringTest.java, OwnOrderQuerySecurityConfigurationTest.java, OrderSecuritySliceTestConfig.java e AdminProductDeletionIntegrationTest.java. Nada staged ou não rastreado. Main permanece `5cd16709ea531ccae27230db19753e6c5533d12d`. Nenhuma alteração recebida foi descartada.
+
+T036, dependência T035, procedimentos aprovados, artefatos e registros históricos foram lidos/revistos. A skill speckit-implement foi aplicada somente a este fechamento; pré-requisitos confirmaram FEATURE_DIR absoluto008 e documentos esperados. Checklist requirements.md16/16 concluídos, zero aberto, somente leitura. Ignore Java suficiente; extensions.yml ausente antes/depois, sem hooks. Não houve chamada Maven, JUnit, compilação, aplicação, banco ou validador estrutural: **esta T036 é revisão documental/estática**, reutilizando os resultados já concluídos e sem nova comprovação funcional.
+
+### Revisão do diff, implementação e rastreabilidade
+
+Revisto o diff completo contra HEAD dos dez modificados, inclusive todos os494 acréscimos recebidos no quickstart, os quatro Java e as alterações editoriais dos contratos; o incremento desta T036 é conferido separadamente contra cópias recebidas. Preservados o prefixo histórico integral, a matriz final dos30 cenários e os registros de reprovação/recuperação/correção. Artefatos de planejamento descrevem sua fase histórica e não são tratados como aprovação funcional atual. Uma nota de encerramento em tasks.md distingue o estado atual desses textos de geração, sem reescrever requisitos, tarefas ou procedimentos históricos.
+
+| Recorte conferido | Resultado e fundamento reutilizado |
+| --- | --- |
+| Spec/plano/modelo/pesquisa, constituição e rastreabilidade |30 cenários (6+9+5+4+6),22 FR e8 SC identificados nas matrizes; audit.py exit0 cruzou IDs de tasks/spec/quickstart com scenario-matrix.json existente, classes/métodos/fontes e os recibos da FINAL. São21 classes concretas/91 referências método-contexto; herança inclui suportes package-private no mesmo arquivo Java, sem presumir um arquivo por classe. Não se executou descoberta JUnit ou os testes. |
+| Operação administrativa e invariantes | Controller mantém POST com Long positivo/@Valid, somente occurredAt, query rejeitada e201 após retorno do proxy. Serviço mantém referência nativa única antes de consultas/esperas, ADMIN escalar atual antes/depois de lock, Payment anterior antes do estado, janela inclusiva, cálculo histórico exato e persist+PAID/flush na transação. Fragments fazem find+refresh PESSIMISTIC_WRITE por raiz e persist explícito; Payment usa MapsId/PK/FK/NOT NULL/precisão3. Leituras/revisão da T033 e provas da FINAL continuam aplicáveis pelos hashes, sem nova execução. |
+| Correções T034 | Conferidas asserções explícitas das cinco cadeias/matchers/ordem/políticas, mocks PaymentAccessService com FORBIDDEN nos contextos restritos e nenhuma interação indevida nas provas de consultas. Exclusão conserva criação WAITING_PAYMENT e prepara PAID por POST administrativo real, com Payment/JDBC/histórico e limpeza seletiva. Nenhum filtro, autorização, provider ou asserção foi enfraquecido. Os quatro arquivos permanecem iguais aos testados. |
+| Consultas próprias e preservações | Snapshot008 completo admite WAITING_PAYMENT/PAID e mantém campos/ownership/contagens/paginação/ordenação/dinheiro; ADMIN pagador não recebe leitura alheia. CenáriosUS5 e regressões001–007 estão incluídos na FINAL, sem soma de checkpoints. H2 Console e JWT permanecem íntegros, com resultados já registrados na T034. |
+| Vigência e conteúdo normativo | README aponta POST0080.1.0 e consultas0080.2.0 como substituto integral após entrega na revisão/ambiente considerado, sem alternativas simultâneas. Ambos os YAML são byte-idênticos ao recebido e aos hashes aprovados na T035; nenhuma rota, método, schema, campo/tipo, regra, resposta, exemplo, segurança ou condição de precedência mudou. A validação estrutural anterior é reutilizada; não foi repetida. |
+| Gates e limites | Reutilizada auditoria008 da T033 em conjunto com FINAL posterior aprovada, sem herdar exceções. O **Gate IV da Feature005 permanece EXCEÇÃO DOCUMENTADA**, conforme [plano005](../005-manter-produtos/plan.md), sem PASS estrito. Não se alteraram plano005, constituição ou contratos históricos001–007. |
+
+Os únicos ajustes editoriais desta revisão, além do registro e marcador T036, removem avisos atuais de T036 pendente no README da raiz e no README dos contratos, substituindo-os por links para este fechamento local. Preservados integralmente os demais ajustes T035, inclusive estado implemented-and-validated-locally nos YAML, precedência e limites. As declarações históricas de tarefas então abertas nas seções anteriores permanecem como registros daquelas execuções; este é o estado posterior identificado.
+
+### Resultados existentes reutilizados e ambientes
+
+| Execução existente | Resultado e exit preservados | Alcance |
+| --- | --- | --- |
+| FOCAL-T034R-20261023T170156614 |307 aprovados, zero falhas/erros/ignorados; BUILD SUCCESS, Maven0 capturado antes do arquivamento | Seis classes afetadas;6 XML+6 TXT. Incluído nos4957, sem soma. |
+| FINAL-T034R-20261023T170507809 |4957 aprovados, zero falhas/erros/ignorados; BUILD SUCCESS, Maven0 capturado antes do arquivamento | Suíte completa sem filtro;137 XML+137 TXT,127 containers principais+10 aninhados,906 grupos método-classe/212 herdados, sem omissões/duplicatas conforme reconciliação existente. |
+| FINAL-T034-20261023T162000739, anterior às correções |4957/39/218/0, BUILD FAILURE; **exit do runner1 e exit Maven indisponível/null** | Console,274 relatórios recuperados e80 arquivos da cópia parcial preservados. O exit1 do runner não foi atribuído ao Maven; nenhuma aprovação retroativa. |
+
+Comandos, revisão **S** (HEAD mais quatro correções de teste T034), horários e relatórios permanecem identificados na T034/T035 acima e em `target/feature008-evidence/T034R-20261023/{FOCAL,FINAL}/`. Os258 arquivos atuais de fonte/teste/build coincidem byte a byte com sources-before.json da FINAL, inclusive os quatro testes/suportes corrigidos. Os ajustes documentais posteriores não invalidam essa aplicabilidade nem constituem nova prova funcional. Não houve reexecução de Maven, validadores OpenAPI, verify-evidence.py, matrix.py ou dos leitores antigos para reconstruir resultados.
+
+**Conclusão local Windows/Java21/H2**: implementação, provas e revisão satisfeitas no alcance registrado. **Validação remota008 ainda não realizada**, **PostgreSQL não validado** e **integração em main pendente** são estados distintos. CI Linux histórica do harness não aprova esta revisão. Não se inferem durabilidade de produção, crash recovery, precisão/locks de outro SGBD ou garantia de rollback quando o resultado do commit é indeterminado. Buffer MockMvc, socket/proxy HTTP e JDBC mantêm alcances próprios;20 janelas/60 hooks JDK não equivalem a60 testes ou observação universal de integrações/carrinho. Recibos locais sob target são ignorados pelo Git e precisam de preservação/transferência própria para outro checkout; este fechamento não os publica remotamente.
+
+### Procedimentos, preservação e conclusão
+
+Recibo novo ignorado `target/feature008-evidence/T036-20261023/`: prepare.py exit0 guardou362 hashes rastreados, cópias dos dez modificados, diff recebido completo,1042 hashes Surefire e tamanho/mtime dos12890 arquivos de evidência anteriores. audit.py exit0 confirmou aplicabilidade da revisão testada, rastreabilidade, recibos e integridade; não chama aplicação ou validador. Sua primeira leitura supôs arquivo próprio para PaymentRegistrationScenarioSupport e encontrou FileNotFoundError; o suporte package-private está em PaymentRegistrationHttpIntegrationTest.java. A busca foi corrigida para indexar declarações e herança, com a tentativa anterior preservada em audit-attempt1.py. Foi problema do leitor estático, sem falha ou repetição de teste da aplicação.
+
+Comandos efetivos desta T036: Git de raiz/branch/HEAD/status/índice/não rastreados/main; seleção local; check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks; Get-Content/rg e git diff dos documentos/fontes; auxiliares documentais externos por `C:/Users/ronal/AppData/Local/uv/cache/archive-v0/In_Ay6QzfEkllxlV/Scripts/python.exe -B -I -X utf8 target/feature008-evidence/T036-20261023/<auxiliar>.py`, para prepare.py, audit.py e review.py; conferência de links/âncoras/referências/arquivos novos e `git diff --check`. Não houve consulta/disparo remoto, stage, commit, push, PR, merge ou alteração de main.
+
+Critérios da T036 satisfeitos após a conferência final abaixo: diff completo e incremento revistos, referências/links/whitespace e não rastreados conferidos, alterações restritas ao escopo, vigência coerente, fontes/contratos/evidências preservados e limitações explícitas. **Somente T036 recebe o novo marcador; T001–T036 ficam concluídas,36/36, no âmbito local documentado.** Não há impedimento de fechamento local identificado nem aprovação remota/PostgreSQL/main presumida.
+
+Conferência final executada: review.py e review.py --marked exit0/PASS; `git diff --check` exit0, sem diagnóstico de whitespace. Revistos diff completo e incremento,281 links locais/âncoras em9 Markdown,11 referências locais dos YAML e62 caminhos Java explícitos em tasks.md. Confirmados358 rastreados fora dos quatro documentos de fechamento idênticos,258 fontes/testes/build iguais aos da FINAL,58 artefatos históricos001–007 intactos e prefixo recebido de573814 bytes do quickstart preservado. Matriz dos30 cenários, os dois YAML, correções T034 e ajustes T035 mantidos, exceto os avisos editoriais de conclusão local já identificados. Os1042 relatórios permanecem byte-idênticos e os12890 arquivos de evidência anteriores conservam tamanho/mtime. Nenhum arquivo novo não rastreado; novos auxiliares/recibos sob target ignorado foram revisados. received.diff, audit.json, preliminary-review.json, final-review.json, reviewed.diff e quickstart-increment.md conservam as conferências desta T036 sem sobrescrever evidências anteriores.
+
+**T036 concluída;36/36 tarefas únicas T001–T036 marcadas, zero aberta.** O novo marcador é somente T036; os35 anteriores permanecem intactos. Estado Git final: os mesmos dez modificados recebidos, índice vazio e nenhum não rastreado. Nesta T036, apenas README.md, contracts/README.md da008, quickstart.md e tasks.md receberam os ajustes de fechamento; os quatro Java e os dois YAML ficaram byte-idênticos. Raiz/branch/HEAD/main/seleção008 preservados. Encerramento local Windows/Java21/H2 registrado, com validação remota008 ainda não realizada, PostgreSQL não validado e integração em main pendente. Gate IV005 continua EXCEÇÃO DOCUMENTADA. Nenhum stage, commit, push, PR, merge ou alteração de main.

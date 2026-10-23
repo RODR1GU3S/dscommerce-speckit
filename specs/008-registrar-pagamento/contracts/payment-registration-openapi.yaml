@@ -3,10 +3,11 @@ info:
   title: DSCommerce Payment Registration - Feature 008
   version: 0.1.0
   description: >-
-    Planned contract, not implemented or runtime-tested at this checkpoint.
+    Implemented and runtime-tested locally on Windows/Java 21/H2.
+    No remote or PostgreSQL validation or integration into main is recorded.
     Records an ADMIN-declared single full settlement; no charging, gateway,
     external receipt verification or financial movement. Relative to servlet context.
-x-status: planned
+x-status: implemented-and-validated-locally
 x-specification: ../spec.md
 x-plan: ../plan.md
 x-data-model: ../data-model.md

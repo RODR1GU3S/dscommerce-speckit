@@ -105,7 +105,7 @@ GET /products
 GET /products/{id}
 ```
 
-Neither route requires an `Authorization` header. Feature 003 issues JWTs but does not enable bearer-token authentication, OAuth2 Resource Server, Authorization Server, or protection for catalog endpoints. The issued JWT does not currently authorize access to protected routes.
+Neither route requires an `Authorization` header. Login issues JWTs; protected order and administrative routes validate bearer tokens and current database roles. The catalog routes above remain public.
 
 Validation examples:
 
@@ -128,6 +128,16 @@ Linux/macOS:
 ```bash
 ./mvnw test "-Dtest=ProductControllerTest,ProductCatalogServiceTest,ProductRepositoryTest"
 ```
+
+## Payment and Own-Order Contracts (Feature 008)
+
+- [Payment registration, version 0.1.0](specs/008-registrar-pagamento/contracts/payment-registration-openapi.yaml): `POST /admin/orders/{id}/payments` records an ADMIN-declared full settlement.
+- [Complete own-order query snapshot, version 0.2.0](specs/008-registrar-pagamento/contracts/own-orders-openapi.yaml): `GET/HEAD /orders` and `/orders/{id}`, including stored `WAITING_PAYMENT` and `PAID` states, with ownership unchanged.
+- [Contract precedence and limits](specs/008-registrar-pagamento/contracts/README.md) and [procedures, scenario matrix and execution evidence](specs/008-registrar-pagamento/quickstart.md#t035--consolidação-documental-das-evidências-2026-10-23).
+
+The complete 008 query snapshot is current for the locally implemented and validated 008 revision and replaces the 007 query contract after 008 delivery in the revision/environment concerned, according to the contract precedence conditions. The 007 contract remains historical evidence for earlier revisions without edits; the two snapshots are not simultaneously current alternatives. This local documentation does not establish deployment elsewhere or integration into `main`. T035's editorial impediment is resolved; [T036's final local review](specs/008-registrar-pagamento/quickstart.md#t036--revisão-final-e-encerramento-local-2026-10-23) completes all 36 tasks.
+
+The local FINAL run `FINAL-T034R-20261023T170507809` passed 4,957 tests with no failures, errors or skipped tests and Maven exit 0 on Windows/Java 21/H2. T035 reuses that evidence without rerunning tests. Feature 008 has no remote CI validation in this record, and PostgreSQL is not validated. Feature 005's Gate IV remains an **EXCEÇÃO DOCUMENTADA**, not a strict PASS; see its [plan](specs/005-manter-produtos/plan.md).
 
 ## Login and Authentication API
 

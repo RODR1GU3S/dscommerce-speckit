@@ -1,17 +1,17 @@
 # Contratos da Feature 008
 
-**Estado: desenho futuro; nenhum endpoint008 ou enum ampliado foi implementado/validado em runtime nesta fase.**
+**Estado: implementado e validado localmente em Windows/Java21/H2; sem validação remota, PostgreSQL ou integração em main.** As evidências da FINAL aprovada e a matriz dos30 cenários estão no [quickstart](../quickstart.md#t035--consolidação-documental-das-evidências-2026-10-23). O [fechamento local T036](../quickstart.md#t036--revisão-final-e-encerramento-local-2026-10-23) conclui as36 tarefas, sem ampliar esses limites.
 
-| Interface | Hoje | Contrato alvo após entrega008 |
+| Interface | Contrato vigente na revisão008 validada localmente | Origem e aplicação |
 | --- | --- | --- |
-| Registro de quitação | Ausente | [payment-registration-openapi.yaml](payment-registration-openapi.yaml), versão0.1.0 |
-| GET/HEAD de pedidos próprios | [contrato007](../../007-consultar-meus-pedidos/contracts/own-orders-openapi.yaml), versão0.1.0, só WAITING_PAYMENT | [own-orders-openapi.yaml](own-orders-openapi.yaml), versão0.2.0, WAITING_PAYMENT e PAID |
+| Registro de quitação | [payment-registration-openapi.yaml](payment-registration-openapi.yaml), versão0.1.0 | Operação introduzida pela008; ausente na revisão anterior. |
+| GET/HEAD de pedidos próprios | [own-orders-openapi.yaml](own-orders-openapi.yaml), versão0.2.0, WAITING_PAYMENT e PAID | Substituto completo após entrega008; [contrato007](../../007-consultar-meus-pedidos/contracts/own-orders-openapi.yaml), versão0.1.0, só WAITING_PAYMENT, preservado como histórico das revisões anteriores. |
 
-O snapshot008 é completo e **substituirá integralmente o contrato de consultas007 como contrato vigente após a entrega**. Não são dois contratos alternativos simultaneamente vigentes. Até a entrega,007 permanece vigente; ambos os arquivos008 conservam x-status planned. A implementação/publicação deverá apontar documentação e verificações contratuais atuais para o snapshot008, preservando007 como histórico, sem reescrever sua especificação ou evidências.
+O snapshot008 é completo e **substitui integralmente o contrato de consultas007 na revisão008 implementada e validada localmente**. A condição de aplicação permanece: a substituição ocorre após a entrega008 na revisão/ambiente considerado; até essa entrega,007 permanece o contrato da revisão anterior. Não são dois contratos alternativos simultaneamente vigentes. Os apontamentos desta revisão usam008 e ambos os arquivos declaram x-status implemented-and-validated-locally, preservando007 como histórico, sem reescrever sua especificação ou evidências. A vigência documental local não declara implantação em outro ambiente, validação remota/PostgreSQL ou integração em main.
 
 O snapshot deriva do arquivo007 byte-preservado nesta etapa. Mudanças permitidas no snapshot: title/version/description e referências de metadados para008, origem/precedência explícitas, enums dos dois status, descrições de estado e exemplos PAID. x-origin-requirements identifica FR da especificação007 de origem; x-requirements identifica FR-016–021 da008, sem misturar os dois espaços de IDs. Campos fechados, parâmetros, respostas, formatos monetários, ownership e demais restrições mantêm a semântica anterior. Não há $ref externo que herde o enum antigo.
 
-## Registro administrativo proposto
+## Registro administrativo
 
 POST /admin/orders/{id}/payments, relativo ao contexto servlet. ADMIN atual, isolado ou com CLIENT, pode qualquer titular somente nessa operação. ID positivo int64 no caminho, corpo somente occurredAt; nenhum query parameter. 201 confirma somente orderId/occurredAt/status PAID, depois do commit; não há Location ou GET administrativo de pagamento.
 
@@ -25,4 +25,4 @@ GETs continuam próprios, inclusive para ADMIN que quitou compra alheia; mesmos 
 
 Um 201 recebido confirma sucesso; ausência de resposta/500 não prova que um commit nunca ocorreu. Falha de transmissão posterior preserva quitação e o novo POST é rejeitado. Sem cobrança, gateway, consulta financeira externa, movimentação de dinheiro ou reversão automática.
 
-[Research](../research.md), [modelo](../data-model.md) e [quickstart](../quickstart.md) definem decisões, ambientes e evidências futuras. Validação de OpenAPI e exemplos nesta fase é documental, sem comprovar segurança, SQL, transação ou transporte.
+[Research](../research.md), [modelo](../data-model.md) e [quickstart](../quickstart.md) registram decisões, ambientes, procedimentos e evidências locais, distinguindo as validações remota e PostgreSQL ainda não realizadas. A validação estrutural de OpenAPI e exemplos continua documental; as provas locais de segurança, SQL, transação e transporte são as execuções identificadas no quickstart, sem extensão automática para outros ambientes.

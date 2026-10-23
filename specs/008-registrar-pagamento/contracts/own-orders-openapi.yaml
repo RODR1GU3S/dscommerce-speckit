@@ -3,14 +3,16 @@ info:
   title: DSCommerce Own Order Queries - Feature 008 evolution
   version: 0.2.0
   description: >-
-    Planned complete replacement for the Feature 007 own-order query contract
-    after Feature 008 is delivered. Until then the original 007 contract remains
-    current. Not implemented or runtime-tested at this checkpoint.
+    Complete replacement for the Feature 007 own-order query contract after
+    Feature 008 delivery, subject to the contract precedence conditions.
+    Current for the locally implemented and validated 008 revision on
+    Windows/Java 21/H2. No remote or PostgreSQL validation or integration
+    into main is recorded.
     Only stored-state admission, examples and contract metadata evolve:
     WAITING_PAYMENT and PAID. No new fields, ownership privileges or transitions.
 security:
   - bearerAuth: []
-x-status: planned
+x-status: implemented-and-validated-locally
 x-origin-contract: ../../007-consultar-meus-pedidos/contracts/own-orders-openapi.yaml
 x-origin-specification: ../../007-consultar-meus-pedidos/spec.md
 x-contract-precedence: README.md

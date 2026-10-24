@@ -7,13 +7,32 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 
+import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
 /** JPA writes use the complete aggregate; own-order reads require its owner. */
-public interface OrderRepository extends JpaRepository<Order, Long> {
+public interface OrderRepository extends JpaRepository<Order, Long>, OrderPaymentLockRepository {
+
+    /** Scalar historical rows, read after root acquisition in the caller's payment transaction. */
+    @Transactional(readOnly = true, propagation = Propagation.MANDATORY)
+    @Query("""
+            SELECT i.product.id AS productId, i.position AS position,
+                   i.quantity AS quantity, i.unitPrice AS unitPrice
+            FROM OrderItem i WHERE i.order.id = :orderId
+            ORDER BY i.position ASC
+            """)
+    List<PaymentItemView> findPaymentItemsByOrderId(@Param("orderId") long orderId);
+
+    interface PaymentItemView {
+        Long getProductId();
+        Integer getPosition();
+        Integer getQuantity();
+        BigDecimal getUnitPrice();
+    }
 
     @Transactional(readOnly = true)
     @Query(value = """

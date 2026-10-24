@@ -138,26 +138,33 @@ class AdminProductSecurityChainWiringTest {
     }
 
     @Test
-    void shouldSelectFourScopedChainsInTheRequiredOrderForEveryAdministrativeMethod() {
-        assertThat(security.getFilterChains()).hasSize(4);
+    void shouldSelectFiveScopedChainsInTheRequiredOrderForEveryAdministrativeMethod() {
+        assertThat(security.getFilterChains()).hasSize(5);
         assertThat(security.getFilterChains()).containsExactly(
+                context.getBean("paymentSecurityFilterChain", SecurityFilterChain.class),
                 context.getBean("ownOrderQuerySecurityFilterChain", SecurityFilterChain.class),
                 context.getBean("orderSecurityFilterChain", SecurityFilterChain.class),
                 context.getBean("adminProductSecurityFilterChain", SecurityFilterChain.class),
                 context.getBean("securityFilterChain", SecurityFilterChain.class));
         for (var method : List.of("GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS")) {
             for (var path : List.of("/admin/products", "/admin/products/1", "/admin/categories", "/admin/unsupported")) {
-                assertThat(selectedChain(method, path)).isSameAs(security.getFilterChains().get(2));
+                assertThat(selectedChain(method, path)).isSameAs(security.getFilterChains().get(3));
+            }
+            for (var path : List.of("/admin/orders/1/payments", "/admin/orders/not-an-integer/payments")) {
+                assertThat(selectedChain(method, path)).isSameAs(security.getFilterChains().get(0));
+            }
+            for (var path : List.of("/admin/orders/1/payments/extra", "/admin/orders/1/other")) {
+                assertThat(selectedChain(method, path)).isSameAs(security.getFilterChains().get(3));
             }
         }
-        assertThat(selectedChain("POST", "/orders")).isSameAs(security.getFilterChains().get(1));
+        assertThat(selectedChain("POST", "/orders")).isSameAs(security.getFilterChains().get(2));
         for (var method : List.of("GET", "HEAD")) {
             for (var path : List.of("/orders", "/orders/1", "/orders/not-an-integer")) {
-                assertThat(selectedChain(method, path)).isSameAs(security.getFilterChains().get(0));
+                assertThat(selectedChain(method, path)).isSameAs(security.getFilterChains().get(1));
             }
         }
         for (var path : List.of("/products", "/products/1", "/login")) {
-            assertThat(selectedChain("GET", path)).isSameAs(security.getFilterChains().get(3));
+            assertThat(selectedChain("GET", path)).isSameAs(security.getFilterChains().get(4));
         }
         assertThat(selectedChain("POST", "/login").getFilters())
                 .noneMatch(BearerTokenAuthenticationFilter.class::isInstance);

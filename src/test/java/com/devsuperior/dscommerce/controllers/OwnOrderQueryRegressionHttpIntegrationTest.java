@@ -4,6 +4,7 @@ import com.devsuperior.dscommerce.DscommerceApplication;
 import com.devsuperior.dscommerce.config.AdminProductTestConfig;
 import com.devsuperior.dscommerce.config.OwnOrderQueryTestObservationConfig;
 import com.devsuperior.dscommerce.dto.TokenResponseDTO;
+import com.devsuperior.dscommerce.fixtures.AdminProductDatabaseProbe.OrderRow;
 import com.devsuperior.dscommerce.fixtures.AdminProductDatabaseProbe.ProductRow;
 import com.devsuperior.dscommerce.fixtures.AdminProductDatabaseProbe.SqlObservation;
 import com.devsuperior.dscommerce.fixtures.AdminProductTestFixture.Account;
@@ -13,6 +14,8 @@ import com.devsuperior.dscommerce.fixtures.OwnOrderQueryDatabaseProbe.Snapshot;
 import com.devsuperior.dscommerce.fixtures.OwnOrderQueryTestFixture;
 import com.devsuperior.dscommerce.fixtures.OwnOrderQueryTestFixture.OrderManifest;
 import com.devsuperior.dscommerce.fixtures.OwnOrderQueryTestFixture.Scenario;
+import com.devsuperior.dscommerce.fixtures.PaymentRegistrationDatabaseProbe;
+import com.devsuperior.dscommerce.fixtures.PaymentRegistrationDatabaseProbe.PaymentRow;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -44,6 +47,7 @@ import org.springframework.web.context.WebApplicationContext;
 
 import java.io.IOException;
 import java.net.URI;
+import java.net.URLPermission;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -51,13 +55,20 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.security.Permission;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest(classes = DscommerceApplication.class, webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {"server.servlet.context-path=", "spring.jpa.open-in-view=false",
@@ -73,6 +84,180 @@ class OwnOrderQueryRegressionHttpIntegrationTest extends OwnOrderQueryRegression
 /** US4 read windows and post-query interactions; legacy contract matrices stay in their original suites. */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 abstract class OwnOrderQueryRegressionHttpTestSupport {
+
+    @Test
+    void regressionPost008RepeatedGetHeadSuccessEmptyAndErrorsKeepAllEightTables() {
+        var client = login(scenario.accounts().client());
+        var admin = login(scenario.accounts().admin());
+        var tokens = Map.of(scenario.accounts().client().id(), client,
+                scenario.accounts().none().id(), login(scenario.accounts().none()),
+                scenario.emptyBuyer().id(), login(scenario.emptyBuyer()));
+        try (var paid = new PaidRegression()) {
+            paid.accept(scenario.expectedClientOrders().getLast(), admin,
+                    OwnOrderQueryTestFixture.FIRST_INSTANT.plusSeconds(7200));
+            paid.accept(scenario.expectedClientOrders().getFirst(), admin,
+                    OwnOrderQueryTestFixture.FIRST_INSTANT.plusSeconds(120));
+            var baseline = paid.payments.snapshot();
+            // Reuse all 13 original targets x GET/HEAD, keeping the historical provider/assertions intact.
+            readCases().forEach(arguments -> {
+                var values = arguments.get();
+                var target = target((String) values[0]);
+                var method = (String) values[1];
+                var token = target.account() == null ? null : tokens.get(target.account().id());
+                if (target.account() != null) { require(token != null, "Use a prepared real login"); }
+                for (int repetition = 0; repetition < 3; repetition++) {
+                    var response = paid.unchanged(() -> read(method, target.path(), token, target.status()));
+                    if (method.equals("GET")) { expect(json(response.body()), paid.expected(target.body())); }
+                }
+            });
+            assertOwnPage(paid.unchanged(() -> read("GET", "/orders?page=0&size=12&buyerId="
+                    + scenario.accounts().client().id(), admin, 200)), ownedOrders("admin").stream().map(this::header).toList());
+            var foreignPath = "/orders/" + scenario.expectedClientOrders().getLast().id();
+            expect(json(paid.unchanged(() -> read("GET", foreignPath, admin, 404)).body()),
+                    error(404, "Not Found", "Order not found", foreignPath));
+            paid.unchanged(() -> read("HEAD", foreignPath, admin, 404));
+            PaymentRegistrationDatabaseProbe.assertUnchanged(baseline, paid.payments.snapshot());
+        }
+    }
+
+    @Test
+    void regressionPost008PaymentRejectionsPreserveAllTablesAndTheOriginalSettlementWithoutExternalAttempts() {
+        var client = login(scenario.accounts().client());
+        var admin = login(scenario.accounts().admin());
+        var otherAdmin = login(scenario.accounts().both());
+        var target = scenario.expectedClientOrders().getLast();
+        var occurrence = OwnOrderQueryTestFixture.FIRST_INSTANT.plusSeconds(7200);
+        try (var paid = new PaidRegression()) {
+            paid.reject(target.id(), client, occurrence, 403, "Forbidden", "Payment registration not permitted");
+            paid.reject(target.id(), admin, target.createdAt().minusMillis(1), 400, "Bad Request", "Invalid payment data");
+            require(paid.payments.snapshot().previous().data().orders().stream().noneMatch(row -> row.id() == Long.MAX_VALUE),
+                    "The absent payment control must not exist");
+            paid.reject(Long.MAX_VALUE, admin, occurrence, 404, "Not Found", "Order not found");
+            paid.accept(target, admin, occurrence);
+            var committed = paid.payments.snapshot();
+            paid.reject(target.id(), admin, occurrence, 409, "Conflict", "Payment already registered");
+            paid.reject(target.id(), otherAdmin, occurrence.plusSeconds(1), 409, "Conflict", "Payment already registered");
+            PaymentRegistrationDatabaseProbe.assertUnchanged(committed, paid.payments.snapshot());
+            expect(json(paid.unchanged(() -> read("GET", "/orders/" + target.id(), client, 200)).body()),
+                    detail(paid.expected(target)));
+            paid.unchanged(() -> read("HEAD", "/orders/" + target.id(), client, 200));
+        }
+    }
+
+    @Test
+    void regressionPost008PublicCatalogFilterPagesDetailsAndRealLoginRemainIndependentOfPaidQueries() {
+        var client = login(scenario.accounts().client());
+        var admin = login(scenario.accounts().admin());
+        var target = scenario.expectedClientOrders().getLast();
+        try (var paid = new PaidRegression()) {
+            paid.accept(target, admin, OwnOrderQueryTestFixture.FIRST_INSTANT.plusSeconds(7200));
+            expect(json(paid.unchanged(() -> read("GET", "/orders/" + target.id(), client, 200)).body()),
+                    detail(paid.expected(target)));
+            for (var invalidBearer : List.of(false, true)) {
+                var bearer = invalidBearer ? "irrelevant.invalid.token" : null;
+                paid.publicPage(bearer, "/products?name=PRODUTO&page=0&size=1", 0, 1, 2, 2, List.of(scenario.productA()));
+                paid.publicPage(bearer, "/products?name=PRODUTO&page=1&size=1", 1, 1, 2, 2, List.of(scenario.productB()));
+                paid.publicPage(bearer, "/products?name=PRODUTO&page=2&size=1", 2, 1, 2, 2, List.of());
+                paid.publicPage(bearer, "/products?name=B%20atual&page=0&size=1", 0, 1, 1, 1, List.of(scenario.productB()));
+                for (var product : List.of(scenario.productA(), scenario.productB())) {
+                    expect(json(paid.unchanged(() -> read("GET", "/products/" + product.id(), bearer, 200)).body()), publicDetail(product));
+                }
+                expect(json(paid.unchanged(() -> read("GET", "/products/" + Long.MAX_VALUE, bearer, 404)).body()),
+                        error(404, "Not Found", "Product not found", "/products/" + Long.MAX_VALUE));
+                var account = scenario.accounts().client();
+                var credentials = mapper.createObjectNode().put("name", account.name()).put("password", account.password());
+                var login = paid.unchanged(() -> compatibilityRequest("POST", "/login", bearer, credentials, 200));
+                var credential = json(login.body());
+                require(credential.isObject() && credential.size() == 2 && credential.path("accessToken").isTextual()
+                                && credential.path("tokenType").asText().equals("Bearer"), "Keep the exact login contract after PAID");
+                try {
+                    require(Long.toString(account.id()).equals(decoder.decode(credential.path("accessToken").textValue()).getSubject()),
+                            "Real login identifies the same owner after PAID");
+                } catch (JwtException failure) { throw new AssertionError("Verify the real post-payment login identity"); }
+                require(!credential.toString().contains(account.name()) && !credential.toString().contains(account.password()),
+                        "Do not disclose plaintext credentials after payment");
+                var wrongName = paid.unchanged(() -> compatibilityRequest("POST", "/login", bearer,
+                        credentials.deepCopy().put("name", " " + account.name() + " "), 401));
+                var wrongPassword = paid.unchanged(() -> compatibilityRequest("POST", "/login", bearer,
+                        credentials.deepCopy().put("password", account.password() + " "), 401));
+                expect(json(wrongName.body()), error(401, "Unauthorized", "Invalid credentials", "/login"));
+                expect(json(wrongPassword.body()), json(wrongName.body()));
+                require(java.util.Arrays.equals(wrongName.body(), wrongPassword.body()), "Keep identical safe credential rejection bytes");
+                expect(json(paid.unchanged(() -> compatibilityRequest("POST", "/login", bearer,
+                        mapper.createObjectNode().put("name", account.name()), 400)).body()),
+                        error(400, "Bad Request", "Invalid login data", "/login"));
+            }
+            expect(json(paid.unchanged(() -> read("GET", "/orders/" + target.id(), client, 200)).body()), detail(paid.expected(target)));
+        }
+    }
+
+    @Test
+    void regressionPost008MaintenanceAndRepeatedRegistrationsPreservePaidHistoryAndCreateNewWaitingOrders() {
+        var client = login(scenario.accounts().client());
+        var admin = login(scenario.accounts().admin());
+        var target = scenario.expectedClientOrders().getLast();
+        var product = scenario.productB();
+        var route = "/admin/products/" + product.id();
+        var renamed = "Produto B depois da quitação";
+        try (var paid = new PaidRegression()) {
+            paid.accept(target, admin, OwnOrderQueryTestFixture.FIRST_INSTANT.plusSeconds(7200));
+            var before = paid.payments.snapshot();
+            require(before.previous().data().categories().size() == 1, "Use the original single category");
+            var category = before.previous().data().categories().getFirst();
+            var replacement = mapper.createObjectNode().put("name", renamed).put("description", product.description())
+                    .put("image", product.image()).put("price", "12.00");
+            replacement.putArray("categoryIds").add(category.id());
+            var denied = error(403, "Forbidden", "Product maintenance not permitted", route);
+            denied.putArray("errors");
+            expect(json(paid.unchanged(() -> compatibilityRequest("PUT", route, client, replacement, 403)).body()), denied);
+            var invalid = error(400, "Bad Request", "Invalid product maintenance data", route);
+            invalid.putArray("errors").addObject().put("field", "body").put("code", "UNKNOWN_FIELD")
+                    .put("message", "Unknown request property");
+            expect(json(paid.unchanged(() -> compatibilityRequest("PUT", route, admin,
+                    replacement.deepCopy().put("unexpected", true), 400)).body()), invalid);
+            var expectedAdmin = mapper.createObjectNode().put("id", product.id()).put("name", renamed)
+                    .put("description", product.description()).put("image", product.image()).put("price", "12.00");
+            expectedAdmin.putArray("categories").addObject().put("id", category.id()).put("name", category.name());
+            expect(json(compatibilityRequest("PUT", route, admin, replacement, 200).body()), expectedAdmin);
+            var afterPut = paid.payments.snapshot();
+            assertThat(afterPut.payments()).isEqualTo(before.payments());
+            assertThat(afterPut.previous().data().products()).isEqualTo(before.previous().data().products().stream()
+                    .map(row -> row.id() == product.id()
+                            ? new ProductRow(row.id(), renamed, row.description(), row.image(), row.price()) : row).toList());
+            assertThatThrownBy(() -> OwnOrderQueryDatabaseProbe.assertUnchanged(before.previous(), afterPut.previous()))
+                    .isInstanceOf(AssertionError.class).hasMessage("Observed database state changed: tb_product");
+            var conflict = error(409, "Conflict", "Product deletion violates referential integrity", route);
+            conflict.putArray("errors");
+            expect(json(paid.unchanged(() -> compatibilityRequest("DELETE", route, admin, null, 409)).body()), conflict);
+            expect(json(paid.unchanged(() -> compatibilityRequest("POST", "/orders", client,
+                    ((ObjectNode) json(registrationBody())).put("unexpected", true), 400)).body()),
+                    error(400, "Bad Request", "Invalid order data", "/orders"));
+            var identical = registrationBody();
+            var first = paid.registerWaiting(client, identical);
+            var second = paid.registerWaiting(client, identical);
+            require(first.id() != second.id(), "Identical valid submissions still create distinct orders after payment");
+            var headers = new ArrayList<ObjectNode>(scenario.expectedClientOrders().stream().map(paid::expected).map(this::header).toList());
+            headers.add(purchaseHeader(first)); headers.add(purchaseHeader(second));
+            var page = paid.unchanged(() -> read("GET", "/orders?page=0&size=12", client, 200));
+            assertOwnPage(page, headers);
+            headers.sort(java.util.Comparator.<ObjectNode, Instant>comparing(node -> Instant.parse(node.get("createdAt").textValue()))
+                    .thenComparingLong(node -> node.get("id").longValue()).reversed());
+            var expectedPage = mapper.createObjectNode().put("page", 0).put("size", 12).put("totalElements", 7).put("totalPages", 1);
+            var content = expectedPage.putArray("content"); headers.forEach(header -> content.add(header));
+            expect(json(page.body()), expectedPage);
+            var historical = detail(paid.expected(target));
+            ((ObjectNode) historical.path("items").get(0)).put("productName", renamed);
+            expect(json(paid.unchanged(() -> read("GET", "/orders/" + target.id(), client, 200)).body()), historical);
+            for (var purchase : List.of(first, second)) {
+                var expectedDetail = purchaseDetail(purchase);
+                ((ObjectNode) expectedDetail.path("items").get(0)).put("productName", renamed);
+                expect(json(paid.unchanged(() -> read("GET", "/orders/" + purchase.id(), client, 200)).body()), expectedDetail);
+                paid.unchanged(() -> read("HEAD", "/orders/" + purchase.id(), client, 200));
+            }
+            expect(json(paid.unchanged(() -> read("GET", "/products/" + product.id(), null, 200)).body()),
+                    publicDetail(new ProductData(product.id(), renamed, product.description(), product.image(), product.price())));
+        }
+    }
     private static final DateTimeFormatter INSTANT = DateTimeFormatter
             .ofPattern("uuuu-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(ZoneOffset.UTC);
 
@@ -310,6 +495,227 @@ abstract class OwnOrderQueryRegressionHttpTestSupport {
         expect(json(read("GET", "/orders/" + purchase.id(), clientToken, 200).body()), newDetail);
         expect(json(read("GET", "/products/" + product.id(), null, 200).body()),
                 publicDetail(new ProductData(product.id(), renamed, product.description(), product.image(), product.price())));
+    }
+
+    /** 008 composition only: historical targets, read helpers, fixture and seven-table probe stay unchanged. */
+    private final class PaidRegression implements AutoCloseable {
+        private final PaymentRegistrationDatabaseProbe payments = new PaymentRegistrationDatabaseProbe(stableUrl);
+        private final List<PaymentRow> initialPayments = payments.snapshot().payments();
+        private final Set<Long> ownedRoots = scenario.insertedOrders().stream().map(OrderManifest::id)
+                .collect(java.util.stream.Collectors.toSet());
+        private final Set<Long> settled = new HashSet<>();
+
+        private PaidRegression() {
+            noCaller();
+            require(initialPayments.stream().noneMatch(row -> ownedRoots.contains(row.orderId())),
+                    "The original committed scenario must start without payments");
+        }
+
+        private void accept(OrderManifest order, String admin, Instant occurrence) {
+            noCaller();
+            require(ownedRoots.contains(order.id()) && !settled.contains(order.id()), "Pay only an owned unpaid fixture root");
+            var before = payments.snapshot();
+            var response = payment(order.id(), admin, occurrence, 201);
+            expect(json(response.body()), mapper.createObjectNode().put("orderId", order.id())
+                    .put("occurredAt", INSTANT.format(occurrence)).put("status", "PAID"));
+            var after = payments.snapshot();
+            assertThat(after.payments()).containsExactlyInAnyOrderElementsOf(Stream.concat(before.payments().stream(),
+                    Stream.of(new PaymentRow(order.id(), occurrence))).toList());
+            assertThat(after.previous().data().orders()).isEqualTo(before.previous().data().orders().stream()
+                    .map(row -> row.id() == order.id()
+                            ? new OrderRow(row.id(), row.buyerId(), row.createdAt(), "PAID") : row).toList());
+            assertThatThrownBy(() -> OwnOrderQueryDatabaseProbe.assertUnchanged(before.previous(), after.previous()))
+                    .isInstanceOf(AssertionError.class).hasMessage("Observed database state changed: tb_order");
+            settled.add(order.id()); // The expected view changes only after independent Payment/PAID proof.
+            System.out.println("T031_PAYMENT context=" + identity() + " status=201 snapshotTables=8 allowedChanges=tb_order,tb_payment");
+        }
+
+        private void reject(long id, String token, Instant occurrence, int status, String reason, String message) {
+            noCaller();
+            require(ownedRoots.contains(id) || id == Long.MAX_VALUE, "Reject only fixture-owned or proved absent roots");
+            var before = payments.snapshot();
+            var response = payment(id, token, occurrence, status);
+            var events = sql.events();
+            expect(json(response.body()), error(status, reason, message, "/admin/orders/" + id + "/payments"));
+            var after = payments.snapshot();
+            PaymentRegistrationDatabaseProbe.assertUnchanged(before, after);
+            new OwnOrderQueryDatabaseProbe.Observation<>(response, before.previous(), after.previous(), events).assertNoWrites();
+            System.out.println("T031_PAYMENT context=" + identity() + " status=" + status + " snapshotTables=8 unchanged=true");
+        }
+
+        private HttpResponse<byte[]> payment(long id, String token, Instant occurrence, int expectedStatus) {
+            noCaller();
+            byte[] body;
+            try { body = mapper.writeValueAsBytes(Map.of("occurredAt", INSTANT.format(occurrence))); }
+            catch (IOException failure) { throw new AssertionError("Explicit payment fixture JSON must serialize"); }
+            var path = "/admin/orders/" + id + "/payments";
+            var request = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + contextPath() + path))
+                    .timeout(Duration.ofSeconds(30)).header("Accept", "application/json")
+                    .header("Content-Type", "application/json").header("Authorization", "Bearer " + token)
+                    .POST(HttpRequest.BodyPublishers.ofByteArray(body)).build();
+            sql.clear();
+            HttpResponse<byte[]> response;
+            // Fresh real transport sees the installed Java 21 observer and cannot reuse an unobserved socket.
+            try (var network = new ExternalAttemptProbe(port);
+                 var transport = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10))
+                         .followRedirects(HttpClient.Redirect.NEVER).build()) {
+                network.start();
+                response = transport.send(request, HttpResponse.BodyHandlers.ofByteArray());
+                network.finish();
+            } catch (InterruptedException failure) {
+                Thread.currentThread().interrupt(); throw new IllegalStateException("008 regression payment HTTP interrupted");
+            } catch (IOException failure) { throw new IllegalStateException("008 regression payment HTTP could not complete"); }
+            require(response.statusCode() == expectedStatus, "Expected exact real payment status in the regression journey");
+            require(response.headers().firstValue("Content-Type").orElse("").startsWith("application/json"), "Keep payment JSON");
+            require(response.headers().allValues("WWW-Authenticate").isEmpty(), "These authorized/business payment outcomes have no challenge");
+            require(response.headers().allValues("Location").isEmpty(), "No new administrative GET payment route is promised");
+            return response;
+        }
+
+        private OrderManifest expected(OrderManifest original) {
+            return settled.contains(original.id()) ? new OrderManifest(original.id(), original.buyerId(), original.createdAt(),
+                    "PAID", original.total(), original.items()) : original;
+        }
+
+        private ObjectNode expected(ObjectNode original) {
+            var copy = original.deepCopy();
+            if (copy.has("id") && settled.contains(copy.get("id").longValue())) { copy.put("status", "PAID"); }
+            if (copy.has("content")) {
+                for (var row : copy.get("content")) {
+                    if (settled.contains(row.get("id").longValue())) { ((ObjectNode) row).put("status", "PAID"); }
+                }
+            }
+            return copy;
+        }
+
+        private <T> T unchanged(Supplier<T> operation) {
+            noCaller();
+            var before = payments.snapshot();
+            try { return operation.get(); }
+            finally { noCaller(); PaymentRegistrationDatabaseProbe.assertUnchanged(before, payments.snapshot()); }
+        }
+
+        private void publicPage(String token, String path, int page, int size, int total, int pages, List<ProductData> products) {
+            var expected = mapper.createObjectNode().put("page", page).put("size", size).put("totalElements", total).put("totalPages", pages);
+            var content = expected.putArray("content");
+            products.forEach(product -> content.addObject().put("id", product.id()).put("name", product.name())
+                    .put("image", product.image()).put("price", product.price()));
+            expect(json(unchanged(() -> read("GET", path, token, 200)).body()), expected);
+        }
+
+        private Purchase registerWaiting(String token, byte[] identicalBody) {
+            noCaller();
+            var before = payments.snapshot();
+            var purchase = register(scenario.accounts().client(), token, identicalBody);
+            var after = payments.snapshot();
+            assertThat(after.payments()).isEqualTo(before.payments());
+            assertThatThrownBy(() -> OwnOrderQueryDatabaseProbe.assertUnchanged(before.previous(), after.previous()))
+                    .isInstanceOf(AssertionError.class).hasMessage("Observed database state changed: tb_order, tb_order_item");
+            // register() already checks the complete new root/items, WAITING_PAYMENT and every old root/item.
+            return purchase;
+        }
+
+        private void noCaller() {
+            outsideTransaction();
+            require(!TransactionSynchronizationManager.isSynchronizationActive(), "008 regression has no caller synchronization");
+        }
+
+        @Override public void close() {
+            noCaller();
+            var cleanupRoots = new HashSet<>(ownedRoots);
+            cleanupRoots.addAll(registeredRoots.keySet()); // Also clean an erroneously paid new owned HTTP root on assertion failure.
+            var cleanup = new TransactionTemplate(transactions);
+            cleanup.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+            cleanup.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
+            cleanup.executeWithoutResult(status -> {
+                for (var id : cleanupRoots) { jdbc.update("delete from tb_payment where order_id = ?", id); }
+            });
+            assertThat(payments.snapshot().payments()).isEqualTo(initialPayments);
+            // The unchanged outer @AfterEach deletes owned roots only after these Payments are removed.
+        }
+    }
+
+    /** JDK permission hooks across HTTP worker threads; no native/process/late-async coverage is claimed. */
+    @SuppressWarnings("removal")
+    private static final class ExternalAttemptProbe extends SecurityManager implements AutoCloseable {
+        private static final String MESSAGE = "008 regression forbids non-harness network attempts";
+        private final int harnessPort;
+        private final SecurityManager previous;
+        private final List<String> events = new CopyOnWriteArrayList<>();
+        private final AtomicInteger checks = new AtomicInteger();
+        private volatile boolean observing;
+
+        private ExternalAttemptProbe(int harnessPort) {
+            this.harnessPort = harnessPort;
+            previous = System.getSecurityManager();
+            require(previous == null, "Network observation requires the isolated Java 21 test JVM without another manager");
+            System.setSecurityManager(this);
+            try {
+                require(System.getSecurityManager() == this, "The permission observer must actually be installed");
+                observing = true;
+                checkConnect("127.0.0.1", harnessPort);
+                checkConnect("localhost", -1);
+                checkPermission(new URLPermission("http://127.0.0.1:" + harnessPort + "/control", "POST"));
+                // Direct hook controls, without resolving a host, opening a socket or sending an external request.
+                assertThatThrownBy(() -> checkConnect("financial-control.invalid", -1))
+                        .isInstanceOf(SecurityException.class).hasMessage(MESSAGE);
+                assertThatThrownBy(() -> checkConnect("203.0.113.1", 443))
+                        .isInstanceOf(SecurityException.class).hasMessage(MESSAGE);
+                assertThatThrownBy(() -> checkPermission(new URLPermission("https://financial-control.invalid/control", "POST")))
+                        .isInstanceOf(SecurityException.class).hasMessage(MESSAGE);
+                assertThat(events).containsExactly("DNS", "CONNECT", "HTTP_PERMISSION");
+                observing = false;
+                events.clear(); checks.set(0);
+            } catch (RuntimeException | Error failure) {
+                observing = false; System.setSecurityManager(previous); throw failure;
+            }
+        }
+
+        private void start() { events.clear(); checks.set(0); observing = true; }
+
+        private void finish() {
+            observing = false;
+            require(checks.get() > 0, "Real HTTP must reach the installed JDK observation hooks; zero checks is not approval");
+            assertThat(events).as("No non-harness DNS/connect/HTTP permission attempt in this payment window").isEmpty();
+            System.out.println("T031_NETWORK jdkChecks=" + checks.get()
+                    + " forbiddenAttempts=0 directHookControls=DNS,CONNECT,HTTP_PERMISSION controlsUseNetwork=false");
+        }
+
+        private boolean harness(String host, int port) {
+            return ("localhost".equalsIgnoreCase(host) || "127.0.0.1".equals(host) || "::1".equals(host)
+                    || "0:0:0:0:0:0:0:1".equals(host) || "[::1]".equals(host))
+                    && (port == -1 || port == harnessPort);
+        }
+
+        @Override public void checkConnect(String host, int port) {
+            if (observing) {
+                checks.incrementAndGet();
+                if (!harness(host, port)) { events.add(port == -1 ? "DNS" : "CONNECT"); throw new SecurityException(MESSAGE); }
+            }
+        }
+
+        @Override public void checkConnect(String host, int port, Object context) { checkConnect(host, port); }
+
+        @Override public void checkPermission(Permission permission) {
+            if (observing && permission instanceof URLPermission url) {
+                checks.incrementAndGet();
+                var destination = URI.create(url.getName());
+                var destinationPort = destination.getPort() == -1 ? ("https".equals(destination.getScheme()) ? 443 : 80) : destination.getPort();
+                if (!harness(destination.getHost(), destinationPort)) { events.add("HTTP_PERMISSION"); throw new SecurityException(MESSAGE); }
+            }
+        }
+
+        @Override public void checkPermission(Permission permission, Object context) { checkPermission(permission); }
+
+        @Override public void close() {
+            try { if (observing) { finish(); } }
+            finally {
+                observing = false;
+                require(System.getSecurityManager() == this, "Do not silently replace another test's observer");
+                System.setSecurityManager(previous);
+                require(System.getSecurityManager() == previous, "Restore the previous permission manager after the window");
+            }
+        }
     }
 
     private String consultOwnOrdersBeforeAnotherJourney() {

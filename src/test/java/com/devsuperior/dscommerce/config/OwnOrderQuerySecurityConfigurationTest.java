@@ -6,6 +6,8 @@ import com.devsuperior.dscommerce.security.OwnOrderQueryAccessDeniedHandler;
 import com.devsuperior.dscommerce.security.OwnOrderQueryAuthenticationEntryPoint;
 import com.devsuperior.dscommerce.services.AuthenticatedAccountService;
 import com.devsuperior.dscommerce.services.OwnOrderQueryAccessService;
+import com.devsuperior.dscommerce.services.PaymentAccessService;
+import com.devsuperior.dscommerce.services.exceptions.PaymentRegistrationException;
 import com.devsuperior.dscommerce.services.exceptions.OrderAccountResolutionException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
@@ -52,6 +54,8 @@ import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.ArgumentMatchers.any;
 
 /** Configuration/provider/handler tests only: no servlet dispatch, MockMvc, HTTP, H2 or JPA. */
 class OwnOrderQuerySecurityConfigurationTest {
@@ -64,13 +68,13 @@ class OwnOrderQuerySecurityConfigurationTest {
 
     @ParameterizedTest
     @MethodSource("queryRequests")
-    void selectsFirstChainForOnlyQueryMethodsAndSingleSegment(String contextPath, String method, String path) {
+    void selectsOwnQueryChainForOnlyQueryMethodsAndSingleSegment(String contextPath, String method, String path) {
         runner.run(context -> {
             assertThat(context).hasNotFailed();
             var proxy = context.getBean(FilterChainProxy.class);
-            assertThat(proxy.getFilterChains()).hasSize(4);
+            assertThat(proxy.getFilterChains()).hasSize(5);
             var chain = context.getBean("ownOrderQuerySecurityFilterChain", SecurityFilterChain.class);
-            assertThat(proxy.getFilterChains().get(0)).isSameAs(chain);
+            assertThat(proxy.getFilterChains().get(1)).isSameAs(chain);
             assertThat(selected(proxy, request(contextPath, method, path))).isSameAs(chain);
         });
     }
@@ -82,10 +86,21 @@ class OwnOrderQuerySecurityConfigurationTest {
             assertThat(context).hasNotFailed();
             var proxy = context.getBean(FilterChainProxy.class);
             assertThat(proxy.getFilterChains()).containsExactly(
+                    context.getBean("paymentSecurityFilterChain", SecurityFilterChain.class),
                     context.getBean("ownOrderQuerySecurityFilterChain", SecurityFilterChain.class),
                     context.getBean("orderSecurityFilterChain", SecurityFilterChain.class),
                     context.getBean("adminProductSecurityFilterChain", SecurityFilterChain.class),
                     context.getBean("securityFilterChain", SecurityFilterChain.class));
+            for (var method : List.of("GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")) {
+                for (var path : List.of("/admin/orders/1/payments", "/admin/orders/invalid/payments")) {
+                    assertThat(selected(proxy, request(contextPath, method, path)))
+                            .isSameAs(context.getBean("paymentSecurityFilterChain"));
+                }
+                for (var path : List.of("/admin/orders/1/payments/extra", "/admin/orders/1/other")) {
+                    assertThat(selected(proxy, request(contextPath, method, path)))
+                            .isSameAs(context.getBean("adminProductSecurityFilterChain"));
+                }
+            }
             assertThat(selected(proxy, request(contextPath, "POST", "/orders")))
                     .isSameAs(context.getBean("orderSecurityFilterChain"));
             assertThat(selected(proxy, request(contextPath, "GET", "/admin/products")))
@@ -113,13 +128,13 @@ class OwnOrderQuerySecurityConfigurationTest {
             var authentication = UsernamePasswordAuthenticationToken.authenticated(PRINCIPAL, null,
                     roles.stream().map(SimpleGrantedAuthority::new).toList());
             boolean queryAllowed = roles.contains("ROLE_CLIENT") || roles.contains("ROLE_ADMIN");
-            for (var bean : List.of("ownOrderQuerySecurityFilterChain", "orderSecurityFilterChain",
+            for (var bean : List.of("paymentSecurityFilterChain", "ownOrderQuerySecurityFilterChain", "orderSecurityFilterChain",
                     "adminProductSecurityFilterChain", "securityFilterChain")) {
                 var chain = context.getBean(bean, SecurityFilterChain.class);
                 var filter = chain.getFilters().stream().filter(AuthorizationFilter.class::isInstance)
                         .map(AuthorizationFilter.class::cast).findFirst().orElseThrow();
                 boolean expected = switch (bean) {
-                    case "adminProductSecurityFilterChain" -> roles.contains("ROLE_ADMIN");
+                    case "paymentSecurityFilterChain", "adminProductSecurityFilterChain" -> roles.contains("ROLE_ADMIN");
                     case "securityFilterChain" -> true;
                     default -> queryAllowed;
                 };
@@ -168,6 +183,7 @@ class OwnOrderQuerySecurityConfigurationTest {
             if (phase.equals("initial")) {
                 verifyNoInteractions(access);
             }
+            verifyNoInteractions(context.getBean(PaymentAccessService.class));
             var response = new MockHttpServletResponse();
             new OwnOrderQueryAuthenticationEntryPoint(MAPPER)
                     .commence(request, response, (AuthenticationException) thrown);
@@ -280,5 +296,12 @@ class OwnOrderQuerySecurityConfigurationTest {
         @Bean JwtDecoder jwtDecoder() { return mock(JwtDecoder.class); }
         @Bean AuthenticatedAccountService accounts() { return mock(AuthenticatedAccountService.class); }
         @Bean OwnOrderQueryAccessService access() { return mock(OwnOrderQueryAccessService.class); }
+        @Bean PaymentAccessService paymentAccess() {
+            var access = mock(PaymentAccessService.class);
+            // Query-provider scenarios must never silently grant a payment permission.
+            doThrow(new PaymentRegistrationException(PaymentRegistrationException.Reason.FORBIDDEN))
+                    .when(access).requireAdmin(any());
+            return access;
+        }
     }
 }

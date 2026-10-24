@@ -65,7 +65,7 @@ Como pessoa que escolhe a senha, quero utilizá-la integralmente, sem transforma
 2. **Given** senha de 32 caracteres `á` U+00E1, **When** é avaliada, **Then** 32 caracteres e 64 bytes UTF-8 satisfazem os limites; 33 desses caracteres, com 66 bytes, são rejeitados sem normalização ou truncamento.
 3. **Given** senha de 12 caracteres `😀` U+1F600, **When** é avaliada, **Then** 12 caracteres e 48 bytes satisfazem os limites; 11 ocorrências são rejeitadas pelo mínimo e 17 pelo total de 68 bytes.
 4. **Given** senha válida nos dois limites, não formada somente por espaços e contendo espaços externos/internos, **When** é cadastrada e depois usada no login, **Then** os espaços são parte do segredo, sem serem aparados. Senha somente de espaços conforme Assumptions é rejeitada mesmo dentro dos limites.
-5. **Given** senhas válidas diferentes por caixa ou sequência Unicode, como acentos compostos/decompostos, **When** uma delas é escolhida, **Then** somente sua sequência exata é a senha da conta; não há composição obrigatória ou transformação entre representações.
+5. **Given** senhas válidas diferentes por caixa ou sequência Unicode, como acentos compostos/decompostos, **When** uma delas é escolhida, **Then** somente sua sequência exata é a senha da conta; não há composição obrigatória ou transformação entre representações. Inclui NUL e controles fora da lista fechada de espaços, sem exclusão silenciosa; senha válida009 deve chegar à autenticação mesmo se antes rejeitada pela validação de entrada do login.
 6. **Given** cadastro bem-sucedido, inválido, duplicado ou com falha interna, **When** resultados e diagnósticos são examinados, **Then** senha e hash não são expostos, o segredo não é conservado como texto legível e nenhum sucesso informa token ou concede sessão autenticada.
 
 ---
@@ -136,7 +136,7 @@ Como cliente ou administrador já cadastrado, quero manter minha conta e minhas 
 - **FR-009**: Nascimento DEVE ser data válida em AAAA-MM-DD, não posterior à referência definida em Assumptions, sem idade mínima ou correção de data impossível.
 - **FR-010**: Senha DEVE ter no mínimo 12 caracteres, contados por pontos de código Unicode, e no máximo 64 bytes UTF-8 da sequência exata, sem composição obrigatória. As condições DEVEM ser verificadas independentemente; unidades e exemplos de Assumptions são normativos.
 - **FR-011**: Senha somente de espaços conforme Assumptions DEVE ser rejeitada. Em senha de resto válida, espaços, caixa e sequência Unicode DEVEM ser conservados; NÃO aparar, normalizar, alterar caixa, substituir caracteres ou truncar. A senha de login DEVE ser a sequência exata escolhida.
-- **FR-012**: Senha NÃO DEVE ser armazenada como texto legível nem exposta em confirmação, rejeição ou diagnóstico; hash e demais segredos também NÃO DEVEM ser divulgados. A compatibilidade integral da proteção existente com a política DEVE ser conferida no planejamento; esta especificação não a declara comprovada nem autoriza transformar senha ou relaxar limites para contornar incompatibilidade.
+- **FR-012**: Senha NÃO DEVE ser armazenada como texto legível nem exposta em confirmação, rejeição ou diagnóstico; hash e demais segredos também NÃO DEVEM ser divulgados. A compatibilidade da proteção com a política DEVE ser fundamentada no planejamento e comprovada por execução futura. D009-01 registra a evolução aprovada; esta especificação não declara comprovação funcional nem autoriza transformar senha ou relaxar limites.
 - **FR-013**: Sucesso DEVE confirmar a nova conta e seu name somente depois da conclusão integral; NÃO emitir token, criar sessão autenticada ou substituir o login separado. A confirmação não cria uma nova operação de consulta de dados pessoais.
 - **FR-014**: Name exato ou email equivalente já existente DEVEM produzir a mesma categoria e mensagem genéricas de duplicidade, inclusive contra conta anterior com esses dados presentes; NÃO indicar campo/conta causadora, devolver cadastro anterior ou sobrescrever dados.
 - **FR-015**: Duas tentativas válidas concorrentes sem outras falhas disputando o mesmo name exato ou email equivalente DEVEM produzir exatamente um cadastro concluído e uma rejeição genérica. Nunca criar duas contas para a identidade disputada, mesclar dados ou aproveitar perfis da tentativa perdedora.
@@ -145,8 +145,8 @@ Como cliente ou administrador já cadastrado, quero manter minha conta e minhas 
 - **FR-018**: Falhas internas DEVEM produzir falha segura de processamento, distinta de entrada inválida/duplicidade, sem exposição interna ou de credenciais; NÃO presumir sucesso ou conflito. Efetivação indeterminada NÃO prova ausência da conta nem autoriza compensação destrutiva ou repetição automática.
 - **FR-019**: Cadastro concluído DEVE permanecer salvo se a confirmação não for recebida; novo envio dos mesmos dados DEVE ser rejeitado genericamente por duplicidade, sem outra conta, sucesso reutilizado ou autenticação automática.
 - **FR-020**: Contas anteriores DEVEM conservar IDs, name, hashes, perfis, pedidos/pagamentos, vínculos e histórico. FullName, email, telefone e nascimento podem continuar ausentes nelas, sem preenchimento fictício, migração automática, complementação obrigatória ou bloqueio de jornadas.
-- **FR-021**: Novas regras cadastrais NÃO DEVEM atingir retroativamente contas anteriores ou alterar login por name exato/senha. Novas credenciais DEVEM funcionar no login existente, sem email/fullName como alternativas.
-- **FR-022**: O sistema DEVE preservar comportamentos e contratos das Features 001–008: consultas públicas, manutenção administrativa, autenticação, perfis atuais, registro/consultas próprias de pedidos, pagamento, titularidade e conservação financeira; NÃO ampliar privilégios ou leitura alheia.
+- **FR-021**: Novas regras cadastrais NÃO DEVEM atingir retroativamente contas anteriores ou alterar login por name exato/senha. Novas credenciais DEVEM funcionar no login existente, sem email/fullName como alternativas. Conforme D009-01 aprovada, a validação de senha do login DEVE aceitar a união do domínio anteriormente aceito com as senhas válidas009, sem restringir o primeiro pelos limites ou regras novas. Verificação DEVE respeitar o formato protegido armazenado, preservando hashes anteriores sem conversão/rehash automático e os campos, token e mensagens existentes.
+- **FR-022**: O sistema DEVE preservar comportamentos e contratos das Features 001–008: consultas públicas, manutenção administrativa, autenticação, perfis atuais, registro/consultas próprias de pedidos, pagamento, titularidade e conservação financeira; NÃO ampliar privilégios ou leitura alheia. A única evolução aprovada do login é a delimitada em FR-021/D009-01, documentada na009 sem reescrever os contratos históricos.
 - **FR-023**: Cadastro NÃO DEVE criar pedido/pagamento, executar transição de compra ou modificar carrinho, catálogo, categorias ou contas alheias. Somente nova conta, seus dados e CLIENT podem ser acrescentados no sucesso.
 
 ### Key Entities *(include if feature involves data)*
@@ -167,7 +167,7 @@ Como cliente ou administrador já cadastrado, quero manter minha conta e minhas 
 - **SC-003**: Em 100% dos casos de US3, mínimo de caracteres e máximo de bytes são respeitados separadamente, a senha não sofre transformação e senha/hash não aparecem nas saídas/diagnósticos examinados.
 - **SC-004**: Em 100% das duplicidades/repetições de US4, contas anteriores ou vencedoras permanecem intactas e a rejeição é genérica. Cada par concorrente válido disputando name/email sem outras falhas produz uma aceitação; pares de identidades distintas produzem duas.
 - **SC-005**: Em 100% das rejeições e falhas anteriores à efetivação que impeçam conclusão, não há cadastro parcial ou sucesso. No caso de confirmação perdida após conclusão, a conta permanece utilizável e o reenvio é rejeitado por duplicidade.
-- **SC-006**: Em 100% dos casos de US5, contas anteriores preservam identidades, credenciais, perfis e compras, sem dados fictícios ou novas exigências de login; contratos e comportamentos 001–008 continuam atendidos.
+- **SC-006**: Em 100% dos casos de US5, contas anteriores preservam identidades, credenciais, perfis e compras, sem dados fictícios ou novas exigências de login; contratos e comportamentos001–008 continuam atendidos com a evolução aditiva do login delimitada em FR-021/D009-01, sem reescrever snapshots históricos.
 - **SC-007**: Em 100% dos casos de efeitos do cadastro, somente nova conta, seus dados e CLIENT são acrescentados no sucesso; rejeições não alteram o domínio e nenhum resultado cria pedido/pagamento, altera carrinho ou concede ADMIN.
 
 ## Assumptions
@@ -189,9 +189,13 @@ Como cliente ou administrador já cadastrado, quero manter minha conta e minhas 
 3. FullName separado, 2–120 caracteres após remoção externa; preservar caixa, acentos e espaços internos e permitir homônimos (FR-005).
 4. Email obrigatório, sintaticamente válido, até 254 caracteres após remoção externa e único ignorando caixa/espaços externos; sem correção interna ou login por email (FR-006–007).
 5. Telefone obrigatório `+` e 8–15 dígitos; nascimento obrigatório, válido e não futuro, sem idade mínima (FR-008–009).
-6. Senha: mínimo de 12 caracteres e máximo de 64 bytes UTF-8; sem composição obrigatória, somente espaços rejeitados e nenhuma transformação; compatibilidade do encoder a conferir no planejamento (FR-010–012).
+6. Senha: mínimo de 12 caracteres e máximo de 64 bytes UTF-8; sem composição obrigatória, somente espaços rejeitados e nenhuma transformação; compatibilidade de desenho resolvida em D009-01 no planejamento, com comprovação executável futura (FR-010–012).
 7. Contas anteriores e jornadas intactas, sem dados fictícios ou regras novas retroativas (FR-020–022).
 8. Confirmação sem token/login automático; duplicidade genérica de name/email sem sobrescrita, inclusive reenvio após perda da resposta, sem sucesso reutilizado (FR-013–019).
+
+### Evolução aprovada do login — D009-01
+
+Em2026-10-24, o usuário aprovou proteção específica somente para novas contas009, preservação dos hashes anteriores sem conversão/rehash, verificação por formato armazenado e união aditiva do domínio antigo de senha do login com senhas válidas009. Nenhuma regra12/64 é retroativa. Name, campos, token e mensagens continuam; senha nunca é aparada, normalizada, truncada ou transformada. A decisão técnica e seus limites estão em [research R4](research.md#r4--incompatibilidades-materiais-de-senha-e-login-decisão-d009-01); não há comprovação funcional nesta fase. Demais políticas e contratos históricos preservados.
 
 ### Convenções inequívocas adotadas como assunções
 
@@ -216,7 +220,7 @@ Como cliente ou administrador já cadastrado, quero manter minha conta e minhas 
 ### Dúvidas remanescentes e fronteira da fase
 
 - Não há decisão material de negócio bloqueante identificada após as oito políticas aprovadas. Convenções adicionais são assunções explícitas revisáveis, não novas aprovações atribuídas ao usuário.
-- Compatibilidade integral do encoder com senha exata e ambos os limites é obrigação futura de planejamento, não comprovação técnica desta fase. Incompatibilidade deverá ser exposta/resolvida antes de implementar, sem truncamento ou alteração silenciosa da política.
+- O planejamento identificou incompatibilidades da proteção/validação anteriores, e D009-01 resolveu a escolha técnica e a evolução aditiva de entrada. Integração e comportamento ainda precisam de comprovação executável futura, sem truncamento, transformação ou mudança silenciosa da política.
 - Esta especificação não comprova testes, migração, durabilidade ou funcionamento em PostgreSQL/produção. Evidências anteriores Windows/H2 e Ubuntu/H2 conservam seus alcances e não aprovam código inexistente da 009.
 - Percentuais de sucesso referem-se aos conjuntos finitos de cenários definidos, não a SLA, capacidade comercial ou aprovação obtida.
 
@@ -228,4 +232,4 @@ Como cliente ou administrador já cadastrado, quero manter minha conta e minhas 
 - Carrinho no servidor, gestão/esvaziamento pelo cadastro, interface visual e implantação.
 - Manutenção de categorias, relatórios, novas transições de pedidos, compras/pagamentos ou movimentação financeira.
 - Repetição idempotente, recuperação/reutilização de confirmação e compensação por perda da resposta.
-- Nesta fase: plan, research, data-model, contratos, tasks, implementação e testes. Somente spec.md, checklist e seleção local autorizada; sem stage, commit ou push.
+- Na etapa original de especificação, plan/research/modelo/contratos/tasks/código/testes estavam fora do escopo. A retomada autorizada cobre exclusivamente planejamento009 e ajustes pontuais nesta spec/checklist para D009-01; sem implementação, dependência no projeto, tasks, Maven/testes, stage, commit ou push.

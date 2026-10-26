@@ -11,9 +11,11 @@ import org.springframework.data.repository.query.Param;
 import java.util.Optional;
 import java.util.List;
 
-public interface UserAccountRepository extends JpaRepository<UserAccount, Long> {
+public interface UserAccountRepository extends JpaRepository<UserAccount, Long>, UserAccountInsertRepository {
 
     Optional<UserAccount> findByName(String name);
+
+    Optional<UserAccount> findByEmailKey(byte[] emailKey);
 
     @Query("select distinct account from UserAccount account left join fetch account.roles where account.id = :id")
     Optional<UserAccount> findByIdWithRoles(@Param("id") Long id);

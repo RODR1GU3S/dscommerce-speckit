@@ -17,12 +17,16 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import jakarta.validation.constraints.NotBlank;
 
+import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 
 @Entity
-@Table(name = "tb_user_account")
+@Table(name = "tb_user_account", uniqueConstraints = {
+        @UniqueConstraint(name = "uk_user_account_name", columnNames = "name"),
+        @UniqueConstraint(name = "uk_user_account_email_key", columnNames = "email_key")
+})
 public class UserAccount {
 
     @Id
@@ -30,12 +34,27 @@ public class UserAccount {
     private Long id;
 
     @NotBlank
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false, length = 255)
     private String name;
 
     @NotBlank
-    @Column(nullable = false)
+    @Column(nullable = false, length = 255)
     private String passwordHash;
+
+    @Column(name = "full_name", nullable = true, length = 240)
+    private String fullName;
+
+    @Column(name = "email", nullable = true, length = 508)
+    private String email;
+
+    @Column(name = "email_key", nullable = true, length = 1016)
+    private byte[] emailKey;
+
+    @Column(name = "phone", nullable = true, length = 16)
+    private String phone;
+
+    @Column(name = "birth_date", nullable = true)
+    private LocalDate birthDate;
 
     @ElementCollection(fetch = FetchType.LAZY)
     @Enumerated(EnumType.STRING)
@@ -56,6 +75,17 @@ public class UserAccount {
         this.passwordHash = passwordHash;
     }
 
+    /** New account values; the service assigns CLIENT through the existing roles collection. */
+    public UserAccount(String name, String passwordHash, String fullName, String email, byte[] emailKey,
+                       String phone, LocalDate birthDate) {
+        this(null, name, passwordHash);
+        this.fullName = fullName;
+        this.email = email;
+        this.emailKey = emailKey == null ? null : emailKey.clone();
+        this.phone = phone;
+        this.birthDate = birthDate;
+    }
+
     public Long getId() {
         return id;
     }
@@ -67,6 +97,31 @@ public class UserAccount {
     @JsonIgnore
     public String getPasswordHash() {
         return passwordHash;
+    }
+
+    @JsonIgnore
+    public String getFullName() {
+        return fullName;
+    }
+
+    @JsonIgnore
+    public String getEmail() {
+        return email;
+    }
+
+    @JsonIgnore
+    public byte[] getEmailKey() {
+        return emailKey == null ? null : emailKey.clone();
+    }
+
+    @JsonIgnore
+    public String getPhone() {
+        return phone;
+    }
+
+    @JsonIgnore
+    public LocalDate getBirthDate() {
+        return birthDate;
     }
 
     @JsonIgnore

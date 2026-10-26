@@ -688,3 +688,1251 @@ A proposta contempla o estado real do Git, sem duplicar o commit dos oito Java n
 **Condição de saída atendida**: revisão pertinente idêntica, T012 sem correção necessária, H-base aprovado em execução identificada, quatro obrigações acima relacionadas a casos existentes e proposta CP-H preparada. Marcar somente T013 nesta solicitação; preservar T001–T012 e manter T014–T107 abertas. Sem stage, commit, push, PR, merge, alteração de main ou seleção. Revisão final documental/Git registrada no fechamento desta seção e no relato de entrega.
 
 **Fechamento estático executado**: prefixo recebido do quickstart, inclusive T012, preservado byte a byte. Tasks, ao desfazer em memória somente a marca T013, recuperou o conteúdo recebido; os94marcadores T014–T107 permanecem abertos. Links locais novos resolvidos, conteúdo/diff e referências revisados; `git diff --check` retornou0. Oito Java e entradas POM/Wrapper/ponteiro continuam iguais à revisão testada. Nenhum arquivo novo no repositório; apenas quickstart/tasks009 modificados, nada staged ou não rastreado. Extensões ausentes antes/depois, sem hooks a executar. Mesmos HEAD/branch/main/seleção009; sem stage, commit, push ou PR. Nenhum Maven, baseline, H-base, suíte completa, reconciliação executável ou arquivamento foi repetido neste checkpoint.
+
+## T014 — autoria dos testes de schema/JPA — 2026-10-25
+
+**Resultado: testes escritos; diagnóstico executável reservado a T015.** Criada [CustomerRegistrationSchemaTest.java](../../src/test/java/com/devsuperior/dscommerce/repositories/CustomerRegistrationSchemaTest.java), usando a entidade atual, metamodelo JPA e metadados/JDBC reais. A conclusão desta tarefa de autoria não significa compilação aprovada, schema implementado ou aceite funcional do cadastro.
+
+**Entrada e procedimento**: confirmados raiz `C:/Users/ronal/dscommerce-speckit`, branch `009-cadastrar-cliente`, HEAD `ea820352fa1d1947132cc568a21c791ad4775c27`, Git limpo e seleção local009. Main recebida `de1d8ffb91f4c73d8ee2d10912d56c244164084b`. Lidos T014, suas dependências T005–T013, regras de autoria/diagnóstico e procedimentos pertinentes de isolamento, cleanup, metadados e evidências; considerados constituição, AGENTS e artefatos aprovados009. Skill speckit-implement limitada a T014; pré-requisitos resolveram FEATURE_DIR absoluto009 com exit0; checklist requirements.md16/16, zero abertos, somente leitura. Ignore Java existente suficiente, sem alteração de configuração ou dependência.
+
+T013 já registrou o checkpoint de suporte por referência a T011; nenhum suporte precisou de correção em T012. O resultado histórico H-base (três classes, 17 métodos, 24 testes aprovados, exit Maven0) continua restrito à revisão e aos casos de suporte então executados. Nenhuma execução, reconciliação ou cópia desses relatórios foi repetida em T014. O novo teste M não recebe aprovação por essa evidência.
+
+**Desenho da autoria**: contexto Spring MOCK próprio, perfil test e initializer opt-in T006 com marcador específico para separar o cache do contexto de modelo. Sem servidor HTTP real ou transação de teste envolvendo os casos. Contas de controle são persistidas por EntityManager em transações próprias commitadas; JDBC independente verifica estado e constraints. Cleanup em try-with-resources remove somente roles/contas pelos IDs gerados e pertencentes ao caso, após rollback/commit das transações. Probes negativos sempre fazem rollback, inclusive se uma constraint ausente aceitar indevidamente a escrita. Não há exclusão global de dados, alteração do suporte ou compensação do cadastro.
+
+**Inventário estático de M**: uma classe concreta, 11 métodos anotados (nove simples e dois parametrizados), 18 invocações previstas. Os providers são locais e finitos: cinco colunas e quatro conjuntos de roles. Sem superclasse de cenários, métodos herdados de teste, `@Nested`, teste dinâmico ou fonte externa de parâmetros. As contagens abaixo são autoria, não descoberta/comprovação do Surefire.
+
+| Método | Casos previstos | Oráculo escrito |
+| --- | ---: | --- |
+| `jpaMetamodelIncludesTheFiveRegistrationAttributesWithApprovedJavaTypes` | 1 | fullName/email/phone String, emailKey byte[], birthDate LocalDate no metamodelo real. |
+| `registrationColumnsHaveTheApprovedPhysicalTypeCapacityAndNullableFlag` | 5 | FULL_NAME VARCHAR240, EMAIL VARCHAR508, EMAIL_KEY VARBINARY1016, PHONE VARCHAR16, BIRTH_DATE DATE; todas nullable. |
+| `legacyNamePasswordHashAndIdentityKeepTheirPhysicalContract` | 1 | NAME/PASSWORD_HASH VARCHAR255 NOT NULL, PK BIGINT IDENTITY existente. |
+| `nameHasOneNamedUniqueConstraintAndNoEquivalentDuplicateIndex` | 1 | UK_USER_ACCOUNT_NAME sobre NAME, sem constraint/índice único equivalente duplicado. |
+| `emailKeyHasOneNamedUniqueConstraintAndNoEquivalentDuplicateIndex` | 1 | UK_USER_ACCOUNT_EMAIL_KEY sobre EMAIL_KEY, sem duplicação equivalente. |
+| `anaAndLowercaseAnaCoexistButAnExactDuplicateNameIsRejected` | 1 | Ana/ana distintas pelo JPA e banco; duplicata exata rejeitada com SQLState23505 e snapshot inalterado. |
+| `severalLegacyAccountsKeepNullRegistrationValuesAndTheirJpaRoles` | 4 | Duas contas commitadas por caso com cinco campos NULL; roles nenhum/CLIENT/ADMIN/ambos preservados, coleção LAZY, name255 e BCrypt fixo intactos. |
+| `binaryEmailKeyRejectsEqualBytesAndAllowsDistinctBytes` | 1 | Bytes iguais rejeitados com23505, bytes diferentes armazenados; snapshot independente da tentativa rejeitada. |
+| `jpaReadsRegistrationValuesFromTheirRealColumnsWithoutTruncation` | 1 | JDBC→JPA com sequência suplementar de240 unidades UTF-16, chave física1016bytes, telefone e LocalDate; sem getters futuros. |
+| `existingRoleCollectionKeepsItsStringMappingNamedForeignKeyAndUniquePair` | 1 | SET/element collection, enum textual (VARCHAR ou ENUM nativo H2 já admitido), NOT NULL, FK e único de role nomeados; referências pedido→conta e pagamento→pedido preservadas. |
+| `existingRoleForeignKeyUniquePairAndRequiredColumnsAreEnforcedByTheDatabase` | 1 | Duplicata role23505, órfão23506, nulos23502; rollback e snapshot independente inalterado. |
+
+**Compatibilidade de fonte e preparação**: a expressão de T014 “compilar sobre entidade atual” foi atendida na autoria sem dependência de API futura: apenas construtor e getters já existentes de UserAccount, tipos atuais de suporte e nomes de atributos via metamodelo/JPQL. Não foi executada compilação. Antes de qualquer SQL envolvendo colunas novas há asserção explícita de existência nos metadados; antes do JPQL com atributos novos há asserção do metamodelo e tipos. Assim, ausência do modelo é verificada por oráculo próprio, sem consultar coluna ausente como preparação, criar campo artificial ou usar assumption/skip. A efetiva compilabilidade e a classificação de cada falha somente poderão ser comprovadas no diagnóstico T015.
+
+**Procedimento futuro, não executado**: T015 deve conferir processos e resultados aplicáveis, preservar relatórios anteriores sem repetir arquivamentos concluídos e identificar exclusivamente a nova execução M. Seletor aprovado em [tasks](tasks.md), partindo da raiz:
+
+~~~powershell
+.\mvnw.cmd '-Dtest=CustomerRegistrationSchemaTest*' '-Dsurefire.failIfNoSpecifiedTests=true' '-DfailIfNoTests=true' test
+~~~
+
+Executar sequencialmente somente quando autorizada T015, com identificação dos relatórios conforme protocolo já aprovado. Capturar exit Maven numérico antes de arquivar; confrontar console/XML/TXT e classe→11 métodos→18 invocações previstas nesta revisão, justificando eventual divergência e ausência de omissões/duplicatas. Compilação, contexto ou preparação falhos são impedimentos distintos de RED; casos já satisfeitos podem ser GREEN inicial. Não fabricar falha, enfraquecer asserção ou inferir RED apenas da leitura de UserAccount atual.
+
+**Validação e limites de T014**: revisão estática integral do arquivo novo, imports/APIs atuais, providers, guardas antes de SQL/JPQL, transações e cleanup. A leitura auxiliar do caminho incorreto `src/test/.../entities/UserAccount.java` falhou por arquivo inexistente; corrigida para `src/main/.../entities/UserAccount.java`, sem mudança de fonte ou execução de aplicação. Não iniciados Maven, javac, JUnit, contexto, banco, encoder ou HTTP; nenhum novo exit Maven, console/Surefire, teste executado, RED/GREEN ou resultado de runtime a atribuir. Baseline B, H-base, suíte completa, reconciliações e arquivamentos não repetidos.
+
+Os vetores binários são controles físicos independentes do normalizador; o canário de1016bytes e o email desse teste não representam uma chave canônica de cadastro válida. Capacidade/nulabilidade/unicidade do schema não comprovam sintaxe, Unicode, calendário ou equivalência email/chave de negócio. FKs de pedido/pagamento são inspecionadas por metadados; nenhum cadastro, compra ou pagamento funcional é exercitado. Não comprovados endpoint, DTO, worker, Argon2id/login aditivo, concorrência, entrega, PostgreSQL/produção/CI ou histórias009.
+
+**Conclusão limitada à autoria**: critérios de escrita/revisão T014 atendidos. Marcar somente T014; preservar T001–T013 e manter T015–T107 abertas. Produção, contratos, dependências, oito Java de suporte e evidências anteriores intactos. D009-01, seleção009 e **Gate IV005 como EXCEÇÃO DOCUMENTADA, sem PASS estrito** preservados. Sem stage, commit, push, PR ou alteração de main. Conferências finais de conteúdo/diff, referências, links e whitespace registradas a seguir.
+
+**Fechamento estático executado**: revisados integralmente conteúdo novo, diff dos dois documentos, imports, referências e os dois links locais novos, ambos existentes. Prefixo recebido do quickstart preservado byte a byte; tasks recupera exatamente a entrada ao desfazer em memória somente a marca T014. T001–T014 marcadas e os93marcadores T015–T107 abertos. Comparação SHA-256 das13entradas protegidas (oito Java de suporte, duas entidades, POM, propriedades do Wrapper e ponteiro) sem divergências. `git diff --check` retornou0; `git -c core.autocrlf=false diff --no-index --check -- NUL src/test/java/com/devsuperior/dscommerce/repositories/CustomerRegistrationSchemaTest.java` não emitiu diagnóstico de whitespace (exit1 do no-index com arquivo novo). Avisos Git de LF→CRLF não alteraram conteúdo. Extensões ausentes antes/depois, sem hooks a executar. Git final: somente quickstart/tasks009 modificados e CustomerRegistrationSchemaTest.java não rastreado; índice vazio, mesmos raiz/branch/HEAD/main/seleção009. Sem stage, commit, push ou PR. Nenhuma compilação, execução de testes ou comprovação funcional antecipada.
+
+## T015 — diagnóstico M executado, com impedimento — 2026-10-25
+
+**Resultado: T015 permanece aberta.** Executado somente M, sobre o teste T014 recebido e sem alterações de Java, asserções, produção, suporte, contratos ou dependências. A execução com captura completa terminou com **exit Maven1, BUILD FAILURE, 18 casos, 15 falhas de asserção, zero erros, zero ignorados e três casos aprovados**. Há14falhas atribuíveis às lacunas cadastrais esperadas e uma divergência ainda não esclarecida na verificação do único composto de roles existente. Não declarar todo o grupo como RED esperado nem como aprovado.
+
+### Entrada e procedimentos
+
+Confirmados raiz `C:/Users/ronal/dscommerce-speckit`, branch real `009-cadastrar-cliente`, HEAD `ea820352fa1d1947132cc568a21c791ad4775c27`, seleção009, quickstart/tasks009 modificados pela T014, somente CustomerRegistrationSchemaTest.java não rastreado e índice vazio. Main recebida `de1d8ffb91f4c73d8ee2d10912d56c244164084b`. Lidos T015, sua autoria/dependências T005–T014 e procedimentos aprovados de seleção, isolamento, diagnóstico, preservação e reconciliação. Skill speckit-implement limitada a T015; pré-requisitos retornaram exit0 e FEATURE_DIR absoluto009. Checklist requirements.md16/16, zero abertos, somente leitura; ignore Java suficiente e extensões ausentes antes da execução.
+
+Get-CimInstance Win32_Process, excluindo o observador, encontrou zero processos locais acessíveis Java/Maven/Surefire antes de cada invocação e depois da segunda. Não havia execução M concluída aplicável nem relatório CustomerRegistrationSchemaTest na entrada; os diretórios existentes eram somente os históricos T004 e T011. Não se afirma exclusividade remota ou visibilidade de processos inacessíveis.
+
+Os1.074relatórios recebidos foram conferidos por caminho/tamanho/SHA-256 contra os ZIPs T004 e T011 já existentes: todos preservados. Nenhum arquivamento histórico foi repetido. Criados dois destinos exclusivos, identificados abaixo; cada um contém preflight, inventário nominal, hashes das272entradas pertinentes, diff documental recebido, logs e evidências próprias. Os documentos recebidos também foram copiados temporariamente fora do repositório para verificar sua preservação. HEAD sozinho não identifica a classe T014 não commitada: SHA-256 recebido e mantido `5BC17BC929E7A2D252D3CFA5673C429869AAF1F7375A5C817EDDE38BA8BD6712`.
+
+### Duas invocações M, sem alteração dos testes
+
+Em cada tentativa, `.\mvnw.cmd --version` retornou0 e confirmou Maven3.9.16, Java21.0.12.1/Azul, Windows10/amd64. Únicos comandos de testes executados, sequencialmente, com o seletor M exato e sufixos exclusivos:
+
+~~~powershell
+.\mvnw.cmd '-Dtest=CustomerRegistrationSchemaTest*' '-Dsurefire.failIfNoSpecifiedTests=true' '-DfailIfNoTests=true' '-Dsurefire.reportNameSuffix=T015-M-20261025T143455150Z-9b00bb99' test
+.\mvnw.cmd '-Dtest=CustomerRegistrationSchemaTest*' '-Dsurefire.failIfNoSpecifiedTests=true' '-DfailIfNoTests=true' '-Dsurefire.reportNameSuffix=T015-M-20261025T144033497Z-8c1d851b' test
+~~~
+
+**Tentativa1 — captura auxiliar incompleta**: o auxiliar PowerShell com ErrorActionPreference=Stop e redirecionamento nativo interrompeu a leitura ao receber aviso do Byte Buddy no stderr. O auxiliar terminou com1 antes da instrução de captura de LASTEXITCODE; **o exit Maven é desconhecido/null, não inferido como1**. O console ficou incompleto, embora os XML/TXT tenham sido produzidos com18casos/15falhas/0erros/0ignorados. A compilação anterior ao aviso recompilou157fontes de teste com release21; produção estava up to date. Não se confunde compilação de todas as fontes com execução da suíte completa. Os relatórios foram reconciliados nominalmente como tentativa incompleta e preservados; não fornecem um console ou exit Maven completo.
+
+**Tentativa2 — captura completa**: necessária para obter o exit e o console exigidos, após conferir ausência de processos e preservar a primeira tentativa. Somente o auxiliar mudou: CMD em janela oculta passou a unir stdout/stderr diretamente no arquivo, sem transformar stderr em ErrorRecord PowerShell. O auxiliar aguardou o processo nativo, leu seu ExitCode numérico1 e persistiu [execution-before-archive.json](../../target/feature009-evidence/T015-M-20261025T144033497Z-8c1d851b/execution-before-archive.json) com reportsArchived=false antes de arquivar. Não houve supressão de avisos, exclusão de caso ou mudança de esperado. Início `2026-10-25T14:41:11.8638595Z`; término `2026-10-25T14:41:46.5198225Z`; Maven informou28.882s e término11:41:46-03:00. Ambas as compilações estavam up to date nesta segunda invocação, sobre as mesmas entradas. Console registra JUnitPlatformProvider e somente a classe concreta M; contexto MOCK/test iniciado, Hibernate6.5.3 e URL própria `jdbc:h2:mem:customer-registration-test-eaa0f140-e32f-4c1a-9b18-b9b30392ec8f`.
+
+A primeira URL observada era outro UUID, `customer-registration-test-c2d1eba8-730b-4e0b-a2b3-3fd610639194`. Os avisos de agente dinâmico Byte Buddy, compartilhamento de classes da JVM e H2Dialect explícito ficaram no segundo console; não impediram o contexto ou a execução e não são as15falhas de asserção. O stderr somente causou falha do primeiro auxiliar. Nenhum baseline B, H-base, suíte completa, encoder cadastral ou HTTP real foi executado. Os18casos repetidos não constituem36casos distintos de cobertura.
+
+### Reconciliação nominal e alcance real
+
+Uma classe concreta, 11métodos, 18invocações: nove simples e dois parametrizados. Sem superclasse de testes, herança, @Nested ou testes dinâmicos; OwnedAccounts é auxiliar interno sem métodos JUnit. XML contém os cinco índices[1]–[5] de registrationColumns (FULL_NAME, EMAIL, EMAIL_KEY, PHONE, BIRTH_DATE) e os quatro índices[1]–[4] de roleSets (nenhum, CLIENT, ADMIN, ambos), exatamente uma vez por índice. A associação aos valores decorre da ordem literal dos providers recebidos, não de rótulos inventados no XML.
+
+| Método de CustomerRegistrationSchemaTest | Previsto/observado | Aprovados | Falhas | Classificação/limite |
+| --- | ---: | ---: | ---: | --- |
+| jpaMetamodelIncludesTheFiveRegistrationAttributesWithApprovedJavaTypes |1/1 |0 |1 | Atributos JPA cadastrais ausentes. |
+| registrationColumnsHaveTheApprovedPhysicalTypeCapacityAndNullableFlag |5/5 |0 |5 | Cada coluna ausente, antes de avaliar tipo/capacidade/nulabilidade. |
+| legacyNamePasswordHashAndIdentityKeepTheirPhysicalContract |1/1 |1 |0 | GREEN inicial de metadados legados/PK/identity. |
+| nameHasOneNamedUniqueConstraintAndNoEquivalentDuplicateIndex |1/1 |0 |1 | Esperado UK_USER_ACCOUNT_NAME; observado CONSTRAINT_D4. |
+| emailKeyHasOneNamedUniqueConstraintAndNoEquivalentDuplicateIndex |1/1 |0 |1 | Guarda EMAIL_KEY falha; único/índice ainda não examinados. |
+| anaAndLowercaseAnaCoexistButAnExactDuplicateNameIsRejected |1/1 |1 |0 | GREEN inicial de Ana/ana e rejeição de duplicata exata. |
+| severalLegacyAccountsKeepNullRegistrationValuesAndTheirJpaRoles |4/4 |0 |4 | Guarda FULL_NAME falha antes de persistência/NULLs/LAZY/roles. |
+| binaryEmailKeyRejectsEqualBytesAndAllowsDistinctBytes |1/1 |0 |1 | Guarda EMAIL_KEY falha antes dos controles binários. |
+| jpaReadsRegistrationValuesFromTheirRealColumnsWithoutTruncation |1/1 |0 |1 | Guarda FULL_NAME falha antes de SQL/JPQL cadastral. |
+| existingRoleCollectionKeepsItsStringMappingNamedForeignKeyAndUniquePair |1/1 |0 |1 | Divergência não esclarecida no único composto de roles; impedimento. |
+| existingRoleForeignKeyUniquePairAndRequiredColumnsAreEnforcedByTheDatabase |1/1 |1 |0 | GREEN inicial: duplicata de role, FK e NOT NULL rejeitados. |
+| Total |18/18 |3 |15 | Zero erros/ignorados. |
+
+Na tentativa2, Running e os dois resumos do console (classe/global), contadores do XML, todos os nós testcase e resumo do TXT coincidem:18/15/0/0. Os11métodos estão presentes com as quantidades previstas; não há classe extra, método/caso ausente, índice omitido ou identidade duplicada. Somente o sufixo exato desta execução foi removido dos atributos de classe/suite para comparar identidades; nomes de testes não foram alterados. XML lido com DTD proibido e resolver externo desabilitado; Java/vendor/OS/arquitetura do XML concordam com o log do Wrapper. A tentativa1 tem a mesma descoberta/resultados nos XML/TXT, mas não permite reconciliação completa com console/exit. Não somar os runs como aprovação de uma revisão nova.
+
+**RED esperado limitado**:12falhas são guardas de colunas cadastrais ausentes, uma é ausência de atributos no metamodelo e uma é a constraint de NAME ainda anônima. São asserções após preparação válida, sem erro de compilação/contexto ou SQL contra coluna ausente. Confirmam essas lacunas, não os oráculos posteriores que não foram alcançados. Em particular, capacidades, múltiplos NULLs, unicidade binária e leitura JPA dos novos campos continuam sem comprovação positiva.
+
+**Impedimento independente**: em existingRoleCollectionKeepsItsStringMappingNamedForeignKeyAndUniquePair, assertUniqueDefinition encontrou zero grupos equivalentes quando esperava um UNIQUE com colunas ordenadas `[USER_ACCOUNT_ID, ROLE]`. A fonte atual de UserAccount já declara UK_USER_ACCOUNT_ROLE, e o caso separado de rejeição de duplicata/FK/NOT NULL passou. O helper filtra tipo UNIQUE e compara ordem exata de colunas; o relatório desta falha não lista todos os metadados. Portanto não é possível concluir, com esta prova, ausência de unicidade física, defeito novo do cadastro ou qual divergência de representação/expectativa causou o desencontro. Não classificar essa15ªfalha como RED cadastral esperado. As verificações posteriores de referências pedido/pagamento nesse método também não foram alcançadas. Causa e expectativa precisam ser esclarecidas antes de encerrar T015; nenhum ajuste de teste/suporte/produção foi feito para forçar resultado.
+
+### Evidências locais, preservação e limites
+
+- Tentativa completa: [preflight.json](../../target/feature009-evidence/T015-M-20261025T144033497Z-8c1d851b/preflight.json), [expected-inventory.json](../../target/feature009-evidence/T015-M-20261025T144033497Z-8c1d851b/expected-inventory.json), [console-T015.log](../../target/feature009-evidence/T015-M-20261025T144033497Z-8c1d851b/console-T015.log), [execution.json](../../target/feature009-evidence/T015-M-20261025T144033497Z-8c1d851b/execution.json) e [reconciliation.json](../../target/feature009-evidence/T015-M-20261025T144033497Z-8c1d851b/reconciliation.json). Status final M_RECONCILED_WITH_UNRESOLVED_EXISTING_ROLE_ASSERTION; taskComplete=false.
+- Relatórios completos: [XML](../../target/surefire-reports/TEST-com.devsuperior.dscommerce.repositories.CustomerRegistrationSchemaTest-T015-M-20261025T144033497Z-8c1d851b.xml), [TXT](../../target/surefire-reports/com.devsuperior.dscommerce.repositories.CustomerRegistrationSchemaTest-T015-M-20261025T144033497Z-8c1d851b.txt) e [ZIP](../../target/feature009-evidence/T015-M-20261025T144033497Z-8c1d851b/after-surefire-reports.zip) contendo somente esses dois arquivos. SHA-256 do ZIP `7A7FDC6BE3C3830A30F802050A6C19BD6E8DD14049600BBEE22FCC2CB9A06307`.
+- Primeira tentativa preservada: [execution-before-archive.json](../../target/feature009-evidence/T015-M-20261025T143455150Z-9b00bb99/execution-before-archive.json), [console parcial](../../target/feature009-evidence/T015-M-20261025T143455150Z-9b00bb99/console-T015.log), [reconciliation.json](../../target/feature009-evidence/T015-M-20261025T143455150Z-9b00bb99/reconciliation.json), [notas auxiliares](../../target/feature009-evidence/T015-M-20261025T143455150Z-9b00bb99/auxiliary-preparation-notes.json) e [ZIP](../../target/feature009-evidence/T015-M-20261025T143455150Z-9b00bb99/after-surefire-reports.zip). SHA-256 do ZIP `E8DE957FD450BB1F5EF5DF8AEEFCC59A606DACED680CD01A4EB4F51D85232431`; contém somente seus XML/TXT, sem exit Maven inventado.
+- [archive-verification.json](../../target/feature009-evidence/T015-M-20261025T144033497Z-8c1d851b/archive-verification.json), [prior-preservation-verification.json](../../target/feature009-evidence/T015-M-20261025T144033497Z-8c1d851b/prior-preservation-verification.json) e [input-preservation-verification.json](../../target/feature009-evidence/T015-M-20261025T144033497Z-8c1d851b/input-preservation-verification.json): cada entrada nova verificada por nome/tamanho/hash,1.076relatórios prévios à segunda tentativa intactos inclusive timestamps e272entradas protegidas sem alteração. Os1.074originais também permaneceram intactos antes/depois da primeira tentativa.
+
+Houve ainda dois problemas dos leitores auxiliares, separados das asserções Java: uma leitura de resumo usou a variável automática PowerShell Error como variável local; outra encapsulou duas vezes um array ConvertFrom-Json na conferência dos relatórios prévios. Corrigidos somente os auxiliares; reconciliação final terminou0. O primeiro ZIP já criado foi retomado apenas para verificação, sem recriação; arquivamento/verificação final terminou0. Notas preservadas na primeira tentativa. Esses exits auxiliares não substituem o exit Maven1 capturado na segunda e não são falhas funcionais da aplicação.
+
+Target é ignorado e pode faltar em outro checkout; este resumo conserva revisão, comandos, resultados, causas observadas e limites duráveis. O suporte aprovado T011/T013 não aprova M nem o cadastro. Não comprovados endpoint, DTO/validação, worker/atomicidade cadastral, Argon2id/login aditivo, concorrência, entrega, PostgreSQL/produção/CI ou histórias009.
+
+**Estado da tarefa**: T015 aberta pelo impedimento da asserção de roles; T016–T107 permanecem abertas e não iniciadas. T001–T014, testes recebidos, suporte, evidências anteriores, D009-01, seleção009 e **Gate IV005 como EXCEÇÃO DOCUMENTADA, sem PASS estrito** preservados. Somente este acréscimo no quickstart é alteração versionável desta execução; tasks e Java T014 continuam exatamente como recebidos. Sem stage, commit, push, PR ou alteração de main. Conferências finais estáticas/Git registradas no fechamento abaixo.
+
+**Fechamento estático executado**: conteúdo integral do Java recebido e diff documental revisados; prefixo recebido do quickstart (inclusive T014) preservado byte a byte. Tasks permanece byte a byte igual à entrada: T001–T014 marcadas, T015 e os92itens T016–T107 abertos. Conferidos17links locais novos, todos existentes;25JSON dos dois runs lidos e cinco auxiliares finais sem erros de parser. As272entradas protegidas continuam com os hashes recebidos, incluindo o teste T014, suporte, produção, contratos, dependências e ponteiro. `git diff --check` retornou0; o check no-index do Java não rastreado não emitiu diagnóstico de whitespace (exit1 por arquivo novo). Os1.078relatórios finais incluem os1.074recebidos intactos e somente quatro novos arquivos identificados. Extensões ausentes antes/depois, sem hooks a executar. Raiz/branch/HEAD/main/seleção009 preservados. Git final: quickstart/tasks009 modificados e somente CustomerRegistrationSchemaTest.java não rastreado; nada staged. Apenas quickstart recebeu alteração versionável em T015; as demais diferenças já estavam recebidas. Sem stage, commit, push, PR, alteração de main ou execução T016+. O impedimento de roles permanece registrado e T015 continua aberta.
+
+## T015 — retomada focal: oráculo de roles corrigido e diagnóstico concluído — 2026-10-25
+
+**Resultado: T015 atendida como diagnóstico de RED de modelo e controles legados.** O impedimento anterior era um falso RED do oráculo: ele exigia tipo físico UNIQUE para uma constraint que Hibernate6.5.3 materializa como PRIMARY KEY composta, mantendo o nome UK_USER_ACCOUNT_ROLE e as mesmas colunas. Não há defeito de integridade do schema demonstrado nesse par. Corrigida somente essa expectativa no teste; produção, suporte, contratos e dependências permaneceram intactos. Após validação focal, M executou18casos: **14falhas cadastrais esperadas, quatro controles aprovados, zero erros/ignorados e exit Maven1**. Esse resultado encerra T015, sem exigir GREEN de funcionalidades ainda ausentes ou aprovar o cadastro.
+
+### Estado recebido e investigação anterior a Maven
+
+Raiz `C:/Users/ronal/dscommerce-speckit`, branch real `009-cadastrar-cliente`, HEAD `ea820352fa1d1947132cc568a21c791ad4775c27`, seleção009 confirmados; quickstart/tasks009 modificados, somente CustomerRegistrationSchemaTest.java não rastreado e índice vazio. Main recebida `de1d8ffb91f4c73d8ee2d10912d56c244164084b`. Skill speckit-implement retomada exclusivamente para T015; pré-requisitos retornaram0 e feature009; checklist requirements.md16/16, zero abertos; ignore Java suficiente e extensões ausentes. Revisitados T015, suas dependências e procedimentos aprovados, mapeamento, probe, teste afetado, teste legado UserAccountRoleRepositoryTest e evidências dos dois runs anteriores. Documentos e Java recebidos foram copiados temporariamente fora do repositório para conferir os deltas desta retomada.
+
+**Garantia exata do oráculo recebido**: um grupo de constraints de tipo UNIQUE, nome UK_USER_ACCOUNT_ROLE, colunas exatamente USER_ACCOUNT_ID/ROLE ordenadas por posição, e exatamente um índice físico único equivalente. O mapeamento existente declara Set LAZY/EnumType.STRING, ambas as colunas NOT NULL, FK nomeada e @UniqueConstraint do par. O teste legado procura um índice único sobre o conjunto das duas colunas, sem exigir tipo UNIQUE no catálogo. Os relatórios T015 anteriores mostravam o filtro sem correspondência e rejeição efetiva de duplicata, mas não continham DDL nem todos os metadados. Portanto a primeira etapa foi investigação sem Maven, sem repetir os testes já registrados.
+
+Foi usado um launcher Java21 em modo source-file, fora de src, com classpath da execução anterior e somente as entidades atuais no bootstrap Hibernate, nomeação física correspondente e seed desabilitado. Banco H2 em memória com UUID próprio, sem servidor HTTP ou contexto global; coleta pelo probe recebido, sem corrigir sua leitura. Comando de cada sondagem: `java @java-arguments.txt`, com argumentos/caminhos preservados no respectivo diretório. A sondagem completa observou H2/JDBC2.2.224 e READ_COMMITTED por conexão; ela reproduz o mapeamento isoladamente, e não substitui a validação Spring/JUnit posterior.
+
+- [Primeira sondagem](../../target/feature009-evidence/T015-role-investigation-20261025T145657465Z-df731c1b/execution.json): DDL capturado, mas URL fora do padrão aceito pelo probe interrompeu a coleta. Exit do launcher não foi obtido (null), sem inferi-lo; notas/logs preservados.
+- [Segunda sondagem](../../target/feature009-evidence/T015-role-investigation-20261025T150014442Z-be8eca53/execution.json): exit Java1; geração de script sem ação JPA de banco explícita não preparou a observação esperada pelo probe. Corrigida somente a preparação do launcher, sem mudar teste/probe/produção; logs preservados.
+- [Sondagem completa](../../target/feature009-evidence/T015-role-investigation-20261025T150145105Z-cfd510e3/execution.json): exit Java0, ação de banco drop-and-create explícita e URL isolada no padrão permitido pelo probe. [DDL](../../target/feature009-evidence/T015-role-investigation-20261025T150145105Z-cfd510e3/generated-schema.sql) e [resultado/metadados](../../target/feature009-evidence/T015-role-investigation-20261025T150145105Z-cfd510e3/investigation-result.json) completos. As duas primeiras falhas são preparação auxiliar, não RED da aplicação.
+
+### Causa comprovada e sensibilidade
+
+O DDL real dessa reprodução contém:
+
+~~~sql
+create table tb_user_account_role (user_account_id bigint not null, role enum ('ADMIN','CLIENT') not null, constraint uk_user_account_role primary key (user_account_id, role));
+~~~
+
+O catálogo lido pelo probe confirma tipo PRIMARY KEY, nome UK_USER_ACCOUNT_ROLE e posições1/2 para USER_ACCOUNT_ID/ROLE. Há um índice único de suporte PRIMARY_KEY_C4, além do índice não único da FK. O nome gerado desse índice não é condição do teste; continuam sendo verificadas suas colunas e unicidade. JDBC getPrimaryKeys pode entregar as linhas em outra ordem, mas preserva KEY_SEQ; o helper já ordena posições das constraints. Não foi observada falha de ordenação ou perda de metadados: **a única incompatibilidade era filtrar UNIQUE e descartar PRIMARY KEY**. Nome e colunas esperados já estavam corretos.
+
+A chave composta nomeada satisfaz a unicidade efetiva do par e os NOT NULL existentes; a declaração @UniqueConstraint permanece inalterada. No banco exclusivamente descartável da sondagem, uma duplicata foi rejeitada com SQLState23505. Depois, um canário removeu somente essa PK pelo nome capturado; os metadados passaram a não conter a chave e a duplicata foi aceita. Isso demonstra que a garantia real era exercida por essa PK e que sua remoção é detectável. O canário não alterou produção, os bancos dos testes Maven ou qualquer schema persistente; o processo isolado encerrou após registrar o resultado.
+
+**Correção autorizada** em [CustomerRegistrationSchemaTest.java](../../src/test/java/com/devsuperior/dscommerce/repositories/CustomerRegistrationSchemaTest.java): o caso de roles passa a exigir explicitamente PRIMARY KEY. Extraído assertKeyDefinition parametrizado pelo tipo; o wrapper assertUniqueDefinition continua exigindo exclusivamente UNIQUE para NAME/EMAIL_KEY. Permanecem a exigência de exatamente uma definição nomeada, as duas colunas/posições, um índice único equivalente sem duplicata, FK, tipos e NOT NULL. O controle separado de duplicata de role/FK/nulos não foi modificado e foi executado em M. Não se passou a aceitar qualquer chave, ignorar nome/colunas ou capturar a violação como sucesso. Nenhuma das14asserções cadastrais foi retirada ou ajustada para passar.
+
+### Validação focal, depois M conjunto na mesma revisão
+
+Antes de cada invocação, conferidos processos locais acessíveis sem Java/Maven/Surefire concorrente, revisão e hashes; sem novo resultado aplicável à correção. Todos os relatórios anteriores já tinham cópias íntegras em ZIPs existentes. A conferência por caminho/tamanho/hash evitou repetir arquivamentos:1.078anteriores ao focal e1.080anteriores ao M conjunto. Cada execução recebeu diretório/sufixo exclusivo; Wrapper --version confirmou Maven3.9.16/Java21.0.12.1 e retornou0 em ambas.
+
+Primeiro, somente o caso afetado, conforme autorização expressa desta retomada:
+
+~~~powershell
+.\mvnw.cmd '-Dtest=CustomerRegistrationSchemaTest#existingRoleCollectionKeepsItsStringMappingNamedForeignKeyAndUniquePair' '-Dsurefire.failIfNoSpecifiedTests=true' '-DfailIfNoTests=true' '-Dsurefire.reportNameSuffix=T015-role-case-20261025T150443480Z-df9ea684' test
+~~~
+
+**Focal:1classe/1método/1caso aprovado,0falhas/erros/ignorados, exit Maven0, BUILD SUCCESS**. Início15:04:51.8821577Z; término15:06:10.4570234Z; Maven informou01:13min. Recompiladas157fontes de teste com release21, sem executar157classes. A passagem alcançou também as verificações posteriores de referências pedido→conta e pagamento→pedido, antes interrompidas pelo falso RED.
+
+Em seguida foi necessário M para concluir os critérios conjuntos de T015 sobre a mesma revisão corrigida, sem somar o caso focal a resultados antigos de outra revisão:
+
+~~~powershell
+.\mvnw.cmd '-Dtest=CustomerRegistrationSchemaTest*' '-Dsurefire.failIfNoSpecifiedTests=true' '-DfailIfNoTests=true' '-Dsurefire.reportNameSuffix=T015-M-resume-20261025T150624592Z-a7ecb8d9' test
+~~~
+
+**M:1classe/11métodos/18casos,14falhas esperadas,4aprovados,0erros/ignorados, exit Maven1, BUILD FAILURE esperado pelo modelo ainda ausente**. Início15:06:32.5371438Z; término15:07:06.4613600Z; Maven informou28.824s. Compilações up to date. O auxiliar usa processo nativo CMD com streams no console exclusivo e CreateNoWindow; captura o ExitCode numérico antes de persistir execution-before-archive.json e antes de arquivar. Não interpreta avisos no stderr como falha PowerShell nem suprime esses avisos.
+
+| Execução nova | Seleção efetiva | Casos | Aprovados / falhas / erros / ignorados | Exit Maven |
+| --- | --- | ---: | --- | ---: |
+| T015-role-case-20261025T150443480Z-df9ea684 | Só o método corrigido |1 |1/0/0/0 |0 |
+| T015-M-resume-20261025T150624592Z-a7ecb8d9 | CustomerRegistrationSchemaTest completa |18 |4/14/0/0 |1 |
+
+Running, resumos de classe/global do console, contadores/nós testcase do XML e TXT foram reconciliados nominalmente em cada execução. Focal selecionou somente o método autorizado. M encontrou todos os11métodos e18casos do inventário: nove simples, cinco índices[1]–[5] do provider de colunas e quatro[1]–[4] de roles; valores na ordem literal já registrada em T014/T015. Sem herança de testes, @Nested ou dinâmicos; OwnedAccounts continua somente auxiliar. Nenhuma omissão, classe/caso extra ou identidade duplicada. Os resultados da mesma revisão têm o mesmo hash Java `0199929F9148223BE565860F0B7D9DB7477372321B9AD04AD7DB44C6493A0693`.
+
+As14falhas preservadas são12guardas de colunas ausentes, uma de atributos JPA ausentes e uma de NAME ainda com constraint anônima. As verificações posteriores às guardas não ganharam comprovação positiva. Os quatro GREEN iniciais são: metadados legados/identity; Ana/ana e duplicata exata; mapeamento/PK/FKs existentes; rejeição real de duplicata de role/FK/nulos. Não houve erro de compilação/preparação da aplicação. O [confronto nominal das14falhas](../../target/feature009-evidence/T015-M-resume-20261025T150624592Z-a7ecb8d9/expected-red-preservation.json) preserva identidades, tipos/causas e multiplicidade; a ordem de impressão das entradas Map do metamodelo variou, sem mudar a asserção ou os atributos/tipos faltantes.
+
+### Evidências e contagem das execuções
+
+- Focal: [execution.json](../../target/feature009-evidence/T015-role-case-20261025T150443480Z-df9ea684/execution.json), [console](../../target/feature009-evidence/T015-role-case-20261025T150443480Z-df9ea684/console-T015.log), [reconciliation.json](../../target/feature009-evidence/T015-role-case-20261025T150443480Z-df9ea684/reconciliation.json) e [ZIP dos dois relatórios](../../target/feature009-evidence/T015-role-case-20261025T150443480Z-df9ea684/after-surefire-reports.zip). SHA-256 do ZIP `6D9F3E655E774A8EB55F74B13062157780346E95069D87DED3A513A7F9AD24D7`.
+- M conjunto: [preflight.json](../../target/feature009-evidence/T015-M-resume-20261025T150624592Z-a7ecb8d9/preflight.json), [execution-before-archive.json](../../target/feature009-evidence/T015-M-resume-20261025T150624592Z-a7ecb8d9/execution-before-archive.json), [execution.json](../../target/feature009-evidence/T015-M-resume-20261025T150624592Z-a7ecb8d9/execution.json), [console](../../target/feature009-evidence/T015-M-resume-20261025T150624592Z-a7ecb8d9/console-T015.log), [reconciliation.json](../../target/feature009-evidence/T015-M-resume-20261025T150624592Z-a7ecb8d9/reconciliation.json), [arquivo/verificação](../../target/feature009-evidence/T015-M-resume-20261025T150624592Z-a7ecb8d9/archive-verification.json) e [ZIP dos dois relatórios](../../target/feature009-evidence/T015-M-resume-20261025T150624592Z-a7ecb8d9/after-surefire-reports.zip). SHA-256 do ZIP `427AF002A7D6E4EE02C722B40031A39BDEA16230E18C773440CA1FFEC6AF9771`.
+- [Preservação de entradas/processos](../../target/feature009-evidence/T015-M-resume-20261025T150624592Z-a7ecb8d9/preservation-after.json): somente o teste autorizado difere das272entradas recebidas;271demais entradas intactas e nenhum processo Maven/Java local acessível remanescente. Relatórios prévios mantidos inclusive timestamps; ZIPs novos verificados por nome/tamanho/hash. Target é ignorado e pode faltar em outro checkout; este resumo é durável.
+
+Nesta retomada houve **duas novas invocações Maven de test**, sequenciais, além dos respectivos --version. As três sondagens Java externas não são invocações Maven nem casos JUnit. Uma tentativa de iniciar um comando auxiliar foi recusada pelo sistema antes de criar processo; não iniciou Maven. O comparador auxiliar das falhas rejeitou inicialmente mensagens Map com outra ordem de impressão e depois incluiu pontuação de lista em um token; corrigida somente a leitura canônica de entradas/tipos/multiplicidade, sem nova execução Maven ou mudança de esperado. O diagnóstico inicial de comparação estrita foi preservado junto ao resultado final. Esses problemas auxiliares não substituem os exits Maven0/1 capturados.
+
+Os dois runs Maven da etapa anterior continuam preservados: o primeiro realmente executou casos, mas perdeu o exit por falha de captura; o segundo teve exit1 conhecido e15falhas. Não reclassificá-los retroativamente nem contabilizar tentativas auxiliares como novos testes ou somar execuções como cobertura adicional. Baseline B, H-base e suíte completa não foram repetidos. Nenhuma alteração funcional009, T016+, encoder cadastral ou HTTP real executado.
+
+**Conclusão e limites**: causa do impedimento comprovada; oráculo corrigido sem enfraquecer a unicidade do par; caso afetado aprovado primeiro e M conjunto reconciliado na mesma revisão, com RED cadastral esperado e controles existentes aprovados. Marcar somente T015 nesta retomada; T001–T014 preservadas, T016–T107 abertas. Não há aceite funcional do cadastro, colunas novas, DTO/validação, worker/atomicidade cadastral, Argon2id/login aditivo, disputa/entrega, PostgreSQL/produção/CI ou histórias009. Suporte e evidências anteriores, D009-01, seleção009 e **Gate IV005 como EXCEÇÃO DOCUMENTADA, sem PASS estrito** mantidos. Sem stage, commit, push, PR ou alteração de main. Revisão final de conteúdo/diff, referências, links e whitespace registrada no fechamento abaixo.
+
+**Fechamento da retomada executado**: revisados o delta integral do teste frente à cópia recebida, diff dos documentos, referências e19links locais novos, todos existentes. Prefixo inteiro recebido do quickstart preservado byte a byte; tasks recupera exatamente a entrada ao desfazer em memória apenas T015. T001–T015 marcadas e92itens T016–T107 abertos. Das272entradas protegidas, somente o Java autorizado mudou;271demais entradas intactas. Lidos39JSON novos e seis auxiliares finais sem erros de parser. `git diff --check` retornou0; check no-index do Java não rastreado sem diagnóstico de whitespace (exit1 por arquivo novo). Os1.082relatórios finais contêm os1.078recebidos intactos e quatro novos, identificados e arquivados. Extensões ausentes antes/depois, sem hooks. Mesmos raiz/branch/HEAD/main/seleção009; nada staged. Git final continua com quickstart/tasks009 modificados e somente CustomerRegistrationSchemaTest.java não rastreado. Sem stage, commit, push, PR ou alteração de main; nenhuma execução T016+ ou aceite funcional atribuídos.
+
+## T016 — evolução delimitada de UserAccount — 2026-10-25
+
+**Resultado: implementação de modelo escrita e revisada estaticamente.** Alterada somente [UserAccount.java](../../src/main/java/com/devsuperior/dscommerce/entities/UserAccount.java), além deste registro e da marca T016 em tasks. A etapa não executa Maven/compilação/testes: T020 prevê explicitamente diagnóstico V-base e rechecagem M após T016–T019. A regra de correção de tasks separa alteração delimitada da aprovação comportamental na execução/checkpoint seguinte. Portanto esta conclusão de T016 não é GREEN de M, checkpoint conjunto ou aceite funcional do cadastro.
+
+**Entrada e dependências**: confirmados raiz `C:/Users/ronal/dscommerce-speckit`, branch real `009-cadastrar-cliente`, HEAD `ea820352fa1d1947132cc568a21c791ad4775c27`, seleção009, quickstart/tasks009 modificados, somente CustomerRegistrationSchemaTest.java não rastreado e nada staged. Main recebida `de1d8ffb91f4c73d8ee2d10912d56c244164084b`. Lidos integralmente T016, T015 e os procedimentos/dependências pertinentes, desenho do modelo, pesquisa R2, plano, contrato, constituição e AGENTS. Skill speckit-implement limitada a T016; pré-requisitos retornaram exit0 e FEATURE_DIR absoluto009; checklist requirements.md 16/16, zero abertos, somente leitura. Ignore Java existente suficiente e extensões ausentes antes da edição.
+
+T015 encerrou o diagnóstico com a correção do oráculo de roles e a execução M `T015-M-resume-20261025T150624592Z-a7ecb8d9`: 11 métodos/18 casos, 14 falhas de modelo esperadas, quatro controles aprovados, zero erros/ignorados, exit Maven1. Esse resultado histórico pertence à entidade anterior e não aprova a revisão agora alterada. Foi consultado o registro existente, sem repetir reconciliação, teste, sondagem ou arquivamento. O teste recebido continua com SHA-256 `0199929F9148223BE565860F0B7D9DB7477372321B9AD04AD7DB44C6493A0693`, incluindo a exigência de PRIMARY KEY composta nomeada para roles e os controles efetivos de duplicata/FK/nulos.
+
+**Mudança de fonte conforme [data-model](data-model.md)**:
+
+| Campo / coluna | Declaração acrescentada | Limite desta etapa |
+| --- | --- | --- |
+| fullName / full_name | String, nullable=true, length=240 | Sem validação cadastral na entidade. |
+| email / email | String, nullable=true, length=508 | Sem normalização ou preenchimento do legado. |
+| emailKey / email_key | byte[], nullable=true, length=1016 | Mapeamento binário JPA; tipo/capacidade físicos ainda não executados nesta revisão. |
+| phone / phone | String, nullable=true, length=16 | Sem validação retroativa. |
+| birthDate / birth_date | LocalDate, nullable=true | Mapeamento JPA de data civil para DATE; sem parsing/relógio/regra de idade na entidade. |
+
+NAME e PASSWORD_HASH mantêm @NotBlank/NOT NULL e agora declaram length=255 explicitamente. A unicidade anônima de @Column de name foi removida e declarada uma única vez como `uk_user_account_name` em @Table; acrescentada `uk_user_account_email_key` sobre email_key. Não há unique=true adicional nessas colunas, redução de capacidade histórica, coluna IGNORECASE ou collation global. Essa é conferência das declarações da fonte: a efetiva geração de DDL, ausência de índices redundantes, vários NULLs e a comparação exata continuam sujeitos à rechecagem M prevista em T020.
+
+**Construção e compatibilidade**: construtor legado `(Long id, String name, String passwordHash)` e construtor protegido sem argumentos mantidos integralmente. Novos campos ficam null no caminho legado, sem valores fictícios e sem novas constraints Bean Validation. Acrescentado construtor de conta nova sem parâmetro ID, delegando ao legado com null e recebendo name, passwordHash, fullName, email, emailKey, phone e LocalDate. Ele não transforma Strings nem escolhe algoritmo de hash. A coleção de roles continua iniciada vazia pelo mesmo HashSet; o serviço futuro pode atribuir somente CLIENT pelo acesso já existente a getRoles, sem impor CLIENT automaticamente a contas legadas ou implementar agora o serviço/worker.
+
+Os novos getters dão acesso aos valores de modelo; emailKey é copiado na entrada e na saída para evitar alias mutável do array. Os cinco getters novos têm @JsonIgnore, sem acrescentar dados pessoais/chave interna à serialização da entidade. Isso é declaração estática, não teste de Jackson/HTTP, e não substitui os DTOs futuros. Não criados setters gerais, toString com dados sensíveis, encoder, normalizador, parser, repository, serviço, endpoint ou dependência.
+
+**Preservação conferida**: comparação com a cópia recebida confirmou igualdade do bloco Id/IDENTITY, mapeamento completo de roles (Set LAZY, enum STRING, nomes de tabela/colunas, FK e constraint), inicialização da coleção, construtores antigos, getters antigos e implementação inteira de equals/hashCode. Não foram modificadas as referências de pedidos/pagamentos. Das 272 entradas de fonte/configuração/artefatos protegidas por SHA-256 antes da edição, somente UserAccount.java mudou; as outras 271, inclusive suporte e teste T014/T015, permaneceram idênticas. As asserções de RED não foram alteradas para acomodar a implementação.
+
+**Procedimentos e validações executados**: comandos de identidade/estado Git, leitura dos artefatos e `check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks`; revisão integral do conteúdo e diff de UserAccount, tipos/imports, construtores, capacidades, nulabilidade e declarações de unicidade. Documentos e fonte recebidos foram copiados temporariamente fora do repositório para conferir prefixo e delta final; comparação de blocos legados e hashes concluída. Os 1.082 relatórios Surefire recebidos permaneceram iguais em conteúdo, tamanho e LastWriteTimeUtc; não houve relatório novo nem arquivamento repetido.
+
+**Execução ainda pendente**: nenhum Maven, --version, javac, JUnit, launcher isolado, contexto, banco, encoder ou HTTP iniciado em T016. Sem seleção efetiva, novo exit Maven, console/Surefire ou reconciliação executável a atribuir. Baseline B, H-base, M e suíte completa não repetidos. A execução aprovada para T020 é V-base unido a M, pelo Wrapper, após as autorias/implementações necessárias de T017–T019 e sua autorização própria; T027/T031 tratam as integrações/checkpoints seguintes. Não executar essas etapas dentro de T016 nem inferir sua aprovação pela leitura desta fonte.
+
+**Conclusão limitada**: critérios de alteração delimitada de T016 atendidos por autoria/revisão, sem impedimento estático identificado. Marcar somente T016 nesta solicitação; preservar T001–T015 e deixar T017–T107 abertas. Compilação, DDL/runtime, compatibilidade executada da revisão nova, checkpoint conjunto e funcionamento do cadastro continuam pendentes das respectivas tarefas. Suporte, asserções, evidências anteriores, contratos, D009-01, seleção009 e **Gate IV005 como EXCEÇÃO DOCUMENTADA, sem PASS estrito** preservados. Sem stage, commit, push, PR ou alteração de main. Conferências finais de conteúdo/diff, arquivos recebidos, referências, links e whitespace registradas no fechamento abaixo.
+
+**Fechamento estático executado**: conteúdo e diff de UserAccount e dos documentos revisados integralmente; dois links locais novos existentes. Prefixo recebido do quickstart preservado byte a byte; tasks recupera exatamente a entrada ao desfazer somente a marca T016. T001–T016 marcadas e os 91 itens T017–T107 abertos. Teste T014/T015 recebido, correção do oráculo e controles de violação preservados por igualdade SHA-256; somente UserAccount mudou entre as 272 entradas protegidas. Blocos de identidade/roles, construtores/getters antigos e equals/hashCode comparados sem divergência. Os 1.082 relatórios anteriores seguem intactos; nenhum novo arquivo de teste, relatório ou evidência de execução criado no repositório. `git diff --check` retornou0; check no-index do Java não rastreado sem diagnóstico de whitespace (exit1 por arquivo novo recebido). Extensões ausentes antes/depois, sem hooks a executar. Mesmos raiz/branch/HEAD/main/seleção009, nada staged. Git final: UserAccount.java e quickstart/tasks009 modificados; somente CustomerRegistrationSchemaTest.java já recebido permanece não rastreado. Sem stage, commit, push, PR ou alteração de main; compilação e aprovação executável da revisão nova não atribuídas.
+
+## T017 — consultas e fragmento de inserção/metadados — 2026-10-25
+
+**Resultado: implementação escrita e revisão estática concluída, sem execução Maven.** Evoluído [UserAccountRepository.java](../../src/main/java/com/devsuperior/dscommerce/repositories/UserAccountRepository.java) e criados [UserAccountInsertRepository.java](../../src/main/java/com/devsuperior/dscommerce/repositories/UserAccountInsertRepository.java) e [UserAccountInsertRepositoryImpl.java](../../src/main/java/com/devsuperior/dscommerce/repositories/UserAccountInsertRepositoryImpl.java). T017 não define seleção executável própria; T020 reserva diagnóstico V-base e rechecagem M para depois de T016–T019. A conclusão desta alteração delimitada não comprova compilação, wiring, consultas, persistência ou metadados em runtime.
+
+**Entrada e procedimentos**: confirmados raiz `C:/Users/ronal/dscommerce-speckit`, branch real `009-cadastrar-cliente`, HEAD `ea820352fa1d1947132cc568a21c791ad4775c27`, seleção009, quickstart/tasks009 e UserAccount.java modificados, somente CustomerRegistrationSchemaTest.java não rastreado e índice vazio. Main recebida `de1d8ffb91f4c73d8ee2d10912d56c244164084b`. Skill speckit-implement limitada a T017; pré-requisitos retornaram0 e FEATURE_DIR absoluto009; checklist requirements.md 16/16, zero abertos, somente leitura. Ignore Java existente suficiente e extensões ausentes antes da edição. Revisitados T017, T016, o diagnóstico T015, regras de autoria/execução e procedimentos pertinentes, modelo, plano, pesquisa R6, constituição e AGENTS; considerados contratos aprovados e responsabilidades futuras, sem implementá-las.
+
+O resultado M de T015 continua histórico: 11 métodos/18 casos, 14 falhas cadastrais esperadas, quatro controles aprovados, zero erros/ignorados e exit Maven1, na entidade anterior à T016. Ele não aprova a fonte recebida de T016 nem os repositories agora escritos. Nenhuma execução, reconciliação ou arquivamento desse diagnóstico foi repetido. As asserções e a correção do oráculo do par conta/perfil permanecem idênticas.
+
+### API e responsabilidades escritas
+
+| Método / componente | Implementação desta tarefa | Limite |
+| --- | --- | --- |
+| findByName e consultas de roles existentes | Conteúdo anterior preservado integralmente. | Nenhuma normalização ou mudança do login. |
+| findByEmailKey(byte[]) | Consulta derivada pelo campo binário emailKey; retorna Optional de UserAccount. | Canonicalização e decisão de disponibilidade pertencem ao chamador futuro; não é login por email nem garantia contra corrida. |
+| insert(UserAccount) | Fragmento integrado ao UserAccountRepository; @Transactional MANDATORY e EntityManager.persist. Rejeita null/ID já presente por mensagem fixa. | Sem merge/save/upsert, decisão de perfil, flush ou conclusão transacional. |
+| registrationIdentityMetadata() | Leitura transacional readOnly por Session.doReturningWork/JDBC, verificando as duas identidades únicas. | Chamada deve ocorrer antes da escrita, em transação saudável; sem consulta automática depois de falha. |
+
+A inserção participa da transação do chamador, conforme o padrão de fragmento já existente no projeto. O futuro worker controla criação, exatamente CLIENT, flush, rollback e commit; nada disso foi introduzido no repository. Exceções de persist continuam propagando para tratamento fora do worker, sem retry, compensação, captura/continuação de transação inválida ou interpretação HTTP nesta camada. A API JpaRepository anterior continua disponível para compatibilidade; o novo caminho de cadastro usa insert/persist explícito.
+
+### Metadados exatos, sem inferência por sufixo
+
+A leitura aceita o runtime H2 2.2.224 aprovado e captura produto/versão, catálogo, schema e tabela real TB_USER_ACCOUNT. Confere NAME como VARCHAR255 NOT NULL e EMAIL_KEY como VARBINARY1016 nullable. Usa DatabaseMetaData.getColumns/getIndexInfo e TABLE_CONSTRAINTS/KEY_COLUMN_USAGE, com catálogo/schema/tabela parametrizados. Como getColumns usa padrões, cada linha é novamente filtrada por catálogo/schema/nome exatos para não admitir outra tabela por causa dos underscores. Statements/resultsets são fechados; a conexão pertence ao Hibernate e não é fechada, commitada ou reconfigurada pelo fragmento.
+
+Para cada coluna exige exatamente uma constraint UNIQUE de coluna única, posição1, com nome esperado UK_USER_ACCOUNT_NAME ou UK_USER_ACCOUNT_EMAIL_KEY, e exatamente um índice único equivalente. Registra os nomes reais de constraint e índice em descritores imutáveis. Não fabrica nome de índice a partir da constraint nem aceita fragmento/sufixo gerado como identidade. Ordena posições de chave antes de comparar; duplicação equivalente, ausência, nome errado, nulabilidade/tipo/capacidade divergente ou metadados incompletos impedem obter o descritor verificado. Campos nullable/NON_UNIQUE desconhecidos não são convertidos silenciosamente em garantias válidas.
+
+Os dois descritores carregam coluna, tipo JDBC/nome físico do tipo, capacidade, nulabilidade, constraint e índice, além do contexto de banco/tabela. A PK da conta, constraints de roles, FKs e outros índices não entram na lista de identidades cadastrais reconhecidas. O oráculo PRIMARY KEY de roles da T015 não foi alterado nem reutilizado indevidamente como UNIQUE de name/emailKey. Sem cache global, DDL, escrita de metadados, alteração de collation ou normalização de nome/email no repository.
+
+Falha de leitura/verificação retorna erro interno fixo sem reter mensagem/cadeia SQL do driver ou valores. Isso impede fornecer metadados supostamente válidos quando a leitura falha; não implementa ainda o classificador de exceções, decodificação H2, reconhecimento de23505,409/500 ou uso desse resultado pelo serviço. O chamador futuro deve capturar/guardar os metadados antes da tentativa e não solicitá-los para recuperar uma operação falha. A implementação/classificação de serviço e seu endurecimento em T077 permanecem fora de T017.
+
+### Preservação e validações desta etapa
+
+Comparação com a cópia recebida recuperou exatamente o conteúdo anterior de UserAccountRepository ao desfazer somente a extensão do fragmento e a nova declaração findByEmailKey. Preservados findByName, findByIdWithRoles, projeção escalar EffectiveAccountRole e o hint de flushMode COMMIT. Nenhuma fonte de autenticação, serviço, DTO, contrato, dependência ou configuração foi alterada.
+
+Das 272 entradas recebidas protegidas por SHA-256, somente UserAccountRepository mudou; as outras 271 permaneceram idênticas. Isso inclui UserAccount da T016, com SHA-256 `71B5D2742A8E484472ABF6BAB1584B118485A4624F9033412D11F4C264E3D1D6`, e CustomerRegistrationSchemaTest, com SHA-256 `0199929F9148223BE565860F0B7D9DB7477372321B9AD04AD7DB44C6493A0693`. Construtores, identidade, roles, asserções e controles de violação recebidos não foram modificados. Documentos e repository anteriores foram copiados temporariamente fora do repositório para conferir prefixo/delta. Os dois arquivos novos foram lidos integralmente, pois não aparecem no diff comum.
+
+Executados comandos de identidade/status Git, `check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks`, revisão do conteúdo/diff, imports, assinaturas, padrão de fragmento, fronteiras transacionais, recursos JDBC, parâmetros e lógica de verificação. Conferidos caminhos/referências e pesquisa estática de chamadas fora de escopo. Os 1.082 relatórios anteriores mantiveram conteúdo, tamanho e LastWriteTimeUtc; não há relatório novo ou arquivamento repetido.
+
+**Limites executáveis**: nenhum Maven, --version, javac, JUnit, contexto, banco, encoder ou HTTP iniciado nesta tarefa. Não há seleção efetiva, exit Maven novo, console/Surefire novo ou aprovação focal a reconciliar. Baseline B, H-base, M e suíte completa não repetidos. A futura execução T020 poderá verificar compilação/wiring e os casos selecionados de V-base/M, mas não comprovará automaticamente insert ou registrationIdentityMetadata se seus casos não os invocarem; comportamento desses caminhos requer os testes pertinentes posteriores. Não atribuir cobertura por mera inclusão das fontes na compilação ou por histórico de outra revisão.
+
+**Conclusão limitada**: critérios de implementação delimitada de T017 atendidos por autoria/revisão, sem impedimento estático identificado. Marcar somente T017 nesta solicitação; preservar T001–T016 e deixar T018–T107 abertas. Aprovação executável, checkpoint conjunto, classificação de duplicidade e aceite funcional do cadastro permanecem pendentes das respectivas tarefas. Preservados suporte, evidências anteriores, compatibilidade legada, contratos, D009-01, seleção009 e **Gate IV005 como EXCEÇÃO DOCUMENTADA, sem PASS estrito**. Sem stage, commit, push, PR ou alteração de main. Conferências finais de diff, arquivos novos, links e whitespace registradas no fechamento abaixo.
+
+**Fechamento estático executado**: revisados integralmente os dois Java novos, alteração do repository existente e delta documental; três links locais novos resolvidos. Prefixo recebido inteiro do quickstart preservado byte a byte; tasks recupera exatamente a entrada ao desfazer apenas T017. T001–T017 marcadas e os 90 itens T018–T107 abertos. Somente UserAccountRepository difere das 272 entradas recebidas; as outras 271, incluindo UserAccount da T016, teste T014/T015 e suporte, permanecem iguais. Conteúdo anterior do repository recuperado integralmente ao desfazer suas duas adições. Os 1.082 relatórios recebidos continuam intactos; nenhum novo resultado executável ou arquivamento. `git diff --check` retornou0; checks no-index dos dois Java novos e do teste não rastreado recebido não emitiram diagnóstico de whitespace (exit1 por arquivo novo). Extensões ausentes antes/depois, sem hooks. Raiz/branch/HEAD/main/seleção009 preservados; nada staged. Git final: quickstart/tasks009, UserAccount.java recebido e UserAccountRepository.java modificados; dois fragmentos Java novos e CustomerRegistrationSchemaTest.java recebido não rastreados. Sem stage, commit, push, PR ou alteração de main; aprovação executável não atribuída.
+
+## T018 — tipos de entrada, confirmação, comando e referência — 2026-10-25
+
+**Resultado: quatro tipos escritos e revisados estaticamente.** Criados [CustomerRegistrationRequestDTO.java](../../src/main/java/com/devsuperior/dscommerce/dto/CustomerRegistrationRequestDTO.java), [CustomerRegistrationConfirmationDTO.java](../../src/main/java/com/devsuperior/dscommerce/dto/CustomerRegistrationConfirmationDTO.java), [CustomerRegistrationCommand.java](../../src/main/java/com/devsuperior/dscommerce/services/CustomerRegistrationCommand.java) e [RegistrationAttemptReference.java](../../src/main/java/com/devsuperior/dscommerce/services/RegistrationAttemptReference.java). T018 declara essas estruturas antes dos testes/componentes dependentes; não prevê seleção executável própria. A rechecagem de T020 não foi antecipada. Esta conclusão não comprova compilação, Bean Validation, Jackson, escopo HTTP ou funcionamento do cadastro.
+
+**Entrada e procedimentos**: confirmados raiz `C:/Users/ronal/dscommerce-speckit`, branch real `009-cadastrar-cliente`, HEAD `ea820352fa1d1947132cc568a21c791ad4775c27`, seleção009, quatro modificados recebidos (quickstart/tasks009, UserAccount e UserAccountRepository), três Java não rastreados recebidos (teste de schema e dois fragmentos do repository) e nada staged. Main recebida `de1d8ffb91f4c73d8ee2d10912d56c244164084b`. Skill speckit-implement aplicada exclusivamente a T018; pré-requisitos retornaram exit0 e FEATURE_DIR absoluto009; checklist requirements.md 16/16, zero abertos, somente leitura. Ignore Java suficiente e extensões ausentes antes da edição. Lidos T018 e as dependências/procedimentos pertinentes, modelo, plano, pesquisa R5 e contrato aprovado; consideradas as fronteiras de DTO/camadas da constituição e AGENTS, preservando as autorias e evidências T001–T017.
+
+### Estruturas e responsabilidades declaradas
+
+| Tipo | Conteúdo escrito | Limites |
+| --- | --- | --- |
+| CustomerRegistrationRequestDTO | Record com exatamente seis componentes String raw: name, fullName, email, phone, birthDate e password. | Retém nulls e sequência original; sem trimming, parsing, Unicode/bytes, regras de presença/limite ou consultas. |
+| CustomerRegistrationConfirmationDTO | Record somente Long id e String name, com guarda estrutural de ID positivo/name não null. | Não confirma commit, entrega HTTP ou autenticação por sua mera construção. |
+| CustomerRegistrationCommand | Record interno com name, fullName, email, emailKey, phone, LocalDate birthDate, passwordHash e snapshot da referência. | Sem campo password raw, ID ou roles; não valida regras cadastrais nem gera/reconhece hash. |
+| RegistrationAttemptReference | Componente request-scoped, inicialização única por Instant fornecido e snapshot imutável com Instant/data UTC. | Não captura Clock, lê corpo, resolve request global ou consulta domínio. Interceptor e validação ficam nas tarefas próprias. |
+
+**Request e JSON**: os seis componentes do request têm JsonProperty WRITE_ONLY; seu toString retorna texto fixo redigido, sem valores. Não acrescentados referência, ID, perfis, hash ou token ao DTO de entrada. BirthDate continua String, sem parsing antecipado. A confirmação declara somente id/name. Isso configura a forma pretendida na fonte, sem provar serialização/deserialização. Leitura estrita de tipos, campos desconhecidos/repetidos, raiz e trailing JSON pertence a T035; não foi alterado ObjectMapper global ou reader anterior.
+
+**Comando interno**: os componentes estruturais são não null, com mensagem interna fixa em caso de construção inválida. EmailKey é copiado no construtor e no accessor; não há alias mutável externo do array. Referência é um Snapshot imutável, não o holder de escopo. JsonIgnoreType e JsonIgnore nos componentes declaram a exclusão do comando/referência do JSON; toString é fixo e não mostra hash ou dados pessoais. O nome passwordHash designa o resultado a ser fornecido pelo hasher futuro: não há conversão automática do request, campo de senha raw, algoritmo implementado, rehash ou verificação de formato nesta tarefa. Canonicalização, parsing e hashing continuam nas tarefas aprovadas.
+
+### Referência única e uso explícito fora de HTTP
+
+A classe RegistrationAttemptReference permanece não final para o proxy de @RequestScope. O estado de cada alvo de request é uma AtomicReference privada, preenchida somente por compareAndSet de null para Snapshot; nenhuma operação permite substituir/limpar o valor inicializado. Snapshot é classe final com campos final, construtor privado, Instant e LocalDate derivados do mesmo valor usando ZoneOffset.UTC. Leitura antes da inicialização, segunda inicialização e instante null/não representável têm erros fixos, sem valores ou causas sensíveis.
+
+A fábrica estática `RegistrationAttemptReference.fixed(Instant)` cria uma instância comum já inicializada, sem resolver escopo Spring/HTTP e sem relógio implícito. Seus consumidores podem obter `snapshot()` e passá-lo explicitamente à validação não HTTP ou ao comando. Essa API permite referência fixa de validação/testes; a integração real do ConstraintValidator ainda não existe e não foi comprovada. Não há Instant.now/LocalDate.now, injeção de Clock, recaptura por campo ou fallback silencioso quando falta referência.
+
+Holder, snapshot e acessos internos têm exclusões Jackson declaradas; request e confirmação não contêm referência. Os toString desses tipos internos são fixos. A atomicidade de inicialização é local ao holder de cada tentativa, sem lock global que serialize cadastros. O interceptor exclusivo que fornecerá uma única Clock.instant antes do corpo/@Valid continua atribuído a T022, sem implementação nesta tarefa. Declarações de escopo e imutabilidade da fonte não são prova de isolamento/lifecycle, ordem de captura, travessia de meia-noite ou JSON em runtime.
+
+### Preservação, verificações e pendências
+
+Executados comandos de identidade/status Git, `check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks`, leitura/revisão integral dos quatro arquivos novos, imports, assinaturas, tipos, componentes de records, mensagens, toString, cópia de arrays, exclusões JSON e caminho de inicialização/snapshot. Conferidos caminhos e referências locais. Documentos recebidos foram copiados temporariamente fora do repositório para comparar prefixo e delta final.
+
+Todas as 274 entradas de fonte/configuração/artefatos recebidas protegidas por SHA-256 permaneceram idênticas: entidade T016, repositories T017, métodos legados, teste T014/T015, asserções, suporte, contratos, dependências e ponteiro não foram alterados. Os 1.082 relatórios Surefire recebidos mantiveram conteúdo, tamanho e LastWriteTimeUtc; sem relatório novo ou arquivamento repetido. As novas estruturas não recebem aprovação pelas execuções históricas de T015 ou pelo suporte H-base anterior.
+
+**Separação de autoria/execução**: nenhum Maven, --version, javac, JUnit, contexto, banco, encoder, HTTP ou validador de contrato foi executado em T018. Sem seletor efetivo, exit Maven, console/Surefire novo ou resultado executável a reconciliar. Baseline B, H-base, M e suíte completa não repetidos. As constraints Bean Validation de cadastro não foram antecipadas: T019 escreve os oráculos, T020 executa V-base/M e T021 implementa/vincula as regras. A confirmação, comando e lifecycle/referência precisam ainda dos respectivos testes de integração/casos específicos; compilação futura isolada não basta para comprovar todos esses comportamentos.
+
+**Conclusão limitada**: critérios de declaração de T018 atendidos por autoria/revisão, sem impedimento estático identificado. Marcar somente T018 nesta solicitação, preservando T001–T017 e mantendo T019–T107 abertas. Sem aceite funcional de cadastro, validação, parser estrito, worker, Argon2id/login aditivo, concorrência/entrega ou ambientes não executados. Preservados registros/evidências anteriores, D009-01, seleção009 e **Gate IV005 como EXCEÇÃO DOCUMENTADA, sem PASS estrito**. Sem stage, commit, push, PR ou alteração de main. Revisão final de diff, arquivos novos, referências, links e whitespace registrada no fechamento abaixo.
+
+**Fechamento estático executado**: revisados integralmente os quatro Java novos e o delta documental; quatro links locais novos existentes. Prefixo inteiro recebido do quickstart preservado byte a byte; tasks recupera exatamente a entrada ao desfazer apenas T018. T001–T018 marcadas e os 89 itens T019–T107 abertos. Todas as 274 entradas recebidas continuam com os mesmos hashes; entidade, repositories, testes, asserções e suporte intactos. Os 1.082 relatórios anteriores permanecem inalterados; nenhum novo resultado executável ou arquivamento. `git diff --check` retornou0; checks no-index dos sete Java não rastreados não emitiram diagnóstico de whitespace (exit1 por arquivo novo, incluindo os recebidos). Extensões ausentes antes/depois, sem hooks a executar. Mesmos raiz/branch/HEAD/main/seleção009; nada staged. Git final: os quatro modificados recebidos continuam modificados e há sete Java não rastreados (três recebidos e quatro desta tarefa). Somente quickstart/tasks e os quatro tipos novos receberam alterações de T018. Sem stage, commit, push, PR ou alteração de main; aprovação executável e aceite funcional não atribuídos.
+
+## T019 — autoria de testes de validação local — 2026-10-25
+
+**Resultado: testes escritos; execução reservada a T020.** Criado [CustomerRegistrationValidationTest.java](../../src/test/java/com/devsuperior/dscommerce/validation/CustomerRegistrationValidationTest.java) usando Bean Validation real sobre CustomerRegistrationRequestDTO recebido. Uma classe concreta, três métodos JUnit e **359 casos previstos estaticamente**: 357 vetores em um método parametrizado e dois testes simples. Nenhum teste, compilação, provider ou contexto foi executado nesta autoria; não há RED/GREEN ou descoberta Surefire a atribuir.
+
+**Entrada e procedimentos**: confirmados raiz `C:/Users/ronal/dscommerce-speckit`, branch real `009-cadastrar-cliente`, HEAD `ea820352fa1d1947132cc568a21c791ad4775c27`, seleção009, quatro rastreados modificados recebidos (quickstart/tasks009, UserAccount, UserAccountRepository), os sete Java não rastreados já registrados e nada staged. Main recebida `de1d8ffb91f4c73d8ee2d10912d56c244164084b`. Skill speckit-implement limitada a T019; pré-requisitos retornaram exit0 e FEATURE_DIR absoluto009; checklist requirements.md 16/16, zero abertos, somente leitura. Ignore Java suficiente, extensões ausentes. Lidos T019, T018 e procedimentos/dependências pertinentes, spec/modelo/plano, pesquisa R3/R5 e contrato aprovados. O diretório de testes validation ainda não existia na listagem inicial; criado para o único arquivo previsto, sem tratar essa ausência como falha de aplicação.
+
+### Harness de Bean Validation e controles de IO
+
+A fonte constrói ValidatorFactory real via Validation.byProvider(HibernateValidator), com SpringConstraintValidatorFactory. Cada invocação possui GenericApplicationContext próprio, sem bootstrap Boot/MVC, cache global ou banco. O scan fica restrito ao pacote validation para descobrir componentes locais quando T021 os fornecer; não há import/stub das classes futuras nem uso de RegistrationInputRules para calcular os esperados. Processadores de injeção locais ficam habilitados e a referência é registrada como instância comum já fixada, sem depender de request HTTP ativo.
+
+A referência explícita padrão é `2024-02-29T23:59:59Z`. Casos de ano9999 e calendário2100 têm referências próprias fixas. O ClockProvider do Bean Validation usa propositalmente `2099-01-01T00:00:00Z`, distinto da referência da tentativa: hoje/amanhã e o extremo9999 impedem que um relógio implícito ou @PastOrPresent substituam a referência aprovada. Não há Clock global alterado, captura em cada campo ou execução do interceptor T022.
+
+Mocks de UserAccountRepository, AuthenticationService e PasswordEncoder funcionam como probes de interação; nenhum deles substitui o validador. Uma BeanFactory local rejeita a resolução direta de dependências de domínio (services/repositories), exceto RegistrationAttemptReference, incluindo o primeiro argumento genérico de dependências como providers. Asserções de chamadas usam somente booleanos obtidos de mockingDetails, sem renderizar argumentos. O teste simples de IO valida entradas válidas/inválidas e exige ausência de DataSource/EntityManagerFactory e de chamadas aos probes; o mesmo controle é repetido no fechamento de cada harness, mesmo quando o oráculo de entrada falha. Factory/contexto são encerrados após cada caso.
+
+Isso escreve controles da fronteira local, não uma prova já executada de todo IO possível ou de futuros componentes HTTP. Erro de factory/injeção/referência ou violação dessas guardas deve ser distinguido em T020 das falhas de aceitação/rejeição de campos. Não criar serviço/repository real, inicializar banco, enfraquecer guarda ou converter erro de preparação em RED cadastral para fazer o grupo passar.
+
+### Vetores e inventário estático
+
+O método `validatesContractVectorsWithRealBeanValidationAndKeepsRawValues` compara a decisão real de validate(request) com um esperado literal e confere preservação dos seis campos raw em finally. Objetos Vector mostram somente ID em toString; displays JUnit, asserções de decisão e imutabilidade não imprimem senha, request, ConstraintViolation ou invalidValue. Não são capturados log/HTTP/hash nem é executado encoder: proteção completa de segredo e round-trip de senha continuam nas tarefas próprias.
+
+| Provider na ordem de validationVectors | Índices parametrizados previstos | Quantidade | Aceitar / rejeitar por contrato |
+| --- | --- | ---: | ---: |
+| presenceVectors |1–18 |18 |0/18 |
+| nameVectors |19–37 |19 |5/14 |
+| fullNameVectors |38–56 |19 |12/7 |
+| emailVectors |57–78 |22 |9/13 |
+| phoneVectors |79–93 |15 |2/13 |
+| birthDateVectors |94–117 |24 |5/19 |
+| passwordVectors |118–145 |28 |18/10 |
+| closedWhitespaceVectors |146–345 |200 |100/100 |
+| malformedUnicodeVectors |346–357 |12 |0/12 |
+| Total parametrizado |1–357 |357 |151/206 |
+
+Há 357 IDs distintos, conferidos por expansão textual das constantes/laços sem invocar providers Java. Dois métodos simples adicionais: `independentFixturesSeparateCodePointsUtf16BytesAndProviderLimits` e `validationDoesNotConsultServicesOrRepositories`. Portanto V-base prevê **três métodos/359 casos**. Sem herança de testes, @Nested, testes dinâmicos ou parâmetros externos. Vector, LocalValidation e DomainGuardBeanFactory são auxiliares internos sem métodos JUnit. Contagens e faixas são autoria; T020 deverá confirmar as identidades/índices reais nos XML/TXT.
+
+Cobertura escrita:
+
+- Presença/null/vazio/espaço dos seis campos; name ASCII3/40 contra2/41, início/alfabeto, caixa, espaços, newline final e caracteres não ASCII.
+- FullName2/120 pontos de código, 120 suplementares com240 unidades UTF-16, decomposição, homônimos/acentos/espaços internos, nul e caracteres fora do conjunto fechado sem acrescentar regra alfabética ou proibição não aprovada.
+- Email total254/255 com partes individualmente admissíveis; raw acima254 que fica254 após trim; local64/65, label64 inválido, formas de provider, ausência de partes, espaços internos não corrigidos, pontos e sintaxe de domínio. Não testa disponibilidade/unicidade, entrega ou produção de emailKey.
+- Telefone +8/+15 dígitos contra7/16, ausência/outro sinal, pontuação, espaços e dígitos árabes/fullwidth rejeitados.
+- Data estrita, anos0001/9999 e rejeição0000/10000, hoje inclusivo sem idade mínima, ontem/amanhã, séculos bissextos, datas impossíveis, zeros, padding, sinais, dígitos não ASCII e sufixos/formatos extras.
+- Senha11/12/64/65 ASCII, 32/33 caracteres de dois bytes, misturas64/65 bytes, 11/12/16/17 suplementares, NUL/controle fora da lista e ausência de composição obrigatória. Casos válidos que seriam curtos após trim, inválidos que caberiam após trim/NFC e preservação do raw impedem aceitar transformações que alterem os limites. A retenção do DTO sozinha não comprova a sequência usada por hashing/login, que ainda não existem no fluxo009.
+- Lista literal dos25espaços normativos: por code point, oito casos de trim permitido em fullName/email, trim até nome curto, ausência de trim em name/telefone, senha só de espaços e preservação das duas bordas da senha válida. O vetor misto usa os25, com25pontos/61bytes previstos, evitando confundir rejeição por espaços com os limites de senha. Fora do conjunto são incluídos U+200B/U+180E/U+FEFF. Doze vetores com surrogates isolados em fullName/email/password exigem rejeição sem substituição.
+
+O teste simples de fixtures escreve verificações independentes de unidades usando somente APIs JDK sobre valores válidos e contagens literais; não usa codificação com substituição para decidir a validade dos vetores malformados. Os esperados de email foram revistos contra as fontes primárias pinadas já indicadas em R3: [EmailValidator8.0.1](https://raw.githubusercontent.com/hibernate/hibernate-validator/8.0.1.Final/engine/src/main/java/org/hibernate/validator/internal/constraintvalidators/bv/EmailValidator.java), [AbstractEmailValidator8.0.1](https://raw.githubusercontent.com/hibernate/hibernate-validator/8.0.1.Final/engine/src/main/java/org/hibernate/validator/internal/constraintvalidators/AbstractEmailValidator.java) e [DomainNameUtil8.0.1](https://raw.githubusercontent.com/hibernate/hibernate-validator/8.0.1.Final/engine/src/main/java/org/hibernate/validator/internal/util/DomainNameUtil.java). A inspeção de fonte orienta os vetores de local64, aspas, Unicode BMP, domínio sem ponto e literal IP; não é execução do provider, nem promessa de aceitar qualquer Unicode/email RFC ou consultar DNS.
+
+### Procedimento futuro T020 e limites desta autoria
+
+T020 deve inventariar as fontes da revisão efetiva, conferir processos/resultados aplicáveis e preservar relatórios existentes sem duplicar arquivamentos concluídos. Seleção aprovada de V-base unida a M, pelo Wrapper, ainda não executada nesta tarefa:
+
+~~~powershell
+.\mvnw.cmd '-Dtest=CustomerRegistrationValidationTest*,CustomerRegistrationSchemaTest*' '-Dsurefire.failIfNoSpecifiedTests=true' '-DfailIfNoTests=true' test
+~~~
+
+Acrescentar a identificação exclusiva de relatórios/run conforme protocolo aprovado, executar sequencialmente, capturar o exit Maven numérico antes de arquivar e reconciliar console/XML/TXT. V-base prevê359casos nesta autoria; M recebido continua com11métodos/18casos. A soma estática é duas classes/14métodos/377casos, sem substituir conferência nominal por total global. Não pressupor resultados de qualquer caso: no DTO recebido ainda não há as constraints cadastrais que T021 implementará. Compilação, seleção vazia, contexto/provider/injeção inválidos são preparação distinta de falha esperada por regra ausente. Os dois métodos simples e todos os índices devem ser verificados, sem skips, exclusões ou RED fabricado.
+
+Nenhum Maven, --version, javac, JUnit, provider, contexto, banco, encoder, chamada HTTP ou validador de contrato foi iniciado em T019. Sem exit Maven, log/relatório ou reconciliação de execução novos. Não repetidos baseline B, H-base, M ou suíte completa. Foram feitos leitura de artefatos/fontes, revisão estática, inventário textual e conferência de preservação. Todas as278entradas recebidas protegidas por SHA-256 continuam iguais; os1.082relatórios anteriores mantiveram conteúdo, tamanho e timestamp. Apenas este teste e os registros quickstart/tasks recebem alteração de T019; produção, DTOs, referência, repository, suporte, asserções e evidências anteriores permanecem recebidos.
+
+**Conclusão limitada**: critérios de autoria T019 atendidos, sem impedimento estático identificado. Marcar somente T019 nesta solicitação; preservar T001–T018 e manter T020–T107 abertas. Não há compilação/funcionamento, checkpoint conjunto ou aceite funcional atribuídos. T021 e demais implementações futuras não foram antecipadas; D009-01, contratos, seleção009 e **Gate IV005 como EXCEÇÃO DOCUMENTADA, sem PASS estrito** preservados. Sem stage, commit, push, PR ou alteração de main. Revisão final de conteúdo/diff, arquivo novo, referências, links e whitespace registrada no fechamento abaixo.
+
+**Fechamento estático executado**: conteúdo integral do Java novo, deltas documentais, referências e links revisados; um link local novo resolvido e três fontes primárias versionadas consultadas. Inventário textual: três métodos, 357 IDs únicos parametrizados e dois casos simples, sem herança/@Nested; não executado Java para contar ou validar os vetores. SHA-256 do teste `AB22607798023F05625D54B59BD7A5E63CBEE0B0A473BC365DBB2FE2736A5CB0`. Prefixo inteiro recebido do quickstart preservado byte a byte; tasks recupera a entrada ao desfazer somente T019. T001–T019 marcadas e 88 itens T020–T107 abertos. Todas as278entradas recebidas e os1.082relatórios anteriores permanecem intactos. `git diff --check` retornou0; oito Java não rastreados conferidos por no-index sem diagnóstico de whitespace (exit1 por arquivo novo). Extensões ausentes antes/depois, sem hooks. Mesmos raiz/branch/HEAD/main/seleção009; nada staged. Git final: quatro rastreados modificados e oito Java não rastreados, sete recebidos e somente o teste T019 novo. Alterações desta tarefa limitadas ao teste e quickstart/tasks009. Sem stage, commit, push, PR, alteração de main ou aprovação executável atribuída.
+
+## T020 — diagnóstico V-base e rechecagem M (2026-10-25)
+
+**Entrada confirmada**: raiz `C:/Users/ronal/dscommerce-speckit`, branch real `009-cadastrar-cliente`, HEAD `ea820352fa1d1947132cc568a21c791ad4775c27`, seleção local009. Recebidos somente quatro rastreados modificados (quickstart/tasks009, UserAccount e UserAccountRepository) e oito Java não rastreados, conforme fechamento T019; nada staged. Main em `de1d8ffb91f4c73d8ee2d10912d56c244164084b`. Skill speckit-implement limitada a T020, pré-requisitos com exit0 e FEATURE_DIR009; checklist requirements.md 16/16, zero abertos, somente leitura. T020, dependências T014–T019, fontes, contrato, modelo e procedimentos aprovados lidos. Ignore Java suficiente; extensões ausentes.
+
+### Preparação, seleção e comando executado
+
+Conferidos processos Java/Maven/Surefire e resultados existentes antes de iniciar: nenhum processo concorrente, execução T020 aplicável ou relatório V-base anterior. O M histórico antecede T016–T019 e não comprova o modelo recebido. Os 1.082 relatórios existentes já estavam cobertos pelos ZIPs anteriores: nomes, tamanhos e SHA-256 conferidos, sem repetir arquivamentos concluídos. Inventário antes da execução também reteve LastWriteTimeUtc. Preservados todos os diretórios/diagnósticos T004, T011 e T015, inclusive tentativas auxiliares e a primeira captura incompleta de T015.
+
+Seletores atuais conferidos em [tasks](tasks.md): **V-base** = `CustomerRegistrationValidationTest*` e **M** = `CustomerRegistrationSchemaTest*`. V-referência = `CustomerRegistrationReferenceTest*` só estará disponível após T048 e não foi selecionada. Inventário por fontes da revisão recebida: duas classes concretas, 14 métodos, 377 casos. Sem testes herdados, @Nested ou dinâmicos; auxiliares internos não são classes de teste. Parametrizações: 357 vetores de V-base; cinco colunas e quatro combinações de roles de M. Nenhum teste de autoria futura incluído.
+
+Run exclusivo: `T020-V-base-M-20261025T184213823Z-a3608823`, em `target/feature009-evidence/`. Pré-flight reteve hashes de 384 arquivos recebidos (todos os rastreados e oito Java não rastreados, excetuando os dois documentos editáveis), identidade Git, seleção, comando e inventários esperados. SHA-256 das fontes selecionadas:
+
+- CustomerRegistrationValidationTest: `AB22607798023F05625D54B59BD7A5E63CBEE0B0A473BC365DBB2FE2736A5CB0`.
+- CustomerRegistrationSchemaTest: `0199929F9148223BE565860F0B7D9DB7477372321B9AD04AD7DB44C6493A0693`.
+
+Executado primeiro `.\mvnw.cmd --version`, exit0: Maven3.9.16, Java21.0.12.1 Azul, Windows amd64. Única invocação com goal test nesta tarefa, V-base e M unidos sem exclusões:
+
+~~~powershell
+.\mvnw.cmd '-Dtest=CustomerRegistrationValidationTest*,CustomerRegistrationSchemaTest*' '-Dsurefire.failIfNoSpecifiedTests=true' '-DfailIfNoTests=true' '-Dsurefire.reportNameSuffix=T020-V-base-M-20261025T184213823Z-a3608823' test
+~~~
+
+O auxiliar local `Run-Maven.ps1` executou o Wrapper por ProcessStartInfo/ComSpec com redirecionamento nativo para console-T020.log; isso preserva stderr e o código nativo, sem confundi-los com exit do PowerShell. Início `2026-10-25T18:42:31.1387508Z`, término `2026-10-25T18:44:18.8008663Z`. **Exit Maven numérico 1**, persistido em execution.json e execution-before-archive.json com ReportsArchived=false antes de qualquer arquivamento novo. `BUILD FAILURE` decorre das asserções abaixo. A captura auxiliar concluiu com exit0; não houve tentativa Maven adicional, falha de captura ou necessidade de repetição.
+
+### Resultado efetivo e reconciliação console/XML/TXT
+
+| Classe / seleção | Métodos previstos / observados | Casos previstos / executados | Aprovados | Falhas | Erros | Ignorados |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| CustomerRegistrationSchemaTest / M |11/11 |18/18 |18 |0 |0 |0 |
+| CustomerRegistrationValidationTest / V-base |3/3 |359/359 |153 |206 |0 |0 |
+| Total |14/14 |377/377 |171 |206 |0 |0 |
+
+Confrontados os dois anúncios Running, os dois resumos por classe e o resumo global do console com os atributos e nós testcase de cada XML e o resumo de cada TXT. Contadores coincidem; nenhuma classe extra, omissão, duplicata ou skip. A identificação acrescentada por Surefire em suite/classname foi removida somente para comparar o sufixo exato deste run, sem alterar relatórios. Comparação nominal por classe + método + índice parametrizado, incluindo os dois métodos simples de V-base e todos os índices, não apenas a soma global. Sem casos herdados/aninhados a acrescentar à contagem.
+
+| Método selecionado | Casos / índices observados | Resultado |
+| --- | --- | --- |
+| M: jpaMetamodelIncludesTheFiveRegistrationAttributesWithApprovedJavaTypes |1 simples |PASS |
+| M: registrationColumnsHaveTheApprovedPhysicalTypeCapacityAndNullableFlag |5, índices1–5: FULL_NAME, EMAIL, EMAIL_KEY, PHONE, BIRTH_DATE |PASS |
+| M: legacyNamePasswordHashAndIdentityKeepTheirPhysicalContract |1 simples |PASS |
+| M: nameHasOneNamedUniqueConstraintAndNoEquivalentDuplicateIndex |1 simples |PASS |
+| M: emailKeyHasOneNamedUniqueConstraintAndNoEquivalentDuplicateIndex |1 simples |PASS |
+| M: anaAndLowercaseAnaCoexistButAnExactDuplicateNameIsRejected |1 simples |PASS |
+| M: severalLegacyAccountsKeepNullRegistrationValuesAndTheirJpaRoles |4, índices1–4: nenhum, CLIENT, ADMIN, ambos |PASS |
+| M: binaryEmailKeyRejectsEqualBytesAndAllowsDistinctBytes |1 simples |PASS |
+| M: jpaReadsRegistrationValuesFromTheirRealColumnsWithoutTruncation |1 simples |PASS |
+| M: existingRoleCollectionKeepsItsStringMappingNamedForeignKeyAndUniquePair |1 simples |PASS |
+| M: existingRoleForeignKeyUniquePairAndRequiredColumnsAreEnforcedByTheDatabase |1 simples |PASS |
+| V-base: validatesContractVectorsWithRealBeanValidationAndKeepsRawValues |357, índices1–357, cada ID previsto uma vez |151 PASS / 206 falhas |
+| V-base: independentFixturesSeparateCodePointsUtf16BytesAndProviderLimits |1 simples |PASS |
+| V-base: validationDoesNotConsultServicesOrRepositories |1 simples |PASS |
+
+| Grupo de vetores V-base | Índices | Previsto / executado | Aprovados | Falhas |
+| --- | --- | ---: | ---: | ---: |
+| presenceVectors |1–18 |18/18 |0 |18 |
+| nameVectors |19–37 |19/19 |5 |14 |
+| fullNameVectors |38–56 |19/19 |12 |7 |
+| emailVectors |57–78 |22/22 |9 |13 |
+| phoneVectors |79–93 |15/15 |2 |13 |
+| birthDateVectors |94–117 |24/24 |5 |19 |
+| passwordVectors |118–145 |28/28 |18 |10 |
+| closedWhitespaceVectors |146–345 |200/200 |100 |100 |
+| malformedUnicodeVectors |346–357 |12/12 |0 |12 |
+| Total parametrizado |1–357 |357/357 |151 |206 |
+
+Erros e ignorados são zero em todos esses grupos. Os dois casos simples somam os 153 aprovados de V-base; os 18 de M completam os 171 aprovados globais. Não houve divergência da previsão de 359 casos da T019 nem dos 377 conjuntos.
+
+### Diagnóstico e fronteiras da evidência
+
+**Lacuna funcional esperada**: todas as 206 falhas são org.opentest4j.AssertionFailedError na decisão da linha65 de CustomerRegistrationValidationTest, com ID seguro, `expected: false` e `but was: true`. Correspondem aos 206 vetores de rejeição escritos em T019: o Validator real aceita entradas que o contrato009 exige rejeitar. Exemplo: presence-null-NAME. O DTO recebido ainda não está vinculado a constraint cadastral e as regras/validador pertencem a T021, aberta. Nenhuma expectativa, exclusão, produção ou asserção foi alterada para obter resultado ou fabricar RED. Os 151 vetores válidos aceitos não demonstram que suas regras já estejam implementadas.
+
+**Preparação e descoberta**: compilação de 109 fontes de produção e 158 fontes de teste concluída com Java21. A compilação geral das fontes é etapa normal do goal focal, não execução de testes fora do seletor. Contexto JPA M iniciado com perfil test e H2 em memória exclusivo `jdbc:h2:mem:customer-registration-test-da1da3f3-b044-4f61-ae7c-d2a585f10500`. V-base criou seu ValidatorFactory real/harness local e referência não HTTP explícita por caso. Nenhuma falha de provider, factory, injeção, referência ou descoberta observada. As 206 pilhas apontam a asserção de decisão; nenhuma tem falha suprimida. Os controles de preservação raw/ausência de IO no finally não falharam; os dois testes simples passaram. Isso não executa o futuro interceptor HTTP nem comprova a referência civil V-referência.
+
+**Rechecagem M**: 18/18 aprovados após T016–T019, incluindo cinco atributos/tipos/capacidades/nullable, únicos nomeados sem duplicação, distinção Ana/ana, unicidade binária de emailKey, vários NULLs legados, leitura JPA sem truncamento e contratos legados. A correção do oráculo do par conta/perfil recebida de T015 permaneceu intacta; passaram tanto a inspeção de mapeamento/constraint quanto os controles efetivos de FK, duplicidade do par e colunas obrigatórias. Nenhum problema adicional de oráculo identificado; não se reinterpretou a falha antiga como defeito de produção. Os diagnósticos isolados anteriores continuam separados desta execução Maven.
+
+Avisos no console: depreciação de SecurityManager em teste legado não selecionado, configuração explícita de H2Dialect e instrumentação dinâmica Byte Buddy/CDS. Não causaram erro de compilação/preparação ou omissão; nenhuma configuração foi alterada para suprimi-los. Não há aceite do cadastro por esta aprovação focal de M: insert/registrationIdentityMetadata do fragmento T017 não foram invocados pelos casos selecionados; compilação e wiring não comprovam seus caminhos. Hashing/login D009-01, HTTP, concorrência, commit/resposta, PostgreSQL e implantação continuam fora desta evidência.
+
+### Preservação e conclusão restrita
+
+Após capturar o exit, somente os quatro relatórios novos deste sufixo (dois XML, dois TXT) foram arquivados em after-surefire-reports.zip, com leitura de retorno e verificação de nomes, tamanhos e SHA-256. SHA-256 do ZIP: `C8CD399CC95051BB25C15AED6D645CD67330FB7C0BCE934C912E47B20900DF7D`. Verificação em `2026-10-25T18:44:39.3755148Z`: 1.082 relatórios anteriores intactos em conteúdo/tamanho/timestamp; nenhum re-arquivamento histórico. Permanecem os originais, agora 1.086 arquivos em surefire-reports. Log, inventários esperados de M/V-base, preflight, versões, manifesto anterior/novo, preservação, execution-before-archive, reconciliação por caso/método/grupo e verificação do ZIP ficam no diretório exclusivo deste run. Esses artefatos em target são locais/ignorados; este resumo durável registra comandos, revisão, resultados e limites.
+
+**T020 satisfeita como diagnóstico**: seleção completa executada e reconciliada, M aprovada e RED de V-base atribuído à validação ausente de T021, sem impedimento de compilação/preparação/descoberta ou oráculo observado. Marcar somente T020; preservar T001–T019 e manter T021–T107 abertas. Não exigir GREEN de funcionalidade ainda não implementada. Não repetidos baseline B, H-base, V-referência ou suíte completa, nem iniciada implementação futura. Alterações desta tarefa somente quickstart/tasks009, além das evidências locais ignoradas. Fontes, testes, asserções, contratos, dependências e evidências recebidos preservados. D009-01 e **Gate IV005 como EXCEÇÃO DOCUMENTADA, sem PASS estrito** mantidos. Sem stage, commit, push, PR, troca de branch, alteração de main ou seleção009.
+
+**Fechamento revisado**: conteúdo/diff, os oito Java recebidos, seletores, 14 nomes de métodos, referências e link local conferidos. Prefixo recebido deste quickstart preservado byte a byte; tasks recupera a entrada ao desfazer somente T020. As 384 entradas protegidas por SHA-256 permaneceram iguais. T001–T020 marcadas; 87 itens T021–T107 abertos. `git diff --check` padrão retornou0; oito Java não rastreados passaram na checagem no-index (exit1 por diferença de arquivo novo, zero diagnósticos). Duas tentativas auxiliares de whitespace exigiram ajuste de captura: a primeira parou no aviso LF→CRLF tratado pelo PowerShell como erro; a segunda, com core.autocrlf=false para rastreados, interpretou CRLF recebido como whitespace. A conferência padrão resolveu a distinção sem editar os arquivos recebidos nem configuração Git; avisos de conversão continuam informativos. Isso não representa execução Maven, falha cadastral ou repetição de testes. Extensões ausentes também ao final, sem hooks. Mesmos raiz/branch/HEAD/main/seleção009, nada staged; Git com quatro rastreados modificados e oito Java não rastreados recebidos. Somente quickstart/tasks009 receberam edição nesta tarefa; os artefatos novos são evidências locais ignoradas em target.
+
+## T021 — implementação da validação local, sem execução (2026-10-25)
+
+**Entrada confirmada**: raiz `C:/Users/ronal/dscommerce-speckit`, branch real `009-cadastrar-cliente`, HEAD `ea820352fa1d1947132cc568a21c791ad4775c27`, seleção009. Recebidos quatro rastreados modificados (quickstart/tasks009, UserAccount e UserAccountRepository) e os oito Java não rastreados do fechamento T020; nada staged. Main recebida `de1d8ffb91f4c73d8ee2d10912d56c244164084b`. Skill speckit-implement restrita a T021; pré-requisitos com exit0, FEATURE_DIR absoluto009 e checklist requirements.md 16/16, zero abertos, somente leitura. Ignore Java suficiente e extensões ausentes. Lidos T021 integralmente, dependências/procedimentos, fontes e harness de T019, diagnóstico T020, spec/plano/modelo/research R3–R5 e contrato aprovados.
+
+### Diagnóstico recebido e fronteira de execução
+
+Usado o diagnóstico existente `T020-V-base-M-20261025T184213823Z-a3608823`: M com 11 métodos/18 casos aprovados; V-base com três métodos/359 casos, 153 aprovados e 206 falhas funcionais por validação ausente. Total histórico377, zero erros/ignorados, exit Maven1, sem omissões/duplicatas. T020 não é executada novamente nem seus resultados são atribuídos a estas novas fontes. Testes, vetores independentes, controles de ausência de IO, correção do oráculo conta/perfil e diagnósticos auxiliares anteriores permanecem intactos.
+
+T021 implementa a lacuna identificada; não contém seleção executável própria. Conforme a separação de autoria/implementação e execução em [tasks](tasks.md#implementation-strategy-e-critérios-de-conclusão), a comprovação comportamental cabe à próxima tarefa de execução/checkpoint. T027 prevê C/V-base/M/B unidos após T022–T026; nenhuma dessas tarefas foi iniciada aqui. V-referência só é escrita em T048 e continua fora da fundação atual. Não antecipados T022, testes futuros, baseline/H-base ou suíte completa.
+
+### Arquivos e regras implementados
+
+| Arquivo | Alteração desta tarefa |
+| --- | --- |
+| [RegistrationInputRules.java](../../src/main/java/com/devsuperior/dscommerce/validation/RegistrationInputRules.java) | Novo helper local com Unicode, limites, lista fechada, trim externo permitido, sintaxe email, chave binária, telefone e calendário. |
+| [ValidCustomerRegistration.java](../../src/main/java/com/devsuperior/dscommerce/validation/ValidCustomerRegistration.java) | Nova constraint de tipo Bean Validation, mensagem fixa `Invalid customer registration data`, grupos/payload padrão. |
+| [CustomerRegistrationValidator.java](../../src/main/java/com/devsuperior/dscommerce/validation/CustomerRegistrationValidator.java) | Novo adaptador da constraint aos seis campos raw e à referência fixa de T018. |
+| [CustomerRegistrationRequestDTO.java](../../src/main/java/com/devsuperior/dscommerce/dto/CustomerRegistrationRequestDTO.java) | Somente import e anotação de tipo @ValidCustomerRegistration; seis componentes, WRITE_ONLY e toString redigido recebidos preservados. |
+| quickstart.md / tasks.md009 | Este registro e somente a marca T021. |
+
+**Unicode e unidades**: helper rejeita null/surrogate isolado, aceitando pares suplementares válidos. FullName/email/senha só contam pontos de código depois dessa verificação. Bytes usam StandardCharsets.UTF_8 sobre sequência válida, sem BOM adicionado ou substituição silenciosa. Name/phone/data possuem gramática ASCII completa, sem flags Unicode, coerção ou prefixo/sufixo tolerado; matcher.matches verifica a entrada inteira.
+
+**Name e fullName**: name usa `[A-Za-z0-9][A-Za-z0-9._-]{2,39}`, sem trim ou alteração de caixa. FullName usa 2–120 pontos de código depois de trim externo exclusivo do conjunto fechado; caixa, acentos, decomposição, espaços internos e controles fora do conjunto são preservados. Nenhum limite120 é imposto ao raw antes do trim. As operações retornam strings separadas; o DTO não é mutado.
+
+**Lista fechada**: U+0009–U+000D, U+0020, U+0085, U+00A0, U+1680, U+2000–U+200A, U+2028, U+2029, U+202F, U+205F e U+3000. O mesmo predicado puro é usado somente para aparar fullName/email e detectar senha formada apenas por esses espaços. Não usa String.trim/strip, Character.isWhitespace ou regex de espaço genérico. U+200B/U+180E/U+FEFF não são descartados por esse predicado.
+
+**Email e chave**: após Unicode válido e trim permitido, presença e limite1–254 por pontos de código são verificados. A sintaxe é delegada ao @Email do provider já existente, por `Validator.validateValue(EmailSyntax.class, "value", value)`. EmailSyntax é um portador privado de metadados com uma propriedade @Email; nenhuma instância é criada ou armazena contato. O resultado é consumido somente como booleano. Não reimplementa sintaxe por regex simplificada, não cria factory/Validator global nem importa classes internas de Hibernate. Não consulta DNS, serviço ou repository, nem corrige interior do email. A API pública de [validateValue](https://jakarta.ee/specifications/bean-validation/3.0/apidocs/jakarta/validation/Validator.html) e a fonte pinada de [EmailValidator8.0.1](https://raw.githubusercontent.com/hibernate/hibernate-validator/8.0.1.Final/engine/src/main/java/org/hibernate/validator/internal/constraintvalidators/bv/EmailValidator.java) foram consultadas para revisão; isso não executa o provider.
+
+`emailKey(raw)` destina-se a email previamente validado sintaticamente: aplica o mesmo trim permitido, exige Unicode válido e presença/limite254, mapeia cada ponto por `Character.toLowerCase(Character.toUpperCase(cp))` do Java21 e produz byte[] UTF-8 novo. A grafia aparada permanece separada da chave. Sem locale, expansão de case folding, composição Unicode, remoção de pontos ou sufixo `+`; um ponto mapeado continua um ponto, mantendo o teto físico1016bytes. O helper não consulta disponibilidade nem persiste. Sua integração ao futuro comando/JDBC e os vetores de equivalência terão provas próprias; os testes atuais de aceitação do DTO não comprovam automaticamente a chave.
+
+**Telefone e nascimento**: telefone exige `+` seguido de8–15 dígitos ASCII, sem trim/reformatação. Nascimento exige exatamente quatro/dois/dois dígitos ASCII separados por hífen, parsing ISO_LOCAL_DATE com ResolverStyle.STRICT, ano0001–9999 e data menor ou igual à referência fornecida. Datas impossíveis, ano0000, sinais, sufixos e formatos alternativos são inválidos; sem idade mínima. parseBirthDate retorna null para entrada inválida e descarta a exceção de parsing, sem encadear texto recebido em diagnóstico.
+
+**Senha nova009**: mínimo12 pontos de código e máximo64bytes UTF-8 são verificados separadamente na sequência raw válida. Senha só de espaços da lista é rejeitada; NUL, controles fora da lista, bordas e interior de senha válida não são removidos ou transformados. Sem regra de composição, normalização, troca de caixa, truncamento ou exclusão extra. A rotina não gera hash, não mantém campo de senha, não registra valor nem altera LoginRequestDTO/AuthenticationService/encoder. Sob D009-01, este é somente o domínio de senha do cadastro; a futura união A ∪ B do login continua em T025, sem restringir o domínio histórico A.
+
+### Wiring local e revisão estática
+
+CustomerRegistrationValidator recebe somente RegistrationAttemptReference e jakarta.validation.Validator por construtor. SpringConstraintValidatorFactory já presente no projeto/harness cria o adaptador com injeção; não é necessário registrar outro componente global ou alterar o suporte. A delegação por createBean foi conferida na [fonte Spring6.1.13](https://raw.githubusercontent.com/spring-projects/spring-framework/v6.1.13/spring-context/src/main/java/org/springframework/validation/beanvalidation/SpringConstraintValidatorFactory.java). Trata-se de revisão de fonte, não comprovação de wiring executado nesta revisão.
+
+Para request não nulo, isValid lê uma única snapshot/data UTC já fixada e usa somente variáveis locais/helpers. Não captura Clock/Instant/LocalDate.now nem usa ClockProvider como substituto da referência. Fora de HTTP, a referência explícita/fixa já fornecida em T018/harness continua necessária; referência não inicializada/falha de scope/provider não é convertida em false de entrada inválida. Não implementado o interceptor T022. Nenhuma dependência de serviço/repository/encoder, decisão de disponibilidade/perfil ou escrita foi acrescentada à validação. O único tipo do pacote services usado é a referência autorizada de T018.
+
+Revisados por leitura os três Java novos e o delta do DTO, imports/assinaturas, binding da constraint, metadados @Email, gramáticas completas, faixas Unicode, unidades, exceções e fronteiras. Confrontadas as regras com os nove grupos de vetores T019 e os casos simples, sem executar seus providers ou modificar esperados. O novo adaptador não reutiliza o validator de produto005 com IO de domínio; sua exceção histórica não foi alterada ou reclassificada.
+
+**Limites desta etapa**: nenhum Maven, --version, javac, JUnit, factory/provider de validação, contexto Spring, banco, encoder ou HTTP iniciado. Nenhum exit Maven, relatório ou reconciliação novos. Não há compilação comprovada, GREEN novo, checkpoint conjunto ou aceite funcional. A confirmação de que os 206 RED históricos foram eliminados depende da execução futura na revisão pertinente; tampouco a revisão estática prova ausência universal de IO/vazamento. Fontes primárias consultadas e comparação textual não substituem esses testes.
+
+### Preservação e conclusão delimitada
+
+Backups temporários externos ao repositório e manifesto SHA-256 protegeram 384 entradas recebidas, excetuando os dois documentos editáveis: 383 permanecem idênticas; a única fonte recebida alterada é o DTO, recuperável ao remover somente import/anotação. UserAccount, repositories, demais tipos T018, todos os testes/suporte/asserções, contratos, dependências e seleção permanecem recebidos. Os três novos arquivos são exatamente os alvos de T021; nenhum arquivo de T022+ criado.
+
+**Conclusão estática**: implementação delimitada de T021 escrita e revisada, sem impedimento estático identificado. Marcar somente T021; preservar T001–T020 e manter T022–T107 abertas. Não atribuir aprovação executável à marca. D009-01 e **Gate IV005 como EXCEÇÃO DOCUMENTADA, sem PASS estrito** preservados. Sem stage, commit, push, PR, troca de branch, alteração de main ou seleção009. Conferências finais de hashes, relatórios, links, whitespace, prefixo recebido e Git registradas no fechamento abaixo.
+
+**Fechamento estático executado**: três Java novos lidos integralmente; import/anotação do DTO conferidos por delta reversível, sem alteração dos componentes raw/WRITE_ONLY/toString. Diff e referências revisados; cinco links locais novos resolvidos, fontes primárias citadas consultadas. Dos384arquivos recebidos protegidos,383seguem idênticos e somente o DTO contém o delta autorizado. Prefixo inteiro recebido do quickstart preservado byte a byte; tasks recupera a entrada ao desfazer somente T021. T001–T021 marcadas e86itens T022–T107 abertos. Os1.086relatórios anteriores mantêm nomes/conteúdo/tamanho/LastWriteTimeUtc, com zero novos; nenhum arquivamento ou reconciliação repetido. `git diff --check` retornou0;11Java não rastreados conferidos por no-index, zero diagnósticos de whitespace, exit1 apenas pela diferença de arquivo novo. Avisos LF→CRLF dos documentos são informativos; nenhuma configuração Git foi alterada. Extensões ausentes antes/depois, sem hooks. Mesmos raiz/branch/HEAD/main/seleção009; nada staged. Git final com quatro rastreados modificados recebidos e11Java não rastreados (oito recebidos, com apenas o DTO editado, e três novos desta tarefa). Nenhum Maven, compilação, teste, contexto ou aceite funcional novo atribuído; comprovação executável e tarefas T022+ permanecem pendentes.
+
+## T022 — captura da referência no MVC, sem execução (2026-10-25)
+
+**Entrada confirmada**: raiz `C:/Users/ronal/dscommerce-speckit`, branch real `009-cadastrar-cliente`, HEAD `ea820352fa1d1947132cc568a21c791ad4775c27`, seleção local009. Recebidos quatro rastreados modificados (quickstart/tasks009, UserAccount e UserAccountRepository), os11Java não rastreados registrados em T021 e nada staged. Main recebida `de1d8ffb91f4c73d8ee2d10912d56c244164084b`. Skill speckit-implement restrita a T022; pré-requisitos com exit0 e FEATURE_DIR absoluto009; checklist requirements.md16/16, zero abertos, somente leitura. Ignore Java suficiente; extensões ausentes. Lidos T022 integralmente, suas dependências/procedimentos e fronteiras do plano, R5, modelo, FR-009/assunção UTC e contrato; conferidos referência T018, validador T021, Clock de produção e suporte009 existente.
+
+### Implementação delimitada
+
+Única fonte criada: [CustomerRegistrationWebConfig.java](../../src/main/java/com/devsuperior/dscommerce/config/CustomerRegistrationWebConfig.java), @Configuration(proxyBeanMethods=false) implementando WebMvcConfigurer. Recebe por construtor o Clock já disponível e o proxy request-scoped de [RegistrationAttemptReference](../../src/main/java/com/devsuperior/dscommerce/services/RegistrationAttemptReference.java), sem resolver snapshot ou capturar tempo durante o bootstrap.
+
+O registro adiciona HandlerInterceptor somente ao padrão MVC `/customers`, com Ordered.HIGHEST_PRECEDENCE. O preHandle só inicializa para método POST. O matching é relativo ao contexto/lookup path MVC: não há `/api` hardcoded ou registro adicional `/api/customers`. O desenho atende raiz e contexto `/api` usando o mesmo padrão, sujeito à futura comprovação HTTP das duas URLs. GET/HEAD/OPTIONS/outros métodos retornam true sem chamar Clock/reference; outros caminhos não pertencem ao padrão registrado. A configuração não é controle de autenticação, autorização ou rejeição de query/payload.
+
+Na primeira passagem aplicável, `reference.initialize(clock.instant())` faz uma leitura de Clock e delega a criação da snapshot/data civil UTC imutável ao componente recebido de T018. Depois da inicialização bem-sucedida, atributo interno de nome qualificado no request recebe Boolean.TRUE. Se o MVC voltar a processar esse mesmo request, o marcador evita nova leitura de Clock e nova initialize; ele permanece durante a vida da requisição. Não há flag compartilhada entre requests, cache global, sessão ou recaptura em parsing/validação/IO/espera. O atributo guarda apenas o marcador, sem dado cadastral ou segredo; não é campo de wire. Falha de Clock/scope/initialize propaga como falha de preparação/processamento, sem catch que a transforme em entrada inválida ou substitua a referência.
+
+**Ordem revisada por fonte**: no [DispatcherServlet6.1.13](https://raw.githubusercontent.com/spring-projects/spring-framework/v6.1.13/spring-webmvc/src/main/java/org/springframework/web/servlet/DispatcherServlet.java), applyPreHandle precede a execução do HandlerAdapter; a captura foi colocada nessa fase, anterior à resolução dos argumentos/leitura JSON/@Valid do handler. O [MappedInterceptor6.1.13](https://raw.githubusercontent.com/spring-projects/spring-framework/v6.1.13/spring-webmvc/src/main/java/org/springframework/web/servlet/handler/MappedInterceptor.java) usa o caminho MVC previamente resolvido; [ServletRequestPathUtils6.1.13](https://raw.githubusercontent.com/spring-projects/spring-framework/v6.1.13/spring-web/src/main/java/org/springframework/web/util/ServletRequestPathUtils.java) documenta o caminho interno sem prefixo de contexto/servlet. Isso fundamenta o wiring por inspeção, não demonstra uma execução HTTP ou medição de chegada da rede. Não modifica processamento anterior de filtros/container nem leitores globais.
+
+Reutiliza o bean de Clock existente em OrderClockConfig e a seleção por tipo já adotada no projeto. Nos contextos009 explicitamente inicializados, CustomerRegistrationTestConfig já fornece seu Clock controlável @Primary; a definição não foi alterada. Não foi criado outro Clock, @Primary, @EnableWebMvc, filtro, reader, handler, controller ou regra de segurança. Não toca no relógio de pedidos/pagamentos/JWT, ObjectMapper, parser de login ou suporte global.
+
+Nenhuma leitura de corpo, parâmetros ou valores de campos; nenhum acesso a repository/serviço de negócio/encoder, disponibilidade, persistência ou decisão de perfil. Não há logs, alterações de resposta ou transformação dos campos raw. A referência recebida de T018 é o único tipo do pacote services usado; suas regras de inicialização única e UTC e as regras/asserções/controles de T021 permanecem integralmente recebidos. D009-01 não é modificada.
+
+### Procedimentos, evidências e limites
+
+Executadas somente leituras de identidade/status/seleção Git, `check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks`, inventários estáticos, consulta às fontes primárias, revisão do novo Java e comparação de preservação por SHA-256. O arquivo foi lido integralmente, pois não aparece no diff comum. SHA-256 de CustomerRegistrationWebConfig: `E8314FF8D810513C3DA9DD3907398BE96A0718B8A3CF762540A2EFCA15E20224`. Backups/manifestos temporários fora do repositório retêm os documentos recebidos e387arquivos protegidos, sem novo diretório de execução Maven.
+
+T022 é implementação sem seletor executável próprio. Conforme [tasks](tasks.md#implementation-strategy-e-critérios-de-conclusão), a aprovação comportamental depende das tarefas de execução/checkpoint. Nenhum Maven, --version, javac, JUnit, contexto Spring, banco, encoder ou HTTP iniciado. Não há exit Maven, console/Surefire, seleção efetiva, contagem executada ou reconciliação novos. Não repetidos baseline B, H-base, M, V-base, suíte completa ou arquivamentos anteriores.
+
+O diagnóstico T020 permanece histórico: M18aprovados; V-base359casos,153aprovados/206falhas funcionais, zero erros/ignorados e exit Maven1. T021 e T022 posteriores não foram compiladas/testadas nesta etapa; aquele resultado não aprova estas fontes. T027 continua a próxima execução conjunta prevista após T023–T026, mas seus seletores locais não comprovam automaticamente a cronologia HTTP deste interceptor. Captura antes do corpo, isolamento por requisição, raiz/`/api`, repetição de dispatch e travessia de meia-noite ainda exigem ensaios pertinentes de suporte/HTTP/referência, incluindo T047/T048. V-referência só será escrita em T048; nenhum teste futuro foi selecionado ou antecipado.
+
+### Preservação e conclusão restrita
+
+As387entradas recebidas protegidas por SHA-256 permanecem idênticas: implementação T021, DTO raw, entidade/repositories, referência T018, testes/vetores/asserções, controles de ausência de IO, suporte, contratos, dependências, seleção e artefatos históricos incluídos. Os1.086relatórios anteriores foram inventariados para conferir nomes/conteúdo/tamanho/LastWriteTimeUtc ao final; sem arquivamento ou reconciliação repetidos. Registros/evidências T001–T021 e diagnósticos auxiliares anteriores preservados.
+
+**Conclusão estática**: implementação delimitada de T022 escrita e revisada, sem impedimento estático identificado. Marcar somente T022; preservar T001–T021 e manter T023–T107 abertas. Não declarar compilação, GREEN, cronologia HTTP comprovada, checkpoint conjunto ou aceite funcional do cadastro. D009-01, seleção009 e **Gate IV005 como EXCEÇÃO DOCUMENTADA, sem PASS estrito** mantidos. Alterações desta tarefa somente o Java novo e quickstart/tasks009. Sem stage, commit, push, PR, troca de branch, alteração de main ou trabalho T023+. Conferências finais de diff, links, arquivos novos, whitespace e Git registradas abaixo.
+
+**Fechamento estático executado**: conteúdo integral do Java novo e diff documental revisados; três links locais resolvidos e fontes primárias versionadas consultadas. As387entradas recebidas seguem idênticas por SHA-256; T021, campos raw, asserções, vetores e suporte não editados. Prefixo recebido do quickstart preservado byte a byte; tasks recupera a entrada ao desfazer somente T022. T001–T022 marcadas e85itens T023–T107 abertos. Os1.086relatórios anteriores mantêm nomes/conteúdo/tamanho/LastWriteTimeUtc; nenhum relatório, execução, arquivamento ou reconciliação novos. `git diff --check` retornou0;12Java não rastreados conferidos por no-index sem diagnóstico de whitespace (exit1 pela diferença de arquivo novo). Avisos LF→CRLF dos documentos são informativos, sem mudança de configuração Git. Extensões ausentes antes/depois, sem hooks. Mesmos raiz/branch/HEAD/main/seleção009; nada staged. Git final com quatro rastreados modificados recebidos e12Java não rastreados (11recebidos e somente CustomerRegistrationWebConfig.java novo). Não há compilação, GREEN, cronologia HTTP ou aceite funcional comprovados nesta etapa; T023+ e validações executáveis posteriores permanecem pendentes.
+
+## T023 — dependência BC1.86 e integração binária focal (2026-10-25)
+
+**Entrada confirmada**: raiz `C:/Users/ronal/dscommerce-speckit`, branch real `009-cadastrar-cliente`, HEAD `ea820352fa1d1947132cc568a21c791ad4775c27`, seleção009. Recebidos quatro rastreados modificados (quickstart/tasks009, UserAccount e UserAccountRepository),12Java não rastreados conforme T022 e nada staged. Main recebida `de1d8ffb91f4c73d8ee2d10912d56c244164084b`. Skill speckit-implement restrita a T023; pré-requisitos com exit0 e FEATURE_DIR absoluto009, checklist requirements.md16/16, zero abertos, somente leitura. Ignore Java suficiente; extensões ausentes. Lidos T023 integralmente, dependências/procedimentos, R4/D009-01, contexto técnico do plano, modelo/contrato e registros pertinentes; conferidos POM e Wrapper.
+
+### Delta de produção e alcance autorizado
+
+Acrescentada somente a dependência direta `org.bouncycastle:bcprov-jdk18on:1.86` em [pom.xml](../../pom.xml), com versão explícita e escopo compile padrão. Não adicionado bcutil/bcpkix/bctls, outro encoder bean, plugin/repository/exclusão no POM, atualização de Boot/Security ou alteração de perfil aprovado. Remover em memória somente esse bloco recupera o POM recebido exatamente. SHA-256 do POM executado: `FF527E18A9C39417EE454A7D11BCCBF6C3C5086C5A957AC0C4BBAC35F40E4E82`.
+
+T023 exige conferir resolução/integração Java21/Security6.3.3 e avisos da versão. Não fornece seletor JUnit; os testes C serão escritos em T026 e executados em T027. Por isso, a verificação própria desta tarefa usou somente goals de dependência pelo Wrapper e uma invocação binária isolada, sem goal test, seletor fictício ou autoria de teste de aplicação. Nenhum componente de T024 foi criado, copiado ou simulado no código do projeto.
+
+### Execução identificada e resolução pelo Wrapper
+
+Run exclusivo `T023-dependency-20261025T191821566Z-cfc5893e`, em `target/feature009-evidence/`. Conferidos processos Java/Maven/Surefire antes de iniciar: nenhum ativo; nenhum resultado T023 aplicável ou BC1.86 no cache local inicial. Inventariados os1.086relatórios Surefire existentes e387arquivos recebidos protegidos por SHA-256, excluindo POM/quickstart/tasks editáveis. Preservados relatórios/logs/diagnósticos anteriores sem repetir arquivamentos concluídos.
+
+Executado primeiro `.\mvnw.cmd --version`, exit0: Maven3.9.16 e Java21.0.12.1 Azul. Única invocação Maven com goals nesta tarefa, sequencial:
+
+~~~powershell
+.\mvnw.cmd '--batch-mode' '--no-transfer-progress' '-DincludeScope=runtime' '-DoutputFile=C:\Users\ronal\dscommerce-speckit\target\feature009-evidence\T023-dependency-20261025T191821566Z-cfc5893e\resolved-dependencies.txt' '-Dmdep.outputFile=C:\Users\ronal\dscommerce-speckit\target\feature009-evidence\T023-dependency-20261025T191821566Z-cfc5893e\runtime-classpath.txt' 'org.apache.maven.plugins:maven-dependency-plugin:3.6.0:resolve' 'org.apache.maven.plugins:maven-dependency-plugin:3.6.0:build-classpath'
+~~~
+
+O plugin3.6.0 já estava disponível no cache; foi fixado apenas nesta linha de comando para reproduzir a ferramenta auxiliar, sem acrescentar/alterar plugin no POM. includeScope=runtime filtra dependências/classpath, não testes. Os goals diretos não executam compile/test do ciclo do projeto. Run-T023.ps1 capturou stdout/stderr por processo nativo ComSpec, persistindo o código numérico antes de arquivar.
+
+Início `2026-10-25T19:19:03.8659317Z`, término `2026-10-25T19:19:29.6973154Z`; **exit Maven0**, `BUILD SUCCESS`, console com os dois goals esperados. execution-before-archive.json retém esse exit com ReportsArchived=false antes de qualquer ZIP novo. Resolve registrou BC1.86 em compile; Boot continua3.3.4, todos os módulos Security listados continuam6.3.3, Spring6.1.13. Build-classpath produziu78entradas runtime distintas, exatamente uma BC e nenhuma variante concorrente. O POM e JAR1.86 foram resolvidos no repositório local; não houve falha de download/linkagem a classificar como RED de senha.
+
+SHA-256 dos JARs efetivos: BC1.86 `2AF190B300CBB0B35E248CCF5F4A06B6072030AEB3DA7A98EC73ABE5B4CB371F`; security-crypto6.3.3 `C621F9ACB47B435E6A82ACDA023875CDFB4216E8652B377642A5EAFB311241ED`; Boot3.3.4 `2D3B43ADE67D8B8FF23E80FA7F9F3D469A28413A826042808BCB3B718F13E01A`. runtime-jars.inventory.json identifica caminhos e hashes das78entradas. Hashes registram os binários usados, sem representar auditoria de vulnerabilidades ou verificação PGP adicional.
+
+### Invocação binária isolada Java21/Security/BC
+
+Após o encerramento Maven e nova conferência sem processos concorrentes, criado somente no diretório ignorado deste run T023DependencyBinaryProbe.java, sem package/aplicação/JUnit. O source launcher Java21 compila e executa esse único auxiliar; nenhuma fonte de src/main ou src/test é compilada por ele. Comando efetivo:
+
+~~~powershell
+& 'C:\Program Files\Zulu\zulu-21\bin\java.exe' '@C:\Users\ronal\dscommerce-speckit\target\feature009-evidence\T023-dependency-20261025T191821566Z-cfc5893e\binary-probe.args'
+~~~
+
+O argfile registra --class-path com as78entradas resolvidas, --source21 e caminho absoluto do auxiliar. Evita truncamento/quoting de classpath longo no shell. O programa exige Java21 e confere os CodeSource reais de Argon2PasswordEncoder e Argon2BytesGenerator nos JARs6.3.3/1.86. Constrói diretamente o encoder Spring com salt16/hash32/p1/m19456/t2 e faz uma única chamada encode com entrada descartável local. O resultado é imediatamente descartado, sem imprimir ou inspecionar PHC/salt/hash. A finalidade é exercitar a ligação binária real Spring→BC, que mera resolução de JAR não comprova. Não registra provider JCA global, não usa contas/banco e não implementa o hasher/verificador de T024.
+
+Início `2026-10-25T19:20:41.9617700Z`, término `2026-10-25T19:20:46.0601770Z`; **exit Java0**, persistido antes do arquivamento em binary-probe-before-archive.json. Stdout identifica Java21.0.12.1+1-LTS, fontes efetivas spring-security-crypto-6.3.3.jar/bcprov-jdk18on-1.86.jar e ARGON2_BINARY_INVOCATION_COMPLETED; stderr vazio. Sem NoClassDefFoundError, NoSuchMethodError ou outro erro binário observado nessa chamada. Não foi chamada matches, nem validado round-trip, formato/parametrização do resultado, aleatoriedade de salt, vetores oficiais, P/Q/NUL/Unicode, login, BCrypt, filtros, HTTP ou cadastro. Esses testes e os componentes reais continuam nas tarefas próprias; o perfil não foi reduzido para acelerar a verificação.
+
+### Avisos da versão e limites da pesquisa
+
+A [publicação oficial1.86](https://www.bouncycastle.org/resources/new-release-bouncy-castle-java-1-86/) confirma a release e apresenta correções de segurança, incluindo entradas PBE. Conferido o aviso primário [CVE-2026-97873](https://github.com/bcgit/bc-java/wiki/CVE%E2%80%902026%E2%80%9097873): ele trata contagem de iterações sem limite em PBES1/PKCS12 do provider JCA, indica versões anteriores a1.86 como afetadas e1.86 como corrigida. A [issue2497](https://github.com/bcgit/bc-java/issues/2497), que apontava1.86 como vulnerável, foi encerrada com rótulo invalid e correção do mantenedor. Não confundida com novo impedimento de Argon2 nem usada para trocar a versão aprovada.
+
+Revisão limitada às fontes oficiais consultadas em2026-10-25, não um scanner integral/SBOM de vulnerabilidades nem certificação de segurança da aplicação. Não há garantia universal de ausência de CVEs. As barreiras fechadas de parâmetros/formato PHC continuam obrigatórias no futuro T024, independentemente de correções de famílias PBE da biblioteca. Não houve upgrade automático ou alteração de D009-01 em resposta à pesquisa.
+
+**Diagnósticos auxiliares preservados separadamente**: a abertura inicial do Central pelo navegador falhou e a página de downloads teve timeout; a consulta HTTP local corrigida ao POM retornou200. Uma tentativa inicial de listar resultados HTTP em PowerShell tinha erro de sintaxe/pipe e não chegou a executar requests; não é execução Maven, falha de download Maven ou RED. Um caminho suposto de release notes retornou404; a publicação e o aviso oficiais acima forneceram as fontes usadas. Uma saída auxiliar de formatação expandiu metadados de strings PowerShell e foi truncada; arquivos/exit Maven permaneceram completos. Nenhum desses episódios repetiu o goal Maven ou a invocação Java. warning-review.json conserva essas distinções.
+
+### Reconciliação, preservação e conclusão
+
+Console/arquivos de dependência/classpath, fontes carregadas pelo Java e respectivos códigos reconciliados em reconciliation.json. **JUnit/Surefire não executados**: classes/métodos/herança/aninhados/parametrizações/contagens não são aplicáveis a estes goals. Não há seleção vazia de testes tratada como aprovação. Nenhum XML/TXT novo; os1.086relatórios recebidos mantêm nomes/conteúdo/tamanho/LastWriteTimeUtc. O sucesso Maven só aprova a resolução focal; o exit Java0 só comprova a chamada binária descrita. Nenhuma aprovação funcional do cadastro, C/M/V-base/B ou revisão completa foi atribuída.
+
+Depois de persistir exits numéricos Maven/Java,20arquivos novos deste run (logs, scripts/probe, argfile, versões, classpath, inventários e diagnósticos) foram arquivados e lidos de retorno com verificação por nome/tamanho/SHA-256 em dependency-evidence.zip. SHA-256 do ZIP `25975998DE0EF442B6381CE8B988C389DE513CEF0F9FBFCECCD973D76E86A946`, verificado em `2026-10-25T19:23:30.1802332Z`. Não inclui XML/TXT antigos; nenhum arquivamento histórico repetido. execution-before-archive.json e binary-probe-before-archive.json são anteriores ao ZIP. Os artefatos em target são locais/ignorados; este resumo é o registro durável de comandos, revisão, resultados e limites.
+
+**T023 satisfeita no escopo próprio**: dependência exata acrescentada, resolução e ligação binária focal observadas com Java21/Security6.3.3, avisos relevantes revistos, sem impedimento identificado. Marcar somente T023 e manter T024–T107 abertas. Preservados todos os387arquivos recebidos protegidos, incluindo regras T021, raw, referência temporal única T022, asserções, vetores, suporte, contratos e dependências anteriores. Somente POM/quickstart/tasks009 editados; nenhum Java novo em src, testes posteriores, baseline/H-base ou suíte completa antecipados. D009-01, seleção009 e **Gate IV005 como EXCEÇÃO DOCUMENTADA, sem PASS estrito** preservados. Sem stage, commit, push, PR, troca de branch ou alteração de main. Revisão final de diff, arquivos novos, links, whitespace e Git registrada abaixo.
+
+**Fechamento revisado**: diff completo do POM/documentos, conteúdo dos auxiliares novos, referências/links e whitespace conferidos. POM recupera exatamente a entrada removendo só a dependência BC1.86; seu hash final coincide com o usado pelo Maven. Os387arquivos recebidos protegidos permanecem idênticos, inclusive todos os12Java não rastreados. Prefixo recebido do quickstart preservado byte a byte; tasks recupera a entrada ao desfazer somente T023. T001–T023 marcadas e84itens T024–T107 abertos. Reconciliação focal registra Maven0/Java0,78JARs distintos e zero Surefire novos; os1.086relatórios anteriores permanecem íntegros. `git diff --check` retornou0;15arquivos de código (12Java recebidos e três auxiliares locais novos) passaram na checagem no-index, sem diagnóstico de whitespace, exit1 apenas pela diferença de arquivo novo. XML do POM e bloco/versão únicos conferidos estaticamente; nenhum validador ou teste de aplicação executado. Avisos LF→CRLF do checkout são informativos; configuração Git intocada. Extensões ausentes antes/depois, sem hooks. Mesmos raiz/branch/HEAD/main/seleção009, nada staged. Git final com cinco rastreados modificados (quatro recebidos e POM) e os mesmos12Java não rastreados; nenhum Java novo em src. Somente POM/quickstart/tasks009 editados nesta tarefa, além de evidências locais ignoradas. Compilação/testes do projeto e aceite funcional permanecem pendentes; sem stage, commit, push, PR ou alteração de main.
+
+## T024 — hasher e verificador fechado, sem execução (2026-10-25)
+
+**Entrada confirmada**: raiz `C:/Users/ronal/dscommerce-speckit`, branch real `009-cadastrar-cliente`, HEAD `ea820352fa1d1947132cc568a21c791ad4775c27`, seleção009. Recebidos cinco rastreados modificados (POM, quickstart/tasks009, UserAccount e UserAccountRepository), os12Java não rastreados de T023 e nada staged. Main recebida `de1d8ffb91f4c73d8ee2d10912d56c244164084b`. Skill speckit-implement limitada a T024; pré-requisitos com exit0 e FEATURE_DIR absoluto009; checklist requirements.md16/16, zero abertos, somente leitura. Ignore Java suficiente e extensões ausentes. Lidos T024 integralmente, dependências/procedimentos, R4/D009-01, plano/modelo/contrato e evidência T023; conferidas regras T021, bean BCrypt e fronteira de autenticação existentes.
+
+### Arquivos e responsabilidades
+
+| Arquivo novo | Implementação |
+| --- | --- |
+| [RegistrationPasswordHasher.java](../../src/main/java/com/devsuperior/dscommerce/security/RegistrationPasswordHasher.java) | Componente de cadastro, com Argon2PasswordEncoder privado, API hash(String), reconhecimento PHC fechado e caminho de verificação restrito ao pacote security. Não implementa PasswordEncoder nem declara outro bean desse tipo. |
+| [AccountPasswordVerifier.java](../../src/main/java/com/devsuperior/dscommerce/security/AccountPasswordVerifier.java) | Componente de verificação com API matches(String,String); recebe o PasswordEncoder BCrypt já existente e o hasher, selecionando pelo formato armazenado inteiro. Sem persistência, token, autenticação automática ou fallback. |
+
+RegistrationPasswordHasher usa explicitamente salt16/hash32/p1/m19456KiB/t2. O hash novo usa o domínio B de senha aprovado por RegistrationInputRules.isValidPassword, sem criar regra adicional, e passa o mesmo String raw ao encoder. Não há trim, normalização, troca de caixa, pré-hash, truncamento ou exclusão de NUL. O resultado só é retornado se satisfizer o PHC canônico009; falha gera exceção segura, sem retornar perfil inesperado. Não conserva senha/hash em campos, eventos ou toString nem acrescenta logging. Hash retornado é dado interno protegido para o fluxo futuro, não resposta HTTP.
+
+Por revisão das fontes pinadas, [Argon2PasswordEncoder6.3.3](https://raw.githubusercontent.com/spring-projects/spring-security/6.3.3/crypto/src/main/java/org/springframework/security/crypto/argon2/Argon2PasswordEncoder.java) gera salt por chamada e seleciona Argon2id; [Argon2Parameters1.86](https://raw.githubusercontent.com/bcgit/bc-java/r1rv86/core/src/main/java/org/bouncycastle/crypto/params/Argon2Parameters.java) fixa o default de versão em0x13/19. A implementação usa essa composição aprovada e também verifica v19 no resultado, sem perfil default de memória16MiB ou parâmetros reduzidos de teste. São fundamentos de fonte, não salt/versão/round-trip já comprovados executavelmente para este wrapper.
+
+### Reconhecimento antes de derivação
+
+| Hash recebido | Guarda escrita | Encaminhamento |
+| --- | --- | --- |
+| BCrypt legado | Comprimento59 para `$2$` ou60 para `$2a$`/`$2b$`/`$2y$`; custo decimal exato04–31; exatamente53 caracteres `[./A-Za-z0-9]`; matcher.matches sobre a string inteira. | Somente matches do BCrypt existente, com senha e hash originais; nenhuma chamada encode/upgradeEncoding. |
+| Argon2id009 | Comprimento total97 e prefixo literal `$argon2id$v=19$m=19456,t=2,p=1$` antes de matcher/grupos/decodificação. Estrutura inteira com salt22 e hash43 caracteres Base64 padrão, separados por um único `$`. Decodificação limitada a esses segmentos, tamanhos16/32bytes e reencodificação sem padding idêntica ao original. | Somente matches do Argon2 privado, depois de reconhecimento; o método interno do hasher repete a guarda para não encaminhar PHC recusado ao parser. |
+| Null/vazio/desconhecido, wrapper, formato malformado ou perfil não suportado | Comprimentos/prefixos/estrutura/custo/tamanhos/canonicalidade recusados. Não extrair parâmetros numéricos arbitrários nem alocar memória conforme valores fornecidos. | false, sem encoder, fallback, token ou escrita. Nenhum valor recusado é impresso. |
+
+A guarda PHC recusa Argon2i/d, v ausente/diferente, parâmetros reordenados/repetidos, zeros extras, sinais/custos excessivos, padding, Base64 URL-safe/não canônica, segmentos extras e sufixos. O tamanho e o cabeçalho fechados antecedem a alocação dos grupos e a decodificação; somente16/32bytes esperados são admitidos antes da KDF. A reencodificação compara canonicalidade, não corrige nem substitui o hash armazenado. Salt/hash e senha não são revelados em mensagens ou causas.
+
+O reconhecimento BCrypt não restringe custo ao10 atual nem altera formato/hash antigo. Conferida a gramática contra [BCryptPasswordEncoder6.3.3](https://raw.githubusercontent.com/spring-projects/spring-security/6.3.3/crypto/src/main/java/org/springframework/security/crypto/bcrypt/BCryptPasswordEncoder.java). Para Argon2, [Argon2EncodingUtils6.3.3](https://raw.githubusercontent.com/spring-projects/spring-security/6.3.3/crypto/src/main/java/org/springframework/security/crypto/argon2/Argon2EncodingUtils.java) aceita mais variantes que o perfil009; por isso a barreira local vem antes do parser/matches do Spring. Não foram importadas APIs internas do parser nem exercitadas derivações de custos extremos nesta tarefa.
+
+### Senha exata, legado e falhas
+
+AccountPasswordVerifier não aplica12/64, Unicode estrito ou lista de espaços009 aos candidatos de login; somente o hash decide entre os algoritmos reconhecidos. Senha nula retorna false sem encoder, sem introduzir normalização de senha não nula. O caminho hash de conta nova usa B; o caminho de verificação conserva o domínio histórico. A união A ∪ B na constraint do login continua atribuída a T025, sem alteração de LoginRequestDTO nesta tarefa.
+
+Formato recusado e resultado normal de não correspondência retornam false. RuntimeException operacional de encoder após reconhecimento continua exceção: o verificador lança IllegalStateException com mensagem fixa `Authentication could not be completed`, sem causa original, dados ou log. O método hash sanitiza RuntimeException de geração/parser/resultado inesperado em mensagem fixa de processamento, também sem causa original. Não há catch que transforme essa falha em mismatch, fallback para outro algoritmo, tentativa de recuperar conta ou escrita. Exceções não retêm mensagens de parser/encoder que possam conter segredo.
+
+**Fronteira HTTP ainda não integrada**: false e falha operacional são os resultados internos que T025 conectará às categorias401/500 existentes. AuthenticationService permanece recebido, inclusive lookup por name, dummy BCrypt, mensagens, emissão posterior de token e construtor. Não se afirma que o login atual já aceite hash Argon2, que emita401 por este novo verificador ou que traduza sua falha nesta revisão. T024 entrega componentes reais sem antecipar a integração T025 ou o serviço de cadastro posterior.
+
+SecurityConfig e seu único método bean PasswordEncoder retornando BCryptPasswordEncoder não foram editados. O Argon2 fica em campo privado de um componente que não implementa PasswordEncoder; nenhuma nova declaração @Bean/PasswordEncoder foi criada. Quantidade/tipo efetivos dos beans e comportamento legado ainda exigem testes pertinentes, não são aprovados apenas por inspeção. Não há upgradeEncoding, encode do legado, rehash, prefixação automática ou regravação de hashes; repositories/entidade/fixtures/seed permanecem recebidos.
+
+### Procedimentos, preservação e limites
+
+Executadas leituras Git, pré-requisitos, artefatos/fontes, conferência de APIs pinadas, revisão integral dos dois Java novos e inspeção da ordem das guardas, regex de correspondência completa, limites antes de Base64/KDF, caminhos de exceção e passagem dos Strings originais. Arquivos novos não aparecem no diff comum e foram examinados diretamente. Hashes desta autoria: RegistrationPasswordHasher `387FCFC6F8BEFA19EE03C45F9616588471322E144AFF1928DF6E965BD502A97C`; AccountPasswordVerifier `C96770A0C69EF2CD5D95DE7870798CF290F2D47E7C52812728751D08B60C2D9C`.
+
+T024 não exige seleção executável própria. Conforme [tasks](tasks.md#implementation-strategy-e-critérios-de-conclusão), autoria C é T026 e execução conjunta C/V-base/M/B é T027. Nenhum Maven, --version, javac, JUnit, contexto Spring, encoder, KDF, banco ou HTTP iniciado aqui. Não há exit Maven, console/Surefire, descoberta, herança/aninhados/parametrizações ou quantidades executadas novos a reconciliar. Não repetidos baseline B, H-base, seleção M/V-base, suíte completa, arquivamentos ou diagnóstico binário T023.
+
+**Históricos separados**: T020 permanece M18aprovados e V-base359casos/153aprovados/206falhas funcionais, zero erros/ignorados, exit Maven1, antes das implementações posteriores. T023 resolveu a dependência com Maven0 e fez uma chamada binária auxiliar Java0 diretamente ao Spring/BC, sem JUnit/componentes009; não é teste do projeto nem prova destes dois novos componentes. Não atribuir a esses registros compilação/funcionamento de T024, PHC/salt/round-trip, P/Q/NUL/Unicode, comparação de formatos, ausência dinâmica de chamadas/logs/escritas ou aceite funcional.
+
+Backups temporários externos ao repositório protegem documentos e388entradas recebidas por SHA-256. Todas permanecem idênticas, incluindo POM/BC1.86 (SHA-256 `FF527E18A9C39417EE454A7D11BCCBF6C3C5086C5A957AC0C4BBAC35F40E4E82`), regras locais, raw, referência temporal única, testes/asserções/vetores, suporte, contratos, D009-01 e evidências anteriores. Os1.086relatórios anteriores foram inventariados para conferir nomes/conteúdo/tamanho/LastWriteTimeUtc ao final. Nenhum diretório novo de execução ou auxiliar Java executável foi criado em target nesta etapa.
+
+**Conclusão estática restrita**: critérios de implementação T024 escritos e revisados, sem impedimento estático identificado; marcar somente T024, preservar T001–T023 e manter T025–T107 abertas. Aprovação comportamental/compilação dependem das tarefas de execução próprias. Alterações desta tarefa somente os dois Java novos e quickstart/tasks009. D009-01, seleção009 e **Gate IV005 como EXCEÇÃO DOCUMENTADA, sem PASS estrito** preservados. Sem stage, commit, push, PR, troca de branch ou alteração de main. Conferências finais de diff, arquivos novos, links, whitespace e Git registradas abaixo.
+
+**Fechamento estático executado**: conteúdo integral dos dois Java novos e diff documental revisados; três links locais resolvidos e fontes primárias pinadas consultadas. As388entradas recebidas seguem idênticas por SHA-256, incluindo POM/BC1.86, AuthenticationService, SecurityConfig,12Java recebidos, raw, referência, asserções e suporte. Prefixo recebido do quickstart preservado byte a byte; tasks recupera a entrada ao desfazer somente T024. T001–T024 marcadas e83itens T025–T107 abertos. Os1.086relatórios anteriores mantêm nomes/conteúdo/tamanho/LastWriteTimeUtc, zero novos; nenhum arquivamento ou reconciliação anterior repetido. `git diff --check` retornou0;14Java não rastreados conferidos por no-index, sem diagnóstico de whitespace, exit1 apenas pela diferença de arquivo novo. Avisos LF→CRLF do checkout são informativos; configuração Git intocada. Extensões ausentes antes/depois, sem hooks. Mesmos raiz/branch/HEAD/main/seleção009, nada staged. Git final com cinco rastreados modificados recebidos e14Java não rastreados (12recebidos e os dois componentes T024 novos). Somente os dois Java e quickstart/tasks009 receberam alteração nesta tarefa; não há compilação, teste/encoder/KDF novo, GREEN ou aceite funcional atribuído. T025+ e comprovação executável permanecem pendentes; sem stage, commit, push, PR ou alteração de main.
+
+## T025 — login aditivo e integração do verificador, sem execução (2026-10-25)
+
+**Entrada confirmada**: raiz `C:/Users/ronal/dscommerce-speckit`, branch real `009-cadastrar-cliente`, HEAD `ea820352fa1d1947132cc568a21c791ad4775c27`, seleção009. Recebidos cinco rastreados modificados (POM, quickstart/tasks009, UserAccount e UserAccountRepository),14Java não rastreados conforme T024 e nada staged. Main recebida `de1d8ffb91f4c73d8ee2d10912d56c244164084b`. Skill speckit-implement limitada a T025; pré-requisitos com exit0 e FEATURE_DIR absoluto009; checklist requirements.md16/16, zero abertos, somente leitura. Ignore Java suficiente e extensões ausentes. Lidos T025 integralmente, dependências/procedimentos, R4/D009-01, modelo/plano/contrato e evidências pertinentes; conferidos componentes T021/T024, parser, controller, autenticação e preparação dos testes existentes.
+
+### Arquivos e validação A ∪ B
+
+| Arquivo | Alteração desta tarefa |
+| --- | --- |
+| [ValidLoginPassword.java](../../src/main/java/com/devsuperior/dscommerce/validation/ValidLoginPassword.java) | Nova constraint Bean Validation para String, com grupos/payload padrão e a chave de mensagem NotBlank anterior. Não compõe @NotBlank com outra constraint. |
+| [LoginPasswordValidator.java](../../src/main/java/com/devsuperior/dscommerce/validation/LoginPasswordValidator.java) | Novo validator local sem dependências/IO, que aceita A ou B e nunca modifica o valor. |
+| [LoginRequestDTO.java](../../src/main/java/com/devsuperior/dscommerce/dto/LoginRequestDTO.java) | Somente import e substituição de @NotBlank por @ValidLoginPassword na senha. Name continua @NotBlank; nomes/tipos/ordem dos dois campos e representação raw permanecem. |
+| [AuthenticationService.java](../../src/main/java/com/devsuperior/dscommerce/services/AuthenticationService.java) | Injeção por construtor de AccountPasswordVerifier e uso de matches na conta encontrada. PasswordEncoder existente continua no caminho dummy do name inexistente. |
+| quickstart.md / tasks.md009 | Este registro e somente a marca T025. |
+
+LoginPasswordValidator escreve exatamente `value != null && (value.trim().length() > 0 || RegistrationInputRules.isValidPassword(value))`. A é o predicado anterior `password != null && password.trim().length() > 0`; a [fonte NotBlankValidator8.0.1](https://raw.githubusercontent.com/hibernate/hibernate-validator/8.0.1.Final/engine/src/main/java/org/hibernate/validator/internal/constraintvalidators/bv/NotBlankValidator.java) foi conferida para manter essa decisão. B reutiliza o helper puro recebido de T021, com Unicode válido, mínimo12 pontos de código, máximo64bytes UTF-8 e rejeição de senha só da lista fechada de espaços. O OR em curto-circuito mantém A inteiro, sem exigir B de quem já pertence a A.
+
+O trim produz apenas a decisão histórica; seu resultado não é armazenado no DTO nem entregue ao serviço/verificador. Não há trim/strip/normalização/truncamento/pré-hash da senha verificada. O validator não recebe serviço, repository, encoder, relógio ou referência de cadastro. Não consulta disponibilidade/dados nem declara nova validação global de login/name.
+
+**Consequências por inspeção da expressão, não testes executados**: senhas antigas não vazias após trim continuam aceitas pela validação, inclusive abaixo12/acima64bytes, NBSP isolado e Unicode malformado que A admitia. A não é intersectada com Unicode/limites009. Doze NULs ou U+001C, recusados por A mas válidos em B, podem alcançar a autenticação; null/vazio e somente espaços ASCII continuam inválidos. Aceitação na constraint não significa credencial correspondente: as entradas ampliadas poderão resultar em200/401/500 conforme a verificação/operação, conforme D009-01.
+
+O template de mensagem permanece `{jakarta.validation.constraints.NotBlank.message}` para conservar a interpolação anterior nos casos ainda inválidos. Os envelopes e mensagens externos do login não são redefinidos; o name segue sua constraint antiga. Não foi acrescentada constraint cadastral ao agregado, ao name de login ou à parcela histórica da senha.
+
+### Integração de autenticação e fronteiras preservadas
+
+AuthenticationService mantém uma consulta `findByName(name)`, exata e sem alias email/fullName. Com conta encontrada, passa os mesmos `password` e `userAccount.getPasswordHash()` a AccountPasswordVerifier recebido de T024. O retorno false continua resultando em InvalidCredentialsException com `Invalid credentials`. RuntimeException continua passando pelo helper AuthenticationProcessingException com `Authentication could not be completed`. O verificador mantém o reconhecimento fechado e sanitização de falha de encoder já escritos em T024; não foi modificado nesta tarefa.
+
+Com name inexistente, o serviço conserva a chamada direta ao PasswordEncoder BCrypt e o mesmo DUMMY_BCRYPT_HASH, seguida da rejeição genérica. Isso não é fallback para hash desconhecido de conta encontrada. JWT só é emitido depois de correspondência positiva, com os mesmos ID/name e TokenResponseDTO. Lookup, blocos de falha, constantes/mensagens, dummy, método de emissão e helper de processamento foram preservados; nenhuma escrita, encode/upgradeEncoding ou rehash acrescentado ao login.
+
+O construtor único recebe agora quatro dependências: UserAccountRepository, PasswordEncoder, JwtTokenService e AccountPasswordVerifier. Não há instanciação manual do hasher/verificador, construtor especial de teste, fallback para dependência ausente ou desvio de reconhecimento para acomodar placeholders. A injeção Spring é obrigatória como para as demais dependências; não foi criado PasswordEncoder bean adicional nem alterado SecurityConfig/POM.
+
+Parser efetivo [JacksonConfig.java](../../src/main/java/com/devsuperior/dscommerce/config/JacksonConfig.java) preservado: campos name/password e extração textValue sem transformação; LoginController mantém @Valid e POST /login com encaminhamento dos dois valores originais. Uma leitura auxiliar inicial procurou o nome presumido LoginRequestJsonConfig.java, que não existe; `rg` localizou o parser efetivo acima, lido e mantido intacto. Isso foi somente consulta de arquivo, sem execução ou falha de build. Contratos003/001–008, JSON, JWT, handlers, rotas e segurança não receberam edição.
+
+### Pendências estáticas dos testes e separação de execução
+
+Revisão encontrou AuthenticationServiceTest, AuthenticationInternalFailureTest e AuthenticationSensitiveLoggingTest com @InjectMocks e mocks de UserAccountRepository/PasswordEncoder/JwtTokenService, sem o novo AccountPasswordVerifier. Há ainda placeholders de hash em testes antigos que não satisfazem a gramática fechada T024. Não foram alterados testes, asserções, fixtures ou expectativas, nem adicionada aceitação desses placeholders ao verificador.
+
+O diagnóstico T027 deve distinguir eventual preparação/injeção de mock incompleta de falha funcional. A falta do novo mock pode deixar a dependência sem preparação nos cenários de conta encontrada; isso é uma pendência identificada por leitura, não falha executada/RED observado. Nenhum uso explícito `new AuthenticationService(...)` foi encontrado nas fontes de testes pesquisadas; a mudança não exige ajuste de chamada Java antiga detectada para compilar. Compilação e Mockito efetivo ainda não foram executados. T028 prevê adaptar mocks antigos ao novo limite quando necessário após o diagnóstico, preservando lookup exato/dummy/nenhuma escrita/token posterior; T094 continua o passo próprio de compatibilidade posterior. Não antecipados esses ajustes nesta tarefa.
+
+T025 não contém seleção executável própria. Conforme [tasks](tasks.md#implementation-strategy-e-critérios-de-conclusão), autoria dos testes C é T026 e execução conjunta C/V-base/M/B é T027. Nenhum Maven, --version, javac, JUnit, contexto Spring, encoder/KDF, banco ou HTTP iniciado. Não há exit Maven, console/Surefire, herança/aninhados/parametrizações ou quantidades executadas novos a reconciliar. Não repetidos baseline B, H-base, M, V-base, suíte completa, arquivamentos ou reconciliações anteriores.
+
+T023 continua evidência de resolução/ligação binária auxiliar, Maven0/Java0, não teste do projeto, da união A ∪ B ou deste fluxo integrado. T020 continua histórico M18aprovados e V-base359casos/153aprovados/206falhas funcionais, zero erros/ignorados, exit Maven1, anterior às fontes posteriores. Esses resultados não aprovam compilação, injeção, autenticação, senhas exatas, inclusão do domínio A, BCrypt/Argon2, formatos/401/500, logs, ausência de escrita ou regressões desta revisão. A expressão e os caminhos foram revistos estaticamente; não se declara funcionamento comprovado ou GREEN.
+
+### Preservação e conclusão delimitada
+
+Backups temporários externos ao repositório protegem os dois documentos, LoginRequestDTO/AuthenticationService recebidos e390entradas de fontes/artefatos por SHA-256. Destas,388permanecem idênticas; somente os dois arquivos de produção nomeados na tarefa mudaram. Componentes T024, POM/BC1.86, regras T021, campos raw009, referência temporal única, testes/asserções/vetores, suporte, contratos e seleção preservados. Os1.086relatórios recebidos foram inventariados para conferir nomes/conteúdo/tamanho/LastWriteTimeUtc ao final; nenhum diretório novo de execução em target foi criado.
+
+Hashes dos novos Java: LoginPasswordValidator `EFBC89F9C12BE7927138834D3E86DDF08CB2EBB0D4399002A1A20134066C7CA2`; ValidLoginPassword `5D72D89CED4C0CC5C40D88A12D44F143A3BD1D00ECB3356DCD24BBBAE0291518`. Fontes novas, deltas de DTO/serviço, guardas, contrato, fluxo de falha/token e referências revistos. A pendência de preparação dos testes será tratada nos passos próprios; não há impedimento estático remanescente na implementação delimitada de T025 identificado nesta revisão.
+
+**Conclusão somente de implementação**: marcar T025, preservar T001–T024 e manter T026–T107 abertas. Somente os dois Java novos, LoginRequestDTO, AuthenticationService e quickstart/tasks009 editados nesta tarefa. Aprovação executável e aceite funcional continuam pendentes. D009-01, seleção009 e **Gate IV005 como EXCEÇÃO DOCUMENTADA, sem PASS estrito** preservados. Sem stage, commit, push, PR, troca de branch ou alteração de main. Conferências finais de diff, arquivos novos, links, whitespace e Git registradas abaixo.
+
+**Fechamento estático executado**: conteúdo integral dos dois Java novos e deltas de LoginRequestDTO/AuthenticationService/documentos revisados; seis links locais resolvidos e fonte pinada do predicado A consultada. Das390entradas recebidas protegidas,388seguem idênticas e somente DTO/serviço de login receberam a alteração autorizada. Componentes T024, POM,14Java recebidos, parser/controller, raw009, referência temporal, asserções e suporte não editados. Prefixo recebido do quickstart preservado byte a byte; tasks recupera a entrada ao desfazer somente T025. T001–T025 marcadas e82itens T026–T107 abertos. Os1.086relatórios anteriores mantêm nomes/conteúdo/tamanho/LastWriteTimeUtc; nenhum relatório/execução/arquivamento ou reconciliação novos. `git diff --check` retornou0;16Java não rastreados conferidos por no-index sem diagnóstico de whitespace, exit1 apenas pela diferença de arquivo novo. Avisos LF→CRLF do checkout são informativos; configuração Git intocada. Extensões ausentes antes/depois, sem hooks. Mesmos raiz/branch/HEAD/main/seleção009; nada staged. Git final com sete rastreados modificados (cinco recebidos e DTO/serviço de login) e16Java não rastreados (14recebidos e os dois validators/constraint T025 novos). Somente os seis arquivos descritos nesta tarefa editados; não há compilação, GREEN ou funcionamento comprovado atribuído. Preparação dos mocks antigos/formatos placeholder e aprovação executável permanecem para os passos próprios, sem enfraquecer asserções ou classificar preparação como RED. Sem stage, commit, push, PR ou alteração de main.
+
+## T026 — autoria dos testes C, sem compilação ou execução (2026-10-25)
+
+**Entrada confirmada**: raiz `C:/Users/ronal/dscommerce-speckit`, branch real `009-cadastrar-cliente`, HEAD `ea820352fa1d1947132cc568a21c791ad4775c27`, seleção009. Recebidos sete rastreados modificados (POM, quickstart/tasks009, LoginRequestDTO, UserAccount, UserAccountRepository e AuthenticationService),16Java não rastreados conforme T025 e nada staged. Main recebida `de1d8ffb91f4c73d8ee2d10912d56c244164084b`. Pedido tratado como T026 pelo fluxo speckit-implement conforme o corpo e histórico da solicitação; nenhuma configuração de segurança do agente alterada. Pré-requisitos com exit0 e FEATURE_DIR absoluto009; checklist requirements.md16/16, zero abertos, somente leitura. Ignore Java suficiente e extensões ausentes. Lidos T026 integralmente, dependências T023–T025 e procedimentos, R4/D009-01, plano/modelo/contrato e evidências recebidas; conferidas também as ampliações T058–T063 para preservar a separação de escopo.
+
+### Arquivos criados e naturezas de prova escritas
+
+| Arquivo novo | Escopo escrito |
+| --- | --- |
+| [CustomerRegistrationCryptoTest.java](../../src/test/java/com/devsuperior/dscommerce/security/CustomerRegistrationCryptoTest.java) | Wrapper/Argon2 e BCrypt reais, perfil/salt/round-trip, duas credenciais históricas fixas sem encode/upgrade/save e ordem lookup→verificação→token. |
+| [CustomerRegistrationFormatTest.java](../../src/test/java/com/devsuperior/dscommerce/security/CustomerRegistrationFormatTest.java) | Reconhecedor/verificador e AuthenticationService reais, encoders e fronteiras de repository/JWT mockados para despacho, rejeições e falha operacional sem derivar custos hostis. |
+| [CustomerRegistrationLoginValidationTest.java](../../src/test/java/com/devsuperior/dscommerce/validation/CustomerRegistrationLoginValidationTest.java) | Bean Validation real sobre LoginRequestDTO, esperados literais de A ∪ B, constraint de name preservada e passagem da senha exata ao novo limite de verificação antes do token. |
+
+Todos são testes concretos planos, @Execution(SAME_THREAD), sem herança de testes, @Nested, testes dinâmicos ou bootstrap Boot/HTTP/banco. Métodos de lifecycle, helpers, records de vetores e enum Algorithm não acrescentam testes. As instâncias/factories só serão criadas quando JUnit executar os métodos; esta autoria não invocou providers Java ou componentes. Não alterados implementação, POM, testes existentes, fixtures, asserções ou controles de ausência de IO recebidos.
+
+### Criptografia real e oráculos independentes
+
+CryptoTest instancia o wrapper recebido de T024 e o verificador real. O BCrypt é uma spy de `new SecurityConfig().passwordEncoder()`, isto é, da instância produzida pelo método de configuração existente; isso não inicia contexto nem comprova quantidade de beans. A futura seleção B de T027 inclui o PasswordEncoderConfigurationTest existente, que verifica o único bean BCrypt em contexto. Uma leitura auxiliar inicial procurou esse teste em security; `rg` localizou o caminho efetivo [config/PasswordEncoderConfigurationTest.java](../../src/test/java/com/devsuperior/dscommerce/config/PasswordEncoderConfigurationTest.java), lido e mantido intacto. Não houve falha de build ou execução nessa consulta de arquivo.
+
+O perfil esperado é literal, independente dos constants/supports/parser de produção: PHC inteiro97, seis segmentos, argon2id/v19/m19456/t2/p1, salt22/hash43 em Base64 padrão canônica sem padding e tamanhos decodificados16/32bytes. Duas derivações da mesma senha devem produzir salts distintos, sem exigir igualdade de hashes. Não se reduz custo para teste. Quatro casos de round-trip escrevem correspondência da sequência escolhida e rejeição de uma sequência diferente: ASCII/caixa, bordas de espaços,12NULs e Unicode suplementar/BMP. Exigem ausência de chamada BCrypt no caminho Argon2.
+
+As credenciais BCrypt SHORT/LONG são dados fixos recebidos de LegacyCredential/T007, não hashes recalculados pelo teste. Cobrem senha histórica de3caracteres e98bytes, fora dos limites009, com matches real. O teste guarda snapshot UTF-8 do hash e exige igualdade de valor/bytes após o login. Inspeção das invocações permite somente matches no encoder, findByName no repository e issueToken depois da verificação; exclui encode/upgradeEncoding/save/flush e outras operações desse limite. Não exige que BCrypt diferencie o sufixo além de sua limitação histórica de72bytes; não aplica retrospectivamente a distinção integral de senhas novas.
+
+Esses testes unitários observam chamadas e objeto em memória, não escrita física/JPA/commit, conservação financeira, JWT criptográfico ou HTTP. Repository/JWT permanecem mocks; o retorno compara campos do token sem imprimi-los, não identidade do objeto. Comparações de senha/hash usam igualdade exata de sequência/bytes, não identidade em memória de Strings. Provas JDBC/HTTP/legado completo continuam nas tarefas próprias.
+
+### Formatos, custos e categorias
+
+FormatTest usa PHC estrutural canônico sintético (salt/hash de bytes zero) e corpos BCrypt sintéticos somente para testar gramática/despacho com encoders mockados. Eles não representam credenciais criptograficamente correspondentes. Há12combinações BCrypt de versões2/2a/2b/2y e custos04/10/31, mais um PHC009 canônico; cada caso exige exatamente um matches do algoritmo escolhido e zero interação com o outro. Nunca deriva BCrypt de custo31 ou Argon2 de custo fornecido pelo caso.
+
+Dezenove formatos recusados exigem InvalidCredentialsException/mensagem fixa, nenhum encoder chamado, nenhum token, somente lookup de leitura e hash recebido sem correção/regravação. Incluem fronteiras de tamanho, canonicalidade Base64, revisão/custo BCrypt e memória hostil; o oráculo não chama supports de produção para decidir esperado. Dois casos de falha operacional reconhecida, BCRYPT/ARGON2, exigem AuthenticationProcessingException, mensagem fixa, causa sanitizada sem cadeia original, sem fallback, token ou escrita. Não há esperado genérico de qualquer2xx/4xx nem captura que transforme preparação em RED funcional.
+
+Ampliar a matriz de formatos em T060 continua necessário: este conjunto é a base de T026, não fechamento exaustivo da US3. Vetor oficial independente RFC9106, P/Q/P+NUL em ambos os sentidos, variações ampliadas de Unicode/limites, logs com canários e HTTP de senha permanecem T058–T063 e passos próprios. Não foram antecipados esses testes ou os ajustes condicionais T028.
+
+### Validação real A ∪ B e passagem da senha
+
+LoginValidationTest cria ValidatorFactory real HibernateValidator em cada caso e a fecha em @AfterEach; não mocka o validator e não usa RegistrationInputRules para calcular os resultados esperados. Os13vetores têm sete decisões literais de aceitação e seis de rejeição: amostras históricas abaixo12/acima64, NBSP/Unicode malformado admitidos por A; interseção ASCII12; NUL12/U+001C12 admitidos por B; null/vazio/espaços/tabulações e NUL11 recusados. Confere preservação raw em finally, sem renderizar DTO/ConstraintViolation.
+
+Um teste de metadados/validação exige somente NotBlank em name e ValidLoginPassword em password, sem interseção NotBlank da senha, e conserva a política histórica de name. Dois casos aceitos (A com espaços externos e B com NUL12) passam por validação real e AuthenticationService com mock explícito de AccountPasswordVerifier; inspecionam a sequência exata recebida, hash inalterado, ordem lookup→verificação→token e ausência de bypass/nenhuma escrita. Esse mock isola orquestração/preservação de entrada; a prova criptográfica real está separada em CryptoTest. Não se interpreta retorno mockado como autenticação real ou HTTP200.
+
+A preparação dos testes novos usa o construtor atual de quatro dependências. Os testes antigos com @InjectMocks sem AccountPasswordVerifier e placeholders incompatíveis, já diagnosticados estaticamente em T025, não receberam edição. T027 deve distinguir eventual falta de preparação desses mocks de falha funcional; T028 continua responsável por ajustes condicionais fundamentados. Nenhum teste antigo foi contornado, desabilitado ou enfraquecido.
+
+### Inventário previsto — não executado
+
+| Classe | Métodos JUnit | Casos previstos |
+| --- | ---: | ---: |
+| CustomerRegistrationCryptoTest |3 |7 |
+| CustomerRegistrationFormatTest |3 |34 |
+| CustomerRegistrationLoginValidationTest |3 |16 |
+| Total C |9 |57 |
+
+| Método | Fonte / índices previstos | Casos |
+| --- | --- | ---: |
+| generatedHashesHaveTheExactApprovedProfileAndIndependentFreshSalts | Simples |1 |
+| realArgon2RoundTripsPreserveTheExactChosenSequence | roundTripCases,1–4: ascii, outer-spaces, nul, unicode |4 |
+| fixedLegacyBcryptCredentialsAuthenticateWithoutEncodingUpgradingOrSaving | Enum LegacyCredential,1–2: SHORT, LONG |2 |
+| recognizedFormatsDispatchToExactlyOneMatchingAlgorithm | recognizedFormats,1–12: versão2/2a/2b/2y, cada uma com04/10/31;13: argon2-canonical |13 |
+| rejectedFormatsStopAuthenticationBeforeEncodersTokenOrWrites | unrecognizedFormats,1–19 na ordem abaixo |19 |
+| recognizedEncoderFailuresRemainProcessingFailuresWithoutFallback | Enum Algorithm,1–2: BCRYPT, ARGON2 |2 |
+| realDtoValidationIncludesHistoricalAAndRegistrationBWithoutChangingRawValues | domainCases,1–13 na ordem abaixo |13 |
+| nameKeepsItsOldConstraintAndOnlyPasswordUsesTheAdditiveConstraint | Simples |1 |
+| validatedPasswordsReachTheNewVerificationBoundaryUnchangedBeforeTokenIssuance | rawForwardingCases,1–2: raw-a-outer-spaces, raw-b-nul12 |2 |
+
+IDs de unrecognizedFormats em ordem1–19: null, empty, plain-text, wrapped-bcrypt, argon2i, version16, memory16384, hostile-memory, padded-salt, short-salt, short-digest, noncanonical-salt, noncanonical-digest, url-safe-salt, phc-suffix, bcrypt-2x, bcrypt-cost03, bcrypt-cost32, bcrypt-short-body.
+
+IDs de domainCases em ordem1–13: a-short, a-over64bytes, a-nbsp, a-malformed-unicode, overlap-ascii12, b-nul12, b-control001c12, invalid-null, invalid-empty, invalid-space, invalid-spaces12, invalid-tabs12, invalid-nul11.
+
+São sete métodos parametrizados/55invocações previstas e dois simples, sem herdados/aninhados/dinâmicos. Contagens/IDs conferidos por leitura/expansão textual de laços/Stream e enum recebido, sem invocar providers Java. Manifesto temporário expected-c-inventory.json identifica classe/método/ID/índice/hash. A ausência de omissões/duplicatas na descoberta efetiva só poderá ser confirmada nos relatórios futuros, não por esse inventário estático.
+
+### Procedimentos, limites e preservação
+
+Próximo passo T027: conferir processos/resultados aplicáveis, preservar relatórios sem repetir arquivos já arquivados, inventariar C/V-base/M/B na revisão efetiva e executar os seletores unidos conforme [tasks](tasks.md#seletores-focais-e-evidência--procedimentos-futuros), em uma invocação Wrapper sequencial identificada. C é `CustomerRegistrationCryptoTest*,CustomerRegistrationFormatTest*,CustomerRegistrationLoginValidationTest*`; V-base é CustomerRegistrationValidationTest*, M é CustomerRegistrationSchemaTest*, B permanece o seletor completo aprovado. V-referência só após T048, não entra nessa união. Capturar exit numérico antes de arquivar e reconciliar console/XML/TXT por classe/método/índice, incluindo herança/nested de B. Um sucesso global não substitui a descoberta nominal dos57casos C previstos.
+
+Na autoria foram executadas somente leituras, pré-requisitos, conferência de APIs/assinaturas, inventário textual e preservação. O uso de Invocation.getSequenceNumber para ordem foi conferido na [fonte Mockito5.11.0](https://raw.githubusercontent.com/mockito/mockito/v5.11.0/src/main/java/org/mockito/invocation/Invocation.java), versão gerenciada pelo Boot3.3.4 local. Métodos/assertions não imprimem senhas, hashes, tokens ou argumentos completos de mocks: usam booleanos, comprimentos, nomes de métodos e IDs. Records de vetores sobrescrevem toString com ID; enum displays são nomes. Isso escreve proteção dos próprios oráculos, sem aprovar ausência universal de vazamento de todos os canais da aplicação.
+
+**Nenhuma execução nesta tarefa**: não houve Maven, --version, javac, JUnit, instanciação de encoder/factory/contexto, KDF, banco ou HTTP. Não há exit Maven, console/Surefire ou testes aprovados/falhos/ignorados novos. Não compiladas as fontes recebidas/novas, nem repetidos baseline B, H-base, M/V-base, prova binária T023, suíte completa, arquivamentos ou reconciliações históricas. Históricos T020/T023 continuam separados e não aprovam C, preparação de mocks, runtime do projeto ou aceite funcional. Não se pressupõe RED: T023–T025 já fornecem implementação real e eventual GREEN inicial deve ser registrado por execução futura, sem remover comportamento correto.
+
+SHA-256 das fontes novas: CryptoTest `F909BAC6CD84B23139B670B700EF41043FC486204C757FB8D70518A9CB10250B`; FormatTest `C58F1A87879DDB29ED95250B1A5D79AF0E70941D4FBD135EC1AE98975C3F4617`; LoginValidationTest `A222A4C34ABE02D24817A8451050B85E020536EC5A9DF95581FB482DBCB7EDEF`. Backups temporários externos ao repositório protegem documentos e392entradas recebidas por SHA-256; todas permanecem idênticas. Produção, dependência aprovada, asserções/suporte, raw, referência temporal única, diagnósticos anteriores, D009-01 e contratos preservados. Os1.086relatórios recebidos foram inventariados para conferir nomes/conteúdo/tamanho/LastWriteTimeUtc ao final; nenhum diretório novo de execução em target criado.
+
+**Conclusão somente de autoria**: T026 escrita e revisada estaticamente, sem impedimento estático identificado; marcar somente T026, preservar T001–T025 e manter T027–T107 abertas. Alterações desta tarefa somente os três Java novos e quickstart/tasks009. Compilação, descoberta, resultados e aceite funcional continuam pendentes. Seleção009 e **Gate IV005 como EXCEÇÃO DOCUMENTADA, sem PASS estrito** preservados. Sem stage, commit, push, PR, troca de branch ou alteração de main. Conferências finais de diff, arquivos novos, links, whitespace e Git registradas abaixo.
+
+**Revisão final T026**: lidos integralmente os três Java novos e o acréscimo documental; diff desta tarefa em tasks altera exclusivamente `[ ] T026` para `[X] T026`. `git diff --check`: exit0. Para os19Java não rastreados, `git -c core.autocrlf=false diff --no-index --check -- /dev/null <caminho>` não apontou whitespace; todos os arquivos novos também foram considerados na revisão estática. Conferidos os cinco destinos locais/âncora e a fonte externa de API citada. Manifestos de preservação confirmaram392entradas recebidas idênticas por SHA-256, prefixo anterior do quickstart de305.147bytes intacto e1.086arquivos Surefire com os mesmos nomes, tamanhos, hashes e timestamps; isso é conferência de conservação, não nova reconciliação de resultados de testes.
+
+Estado final conferido com `git rev-parse --show-toplevel`, `git branch --show-current`, `git rev-parse HEAD`, `git rev-parse main`, leitura de `.specify/feature.json`, `git status --short --untracked-files=all` e `git diff --cached --name-only`: mesma raiz/branch/HEAD/main/seleção009, sete rastreados modificados e19Java não rastreados (16recebidos+3T026), nada staged. T001–T026 marcadas;81tarefas T027–T107 abertas. `.specify/extensions.yml` continua ausente, sem pós-hook aplicável. Nenhum comando Maven/Java/JUnit nesta tarefa e nenhum aceite executável novo; compilação/descoberta/integração ficam para T027, com eventual correção fundamentada em T028.
+
+
+## T027 — diagnóstico conjunto C/V-base/M/B, conjunto reprovado (2026-10-25)
+
+### Estado recebido e preparação
+
+Confirmados raiz `C:/Users/ronal/dscommerce-speckit`, branch real `009-cadastrar-cliente`, HEAD `ea820352fa1d1947132cc568a21c791ad4775c27`, seleção local009, sete rastreados modificados e19Java não rastreados conforme T026, nada staged. Main permanece `de1d8ffb91f4c73d8ee2d10912d56c244164084b`. Skill speckit-implement aplicada exclusivamente a T027; pré-requisitos `check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks` exit0, FEATURE_DIR absoluto009. Checklist requirements.md16/16, zero abertos, somente leitura; ignore Java suficiente e extensões ausentes.
+
+Lidos T027 integralmente, dependências T023–T026, diagnósticos anteriores e procedimentos de [tasks](tasks.md#seletores-focais-e-evidência--procedimentos-futuros), constituição/plano/modelo/research/contrato pertinentes. A regra de conclusão de diagnóstico em [tasks](tasks.md#implementation-strategy-e-critérios-de-conclusão) permite registrar causa real de impedimento; não equivale a checkpoint conjunto aprovado. Nenhuma implementação, teste, asserção, fixture ou expectativa editada.
+
+Processos consultados com `Get-CimInstance Win32_Process`: servidor Maven do IntelliJ PID6736 (`org.jetbrains.idea.maven.server.RemoteMavenServer36`) preexistente, sem processo Launcher de build Wrapper, ForkedBooter/Surefire ou cmd executando mvnw/mvn concorrente. Não encerrado o servidor da IDE. Rechecagem imediatamente antes do Wrapper conservada em java-processes-before.json/active-builds-before.json. Evidências existentes terminavam em T023 e autoria T026; nenhuma execução aplicável da união C/V-base/M/B nesta revisão, nem relatório C anterior. B histórico antecede mudanças de produção/login; V-base/M de T020 antecede T021–T025. Por isso a união prescrita é necessária e não repete baseline/H-base como tarefa independente.
+
+Inventariadas397entradas recebidas (rastreados+19Java) por SHA-256, incluindo os dois documentos antes do acréscimo. Os1.086relatórios Surefire recebidos foram conferidos por nome/tamanho/hash e já estavam cobertos pelos ZIPs anteriores: zero arquivo descoberto sem preservação, nenhum arquivamento antigo repetido. Backup dos documentos, diff da revisão e manifestos ficam no run exclusivo `target/feature009-evidence/T027-C-Vbase-M-B-20261025T220831883805Z-1b01792e/`.
+
+### Seleção e única execução de testes
+
+Somente **C + V-base + M + B**, sem exclusões, métodos isolados ou padrões de autoria futura. V-referência (`CustomerRegistrationReferenceTest*`, T048), H-base/H-HTTP, U1–U5/R/F e suíte completa não selecionados. Antes da execução, fontes selecionadas e providers foram confrontados com inventários existentes cujos hashes continuavam iguais. As13classes de B são as mesmas fontes recebidas; os62métodos e155nomes de casos históricos serviram como inventário nominal esperado, não como aprovação reaproveitada. M11métodos/18casos e V-base3/359 conferidos contra as fontes de T020; C3classes/9métodos/57casos contra a autoria T026.
+
+`.\mvnw.cmd --version`: exit0; Maven3.9.16, Java21.0.12.1 Azul, Windows amd64/UTF-8. Surefire3.2.5/JUnitPlatformProvider observados no log. **Uma única invocação com goal test**, sequencial e identificada:
+
+~~~powershell
+.\mvnw.cmd '-Dtest=CustomerRegistrationCryptoTest*,CustomerRegistrationFormatTest*,CustomerRegistrationLoginValidationTest*,CustomerRegistrationValidationTest*,CustomerRegistrationSchemaTest*,Login*Test*,Authentication*Test*,AuthenticatedAccount*Test*,Jwt*Test*,PasswordEncoderConfigurationTest*,UserAccount*Test*,AdminProductTestSupportTest*,OrderPublicRegressionIntegrationTest*' '-Dsurefire.failIfNoSpecifiedTests=true' '-DfailIfNoTests=true' '-Dsurefire.reportNameSuffix=T027-C-Vbase-M-B-20261025T220831883805Z-1b01792e' test
+~~~
+
+Captura por `T027-run.ps1`, ProcessStartInfo/ComSpec com redirecionamento nativo de stdout/stderr para console-T027.log. Início UTC `2026-10-25T22:10:25.5702696Z`; término `2026-10-25T22:17:00.6674918Z`; console `Total time: 06:21 min`, `BUILD FAILURE`. **Exit numérico Maven1**, obtido de Process.ExitCode e persistido em execution.json e execution-before-archive.json com ReportsArchived=false **antes** do arquivamento. O auxiliar de captura terminou com exit0; isso não substitui Maven1. Compilaram117fontes de produção e161fontes de teste em release21; compilar fontes de teste não significa executá-las todas. Não houve erro de compilação/resolução que impedisse a descoberta.
+
+### Reconciliação efetiva console/XML/TXT
+
+**18classes,85métodos,589casos:498aprovados,5falhas,86erros,0ignorados.** A seleção e cada contagem de XML foram reconciliadas com os18TXT,18resumos de classe,18linhas Running e resumo global do console. Não somados relatórios históricos ou casos duplicados. São589casos computados pelo Surefire: os83erros de contexto abaixo não alcançaram os corpos/asserções HTTP.
+
+| Grupo | Classes | Métodos | Casos | Aprovados | Falhas | Erros | Ignorados |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| C |3 |9 |57 |57 |0 |0 |0 |
+| V-base |1 |3 |359 |359 |0 |0 |0 |
+| M |1 |11 |18 |18 |0 |0 |0 |
+| B afetada |13 |62 |155 |64 |5 |86 |0 |
+| União |18 |85 |589 |498 |5 |86 |0 |
+
+| Classe concreta | Métodos | Casos | Aprovados | Falhas | Erros | Ignorados |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| AdminProductTestSupportTest | 9 | 9 | 9 | 0 | 0 | 0 |
+| JwtConfigurationTest | 6 | 6 | 6 | 0 | 0 | 0 |
+| PasswordEncoderConfigurationTest | 1 | 1 | 1 | 0 | 0 | 0 |
+| LoginControllerTest | 12 | 83 | 0 | 0 | 83 | 0 |
+| OrderPublicRegressionIntegrationTest | 1 | 14 | 14 | 0 | 0 | 0 |
+| CustomerRegistrationSchemaTest | 11 | 18 | 18 | 0 | 0 | 0 |
+| UserAccountRepositoryTest | 4 | 4 | 4 | 0 | 0 | 0 |
+| UserAccountRoleRepositoryTest | 8 | 11 | 11 | 0 | 0 | 0 |
+| CustomerRegistrationCryptoTest | 3 | 7 | 7 | 0 | 0 | 0 |
+| CustomerRegistrationFormatTest | 3 | 34 | 34 | 0 | 0 | 0 |
+| AuthenticatedAccountServiceIntegrationTest | 3 | 6 | 6 | 0 | 0 | 0 |
+| AuthenticatedAccountServiceTest | 5 | 8 | 8 | 0 | 0 | 0 |
+| AuthenticationInternalFailureTest | 4 | 4 | 1 | 3 | 0 | 0 |
+| AuthenticationSensitiveLoggingTest | 4 | 4 | 2 | 0 | 2 | 0 |
+| AuthenticationServiceTest | 4 | 4 | 1 | 2 | 1 | 0 |
+| JwtTokenServiceTest | 1 | 1 | 1 | 0 | 0 | 0 |
+| CustomerRegistrationLoginValidationTest | 3 | 16 | 16 | 0 | 0 | 0 |
+| CustomerRegistrationValidationTest | 3 | 359 | 359 | 0 | 0 | 0 |
+
+Os85nomes de métodos correspondem integralmente às declarações nas fontes. Há64métodos simples e21parametrizados/525invocações, total589. Para cada parametrização conferidos quantidade, índices1–N sem lacunas e identidade nominal única por classe/método/índice; em B também correspondem os155nomes efetivos históricos. C tem sete parametrizados/55invocações e dois simples. V-base expande357vetores+2simples; M expande cinco colunas+quatro conjuntos de roles+9simples. IDs e ordem de C seguem o inventário T026; nomes XML identificam assinatura/índice, e o vínculo aos IDs vem do provider-fonte de mesmo hash, não de uma alegação de que o XML imprime todos os IDs. Nenhuma omissão, classe/método extra ou duplicata; não apenas igualdade do total.
+
+Não há @Nested, testes dinâmicos ou casos JUnit herdados nessa união. `OrderPublicRegressionIntegrationTest extends OrderHttpTestSupport`, pai declarado em [OrderControllerTest.java](../../src/test/java/com/devsuperior/dscommerce/controllers/OrderControllerTest.java), herda @BeforeEach/@AfterEach e helpers; o corpo do pai não declara testes. Classes internas de apoio não são testes adicionais. Contextos diferem: C unitário/ValidatorFactory real, V-base Bean Validation real sem IO, M JPA/H2 opt-in009, B mistura context runners/slice MVC/JPA e Boot/H2/MockMvc. Não são18servidores HTTP reais.
+
+| Método C da T026 | Previsto | Efetivo |
+| --- | ---: | --- |
+| `generatedHashesHaveTheExactApprovedProfileAndIndependentFreshSalts` | 1 | 1 aprovado |
+| `realArgon2RoundTripsPreserveTheExactChosenSequence` | 4 | 4 aprovados |
+| `fixedLegacyBcryptCredentialsAuthenticateWithoutEncodingUpgradingOrSaving` | 2 | 2 aprovados |
+| `recognizedFormatsDispatchToExactlyOneMatchingAlgorithm` | 13 | 13 aprovados |
+| `rejectedFormatsStopAuthenticationBeforeEncodersTokenOrWrites` | 19 | 19 aprovados |
+| `recognizedEncoderFailuresRemainProcessingFailuresWithoutFallback` | 2 | 2 aprovados |
+| `realDtoValidationIncludesHistoricalAAndRegistrationBWithoutChangingRawValues` | 13 | 13 aprovados |
+| `nameKeepsItsOldConstraintAndOnlyPasswordUsesTheAdditiveConstraint` | 1 | 1 aprovado |
+| `validatedPasswordsReachTheNewVerificationBoundaryUnchangedBeforeTokenIssuance` | 2 | 2 aprovados |
+
+### Causas observadas e separação das categorias
+
+**Preparação do slice MVC —83erros, nenhum teste HTTP aprovado:** [LoginControllerTest.java](../../src/test/java/com/devsuperior/dscommerce/controllers/LoginControllerTest.java) usa @WebMvcTest e AuthenticationService mockado. O contexto inclui [CustomerRegistrationWebConfig.java](../../src/main/java/com/devsuperior/dscommerce/config/CustomerRegistrationWebConfig.java), cujo parâmetro1 requer RegistrationAttemptReference; esse componente não está disponível nesse slice. A primeira cadeia mostra UnsatisfiedDependencyException→NoSuchBeanDefinitionException para esse tipo. Há1falha original de carregamento e82erros `ApplicationContext failure threshold (1) exceeded`. Não são83defeitos funcionais independentes, nem83ignorados: Surefire contabiliza83erros, e as asserções de200/400/401/500/parser/bearer/contextPath não foram alcançadas. O contexto completo das outras classes passou; isso não aprova a composição deste slice. Registrar para correção posterior no escopo autorizado, sem importar/mocar/excluir componentes nesta tarefa.
+
+**Preparação dos mocks antigos —5falhas e3erros nos três testes já sinalizados em T025:** AuthenticationService agora recebe quatro dependências; AuthenticationServiceTest, AuthenticationInternalFailureTest e AuthenticationSensitiveLoggingTest conservam somente os três mocks anteriores e @InjectMocks. Não há mock AccountPasswordVerifier, que fica null nos cenários de conta encontrada. Stacks de chamadas a AuthenticationService.login:56 mostram NullPointerException no verificador, convertida pelo serviço em AuthenticationProcessingException. Os fluxos que falham antes dessa etapa ou tratam name ausente não exercitam essa dependência e alguns passam; esses sucessos parciais não corrigem a preparação.
+
+| Classe/método reprovado | Resultado e causa/limite |
+| --- | --- |
+| AuthenticationServiceTest.loginShouldAuthenticateWithOneExactLookupAndBcryptBeforeIssuingToken | Erro AuthenticationProcessingException, causa NPE do verificador ausente; não chegou ao token esperado. |
+| AuthenticationServiceTest.loginShouldRejectWrongPasswordWithoutIssuingToken | Falha de asserção: processing em lugar de InvalidCredentials; mesma preparação incompleta, não prova mismatch incorreto de encoder real. |
+| AuthenticationServiceTest.loginShouldProduceUniformFailureForUnknownNameAndWrongPassword | Falha AssertionFailedError: name ausente continua InvalidCredentials, conta encontrada produz processing com mock não preparado; não compara duas verificações reais válidas. |
+| AuthenticationInternalFailureTest.loginShouldConvertUnexpectedPasswordEncoderFailureWithoutIssuingToken | Falha de identidade da causa esperada; stack mostra NPE antes do antigo stub do encoder. |
+| AuthenticationInternalFailureTest.loginShouldConvertUnexpectedTokenGenerationFailureWithoutReturningSuccess | Falha de identidade da causa esperada; NPE anterior ao stub do token. |
+| AuthenticationInternalFailureTest.loginShouldKeepInvalidCredentialsDistinctFromInternalProcessingFailure | Falha de categoria esperada pela ausência do novo verificador; não executa o mismatch preparado no encoder antigo. |
+| AuthenticationSensitiveLoggingTest.validLoginShouldNotLogSensitiveAuthenticationData | Erro processing causado por NPE; não conclui o cenário de login válido nem seu oráculo de logs. |
+| AuthenticationSensitiveLoggingTest.wrongPasswordShouldNotLogSensitiveAuthenticationData | Erro UnnecessaryStubbingException no afterEach Mockito: stub de PasswordEncoder.matches não consumido. O teste captura/ignora Throwable da chamada; não afirma categoria de mismatch. A ligação à dependência ausente é inferência sustentada pela preparação igual da classe/fluxo do serviço e pelo stub não alcançado, não NPE impresso nesse erro específico. |
+
+As cinco failures do Surefire são resultados reais de asserções reprovadas, classificados pela causa de preparação acima; não foram convertidas em passes ou denominadas RED funcional009. **Nenhuma falha funcional independente foi demonstrada por esses91resultados reprovados nesta execução**. Isso não prova ausência de defeitos funcionais fora dos casos alcançados. Placeholders não reconhecidos e verificações diretas do antigo limite PasswordEncoder permanecem pendências estáticas; o null impede atribuir a eles a causa executada dos casos encontrados. O oráculo antigo de causa direta também precisa ser avaliado no limite correto: o verificador real sanitiza falha operacional de encoder; não se deve remover sanitização nem enfraquecer a ausência de fallback/encode/save para acomodar mocks. T028 é o passo condicional próprio, não executado.
+
+**Expectativas históricas superadas pela revisão:** V-base/T020 tinha153passes/206falhas antes de T021; nesta revisão os359casos passaram, com os mesmos fonte/oráculos/vetores. Esse RED é histórico, não pendência206atual. M18continua aprovado na execução atual. T026 era somente autoria; agora os57casos C têm execução inicial GREEN, sem retirar implementação para fabricar RED. Não identificada evidência de erro no oráculo C/V/M que justifique mudar testes.
+
+**Provas focais alcançadas:** PasswordEncoderConfigurationTest passou exigindo único bean PasswordEncoder BCrypt e encode/matches real. Os dois casos fixos SHORT/LONG de CryptoTest passaram com BCrypt real, hash preservado por valor/bytes e somente matches/findByName/issueToken observados, sem encode/upgrade/save/flush; isso observa fronteiras mockadas/objeto em memória, não prova adicional JDBC de ausência de escrita. Perfil/salt/round-trip Argon2 reais, despacho fechado com custos hostis mockados, sanitização operacional e validação A∪B passaram conforme a cobertura escrita T026. Não há fallback, rehash, transformação de senha ou limite cadastral retroativo introduzido nesta tarefa.
+
+### Evidências novas, auxiliares e limites
+
+Criados somente36relatórios com sufixo exclusivo (18XML+18TXT); preservados uma vez em after-surefire-reports.zip, conferidos por nome/tamanho/SHA-256. ZIP SHA-256 `71C31C20D5D7BAD21871BC3E9B83E7DF6D4982B30E60E029236F9A78EFE359C9`. Console SHA-256 `872FAB48644AC26094B58D66037FFE6944EDA97F9FF4BB7427033D203AD762D2`. Execution-before-archive SHA-256 `23971D4F59B5FC4675F49812A9CEC7170730CE462AA80545DB40E0829852C0CC`. Os1.086relatórios anteriores conservam nomes, tamanhos, hashes e timestamps; arquivos ZIP anteriores conservam seus hashes. Diretório Surefire agora contém1.122arquivos; os36novos estão separados pelo run-id. Nenhuma limpeza/clean, exclusão ou reutilização de relatório antigo como resultado novo.
+
+No run: preflight.json/expected-methods.json e expected-c/b/m/vbase; case-reconciliation.json (589casos), method-reconciliation.json (85métodos), reconciliation.json (descoberta reconciliada=true), problem-details.json e cause-analysis.json, manifests de preservação/arquivo, versões, console e scripts auxiliares. Esses arquivos em target são evidência local ignorada; o resumo durável é este documento. Não atribuir-lhes publicação/versionamento.
+
+Tentativas auxiliares distinguem-se de execuções Maven: uma consulta Python -c falhou por aspas removidas pelo PowerShell; duas leituras de inventário falharam por presumir ausência de herança e depois arquivo homônimo do pai; uma leitura PowerShell usou expansão de chaves não suportada. Quatro exits1 auxiliares, todos anteriores ao Maven e sem alteração de fontes. Corrigidas somente ferramentas externas de leitura; inventário final85/589. A primeira reconciliação auxiliar terminou com exit0, mas indicou lacunas artificiais por tratar apenas sufixo `-run-id`: o Surefire insere `(run-id)` no atributo name/classname XML. Preservada integralmente em auxiliary-first-reconciliation/. A leitura corrigida remove exclusivamente o sufixo literal deste run, conserva os XML/TXT brutos e reconcilia nomes/índices/contagens; exit0, nenhuma lacuna. Isso não é problema de oráculo JUnit, descoberta ou funcionalidade. O ZIP já concluído foi somente lido/verificado, sem recriação; não repetidos Maven, testes, inventários Java/providers ou arquivamentos antigos. Detalhes em auxiliary-attempts.json.
+
+**Conclusão delimitada:** os critérios de diagnóstico T027 foram atendidos: seleção integral, comando/revisão/exit preservados, descoberta reconciliada e causas/limites registrados. Marcar somente T027; **conjunto reprovado e integração plena impedida**, sem GREEN global, fundação aceita ou aceite funcional do cadastro. T001–T026 preservadas; T028–T107 permanecem abertas. Pendentes preparação do slice MVC e adaptação fundamentada dos mocks/oráculos antigos, seguidas dos checkpoints próprios; nenhum T028 antecipado. Baseline/H-base independentes, V-referência, HTTP de cadastro, concorrência/commit, vetores ampliados/segredos e suíte completa não executados. D009-01, seleção009 e **Gate IV005 como EXCEÇÃO DOCUMENTADA, sem PASS estrito** preservados. Sem stage, commit, push, PR, troca de branch ou alteração de main.
+
+
+**Revisão final T027:** conteúdo acrescentado, tabela das 18 classes e nove métodos C, causas e limites revisados integralmente. Cinco links locais/âncoras novos resolvidos; diff relativo aos documentos recebidos revisado. `git diff --check` retornou 0; os 19 Java não rastreados passaram pela conferência no-index de whitespace sem diagnóstico (exit1 nesse modo significa arquivo diferente, não falha Maven). Das 397 entradas recebidas, somente quickstart/tasks009 mudaram; as outras 395 continuam idênticas por SHA-256. Prefixo anterior do quickstart preservado byte a byte; tasks volta exatamente à entrada desfazendo somente T027. Os relatórios anteriores foram preservados conforme verificação posterior à execução, sem repetir o arquivamento; o ZIP novo permanece o mesmo.
+
+T001–T027 marcadas, 80 tarefas T028–T107 abertas. Raiz/branch/HEAD/main/seleção009 iguais à entrada; sete rastreados modificados e 19 Java não rastreados, nada staged. Nenhum build Wrapper/Surefire ativo ao final; somente o servidor Maven preexistente da IDE. `.specify/extensions.yml` continua ausente, sem pós-hook aplicável. A conclusão de T027 registra diagnóstico, não GREEN do conjunto ou aceite do cadastro; pendências de preparação permanecem. Nenhuma execução além da única seleção prescrita, nenhum ajuste T028, stage, commit, push, PR ou alteração de main.
+
+
+## T028 — preparação dos quatro testes afetados e aprovação focal (2026-10-25)
+
+### Entrada, evidência recebida e escopo
+
+Confirmados raiz `C:/Users/ronal/dscommerce-speckit`, branch real `009-cadastrar-cliente`, HEAD `ea820352fa1d1947132cc568a21c791ad4775c27`, seleção009, sete rastreados modificados e19Java não rastreados, nada staged. Main em `de1d8ffb91f4c73d8ee2d10912d56c244164084b`. Skill speckit-implement limitada a T028; pré-requisitos com exit0/FEATURE_DIR absoluto009, requirements.md16/16 e zero abertos, checklist somente lido. Ignore Java suficiente; `.specify/extensions.yml` ausente antes da implementação. Lidos T028 integralmente, dependências T023–T027, fontes afetadas, procedimentos de [tasks](tasks.md#seletores-focais-e-evidência--procedimentos-futuros) e desenho/contrato/D009-01 pertinentes. O pedido atual autoriza expressamente a execução focal após corrigir, sem antecipar o checkpoint conjunto T031.
+
+Antes de corrigir, conferidos os XML brutos da T027, reconciliation.json e suas causas: **83erros LoginControllerTest**, sendo1falha original por falta de RegistrationAttemptReference no slice e82reutilizações do failure threshold; **5falhas+3erros** em AuthenticationServiceTest, AuthenticationInternalFailureTest e AuthenticationSensitiveLoggingTest, sem AccountPasswordVerifier na preparação. Esta tarefa não precisou repetir a execução reprovada: ela já é a evidência diagnóstica aplicável à revisão recebida. Nenhum defeito real de produção identificado que exigisse alterá-la.
+
+Preservado integralmente o registro T027, inclusive Maven1/498passes/5falhas/86erros, falhas auxiliares e limites. O novo resultado abaixo corresponde a uma revisão posterior de **testes**, não transforma T027 em GREEN. Inventário/backup de397entradas recebidas por SHA-256, cópias dos quatro testes e quickstart/tasks em `target/feature009-evidence/T028-affected-20261025T224638597133Z-b72f6e9e/`. Os1.122relatórios anteriores já estavam preservados em ZIPs: cobertura por nome/tamanho/hash conferida, zero descoberto e nenhum arquivamento concluído repetido.
+
+### Correções e justificativa dos oráculos
+
+- [LoginControllerTest.java](../../src/test/java/com/devsuperior/dscommerce/controllers/LoginControllerTest.java): acrescentado somente import de RegistrationAttemptReference e sua classe ao @Import existente. É a implementação real recebida, anotada @RequestScope com proxy de classe; não singleton fixo, mock sem estado, referência global ou relógio alternativo. CustomerRegistrationWebConfig permanece carregada, sem exclusão/condicional para fazer o slice passar. SecurityConfig, Clock existente, filtros, parser, @Valid, rotas e mensagens permanecem iguais. Desfazendo exclusivamente esses imports, o arquivo volta ao recebido: **nenhum dos83casos HTTP ou seus providers mudou**. O teste usa /login e contextPath /api; não exercita POST /customers nem passa a comprovar captura/isolamento temporal de cadastro. Código de atribuição única/interceptor/validator permanece byte a byte; a prova própria continua nas tarefas futuras.
+- [AuthenticationServiceTest.java](../../src/test/java/com/devsuperior/dscommerce/services/AuthenticationServiceTest.java): novo @Mock AccountPasswordVerifier e construção explícita das quatro dependências em @BeforeEach, substituindo @InjectMocks incompleto. Para conta encontrada, stub/verify passam de PasswordEncoder.matches para AccountPasswordVerifier.matches com **os mesmos argumentos exatos**. A ordem lookup→verificação→issueToken é mantida; senha/hash originais, resposta existente e hash do objeto permanecem verificáveis. PasswordEncoder deve ter zero interação nesse caminho; verifyNoMoreInteractions nos limites impede encode/upgrade/save/flush ou outras chamadas não permitidas. Para name ausente continuam o stub BCrypt explícito, mesmo dummy pré-calculado, prova real matches do dummy e401; o verificador não é chamado. O caso uniforme verifica os dois lookups exatos e401 idêntico, sem emissão de token/escrita. Nomes históricos dos métodos foram mantidos para reconciliação nominal; o nome que menciona BCrypt não transforma o mock do verificador em prova criptográfica real.
+- [AuthenticationInternalFailureTest.java](../../src/test/java/com/devsuperior/dscommerce/services/AuthenticationInternalFailureTest.java): mesma preparação explícita. Repository/JWT continuam lançando suas causas sentinelas originais; verificadas identidade da causa, mensagem pública fixa e interrupção de etapas posteriores. Na falha de verificação, o mock representa a **falha já sanitizada** que o verificador real fornece: IllegalStateException com `Authentication could not be completed`. O serviço deve envolver exatamente essa instância em AuthenticationProcessingException e não emitir JWT. A antiga suposição de receber diretamente a causa sensível do encoder era do limite anterior; sanitização/encoder real são cobertos por C, preservado. A exclusão genérica de originalCause.getMessage no helper foi movida para os casos repository/JWT: nesse novo cenário a causa segura e a mensagem pública são deliberadamente iguais. Mantidos tipo, mensagem exata, identidade da causa no limite correto e toda a lista de segredos proibidos; não removida a sanitização da produção nem aceita categoria genérica de exceção. Mismatch é false explícito no verificador, exige InvalidCredentials e ausência de encoder/token/outra operação de repository.
+- [AuthenticationSensitiveLoggingTest.java](../../src/test/java/com/devsuperior/dscommerce/services/AuthenticationSensitiveLoggingTest.java): quatro dependências explícitas, retorno true/false/falha de cada cenário configurado no limite alcançado. Dummy BCrypt recebe false explícito no name ausente; não se usa resposta padrão para aprovar o cenário. Além de preservar integralmente assertNoSensitiveOutput/canários/OutputCaptureExtension, os casos capturados agora exigem InvalidCredentials ou AuthenticationProcessingException com a mensagem exata e verificam as chamadas permitidas. Assim NPE ou outro erro capturado não pode simular senha errada. No login válido também é exigida a ordem lookup→verificação→token. MockitoExtension permanece estrita: nenhum lenient, disable, stub genérico que ignore senha/hash, filtro removido ou expectativa relaxada.
+
+Os placeholders de hash dos unitários continuam dados opacos de colaboração, não passam a ser formatos aceitos pelo componente real. Não alterados seeds/hashes antigos, produção, dependências, bean PasswordEncoder, domínio A∪B, Argon2/BCrypt, reconhecimento fechado, referência temporal ou asserções C/V-base/M. O requisito comportamental foi preservado ao atualizar **quem** realiza a verificação, sem exigir do AuthenticationService o bypass do verificador obrigatório. Não se atribui aos mocks prova de criptografia, IO físico, JWT real ou autenticação do placeholder.
+
+### Seleção focal e execução
+
+T028 não fixa um argumento -Dtest próprio; pelo pedido atual e pelas classes com problemas na T027, usado somente o recorte de B das **quatro classes afetadas**, por classe inteira e padrões *Test* conforme as convenções aprovadas. Não selecionados C/V-base/M, os outros nove componentes B aprovados, H-base/H-HTTP, V-referência, testes futuros ou suíte completa. Não repetido diagnóstico antes da correção nem checkpoint conjunto depois.
+
+Inventário da revisão corrigida:4classes concretas,24métodos,95casos. Mesmos24nomes de métodos/95identidades classe+nome+índice da T027, sem novo caso/remoção/renomeação. Nenhum herdado, @Nested, dinâmico ou disabled; helpers e três @BeforeEach novos não contam como testes. Parametrizações do slice: sete métodos/78invocações, mais5simples; os três unitários têm12simples. Total17simples+78invocações=95. Conferidos os providers originais, a identidade dos métodos e hashes da revisão efetivamente testada.
+
+Imediatamente antes de iniciar, processos conferidos: somente servidor Maven preexistente da IDE PID6736, sem build Wrapper/Launcher/ForkedBooter/Surefire ou cmd mvnw/mvn concorrente. Nenhuma execução T028 aplicável já concluída; preflight anterior era somente leitura/preservação, sem teste. Captura em java-processes-before.json/active-builds-before.json. `.\mvnw.cmd --version` exit0: Maven3.9.16, Java21.0.12.1 Azul, Windows amd64/UTF-8. **Uma invocação com goal test**, sequencial:
+
+~~~powershell
+.\mvnw.cmd '-Dtest=LoginControllerTest*,AuthenticationServiceTest*,AuthenticationInternalFailureTest*,AuthenticationSensitiveLoggingTest*' '-Dsurefire.failIfNoSpecifiedTests=true' '-DfailIfNoTests=true' '-Dsurefire.reportNameSuffix=T028-affected-20261025T224638597133Z-b72f6e9e' test
+~~~
+
+Captura por T028-run.ps1/ProcessStartInfo/ComSpec, stdout/stderr em console-T028.log. Início UTC `2026-10-25T22:51:37.3055982Z`, fim `2026-10-25T22:57:47.7389127Z`. **Exit numérico Maven0**, capturado de Process.ExitCode e persistido em execution.json/execution-before-archive.json com ReportsArchived=false antes de arquivar. Exit0 do auxiliar é conservado separadamente do Maven0. Não feita segunda tentativa nem correção após o teste. Compilação de testes é preparação do Maven, não execução da suíte completa; a produção foi informada como up to date. Não se atribui nova recompilação de produção a esta execução.
+
+### Resultado e reconciliação efetiva
+
+**95casos aprovados,0falhas,0erros,0ignorados, Maven0/BUILD SUCCESS.** Console (4Running,4resumos e resumo global),4XML e4TXT concordam. As24declarações e todos os índices dos sete parametrizados correspondem aos nomes/casos esperados; nenhum omitido, extra ou duplicado. Os **91casos antes problemáticos passaram**, e os quatro anteriormente aprovados dessas mesmas classes também passaram. Não inferido pelo total isolado: conjuntos nominais classe/método/assinatura/índice comparados integralmente.
+
+| Classe | Métodos | Casos | T027 falhas/erros | T028 aprovados | T028 falhas/erros/ignorados |
+| --- | ---: | ---: | --- | ---: | --- |
+| LoginControllerTest | 12 | 83 | 0/83 | 83 |0/0/0 |
+| AuthenticationInternalFailureTest | 4 | 4 | 3/0 | 4 |0/0/0 |
+| AuthenticationSensitiveLoggingTest | 4 | 4 | 0/2 | 4 |0/0/0 |
+| AuthenticationServiceTest | 4 | 4 | 2/1 | 4 |0/0/0 |
+
+Os83casos de login/validação/parser/segurança/mensagens/contextPath antes impedidos agora alcançaram suas asserções e passaram. Os oito casos unitários antes reprovados aparecem por seus mesmos nomes em method-reconciliation.json/case-reconciliation.json e passaram: login válido com verificação antes do token, senha errada e uniformidade (AuthenticationServiceTest); falha de verificação, falha de token e categoria de mismatch (AuthenticationInternalFailureTest); login válido e senha errada com oráculos de logs (AuthenticationSensitiveLoggingTest). Não há failure threshold, NPE do verificador, UnnecessaryStubbingException ou categoria de preparação restante no conjunto executado. Isso comprova a **aprovação focal corrigida**, não soma C/V/M históricos para declarar checkpoint conjunto atual aprovado.
+
+### Evidências, preservação e limites
+
+Somente8relatórios novos identificados pelo run-id (4XML+4TXT), arquivados uma vez em after-surefire-reports.zip e verificados por nome/tamanho/SHA-256. ZIP `DFC5701DBC3792B37A27763242CEE309AD132CEE2C2B1B4A38654DCE4E0BA196`; console `6BE843AAE5C0A19DD75CDE165D19C4E3C84239D3D87265F4A608B9628D2E6581`; execution-before-archive `EC4A0D1344528C9A2123612EBBF83632122A6DE33BFA92AB0AC0C483472EA72E`. Os1.122anteriores conservam nomes, bytes/hashes, tamanhos e timestamps; ZIPs anteriores, inclusive T027, conservam hashes. Total Surefire1.130arquivos. Nenhuma limpeza, substituição ou arquivamento repetido de evidência antiga.
+
+No diretório exclusivo ficam snapshots recebidos e testados, preflight/expected-methods/expected-cases, problemas T027 lidos antes da correção, inventário antes/depois, preservação, execution/exit, versões, console, ZIP, case/method-reconciliation, reconciliation.json e scripts auxiliares. Evidência local em target é ignorada; resumo durável é este acréscimo. Uma consulta antecipada ao log de versão, antes de ele ser criado, retornou exit1 sem conteúdo; foi somente leitura auxiliar, não tentativa Maven ou falha do projeto. Não houve falha auxiliar de captura/reconciliação nem execução Maven adicional. O reconciliador remove somente o sufixo literal `(run-id)`/`-run-id` dos nomes de classe, já observado na T027; XML/TXT brutos não foram alterados.
+
+| Fonte corrigida | SHA-256 da revisão executada |
+| --- | --- |
+| `src/test/java/com/devsuperior/dscommerce/controllers/LoginControllerTest.java` | `469C3E5EF9FD73919CE64F1110BD436C4FEBF5E99843A775BA3CF3867922C7E1` |
+| `src/test/java/com/devsuperior/dscommerce/services/AuthenticationInternalFailureTest.java` | `69E46F0A76CBC4FA67A5A74DB4820F2E7708FDDFAD18144B54604E5D27607BA3` |
+| `src/test/java/com/devsuperior/dscommerce/services/AuthenticationSensitiveLoggingTest.java` | `CA9AABEAF4A20A374028509EE8F0C8A15B222E4B98BEE3D5905E827BBF502FB2` |
+| `src/test/java/com/devsuperior/dscommerce/services/AuthenticationServiceTest.java` | `A884128B68923F2C631D0CF1AA6BF480B79EC65C8BA87164E5EB440646BAD7A7` |
+
+**Conclusão delimitada:** correções de preparação/colaboração e validação focal da T028 concluídas; marcar somente T028. T001–T027 e suas evidências preservadas; T029–T107 abertas. Não há impedimento restante no recorte executado. Checkpoint conjunto após T029/T030 e aceite funcional do cadastro continuam pendentes, incluindo suporte HTTP, referência temporal/contrato cadastral, concorrência/commit e histórias futuras. Não repetidos os grupos já aprovados; T027 continua conjunto histórico reprovado. D009-01, seleção009 e **Gate IV005 como EXCEÇÃO DOCUMENTADA, sem PASS estrito** preservados. Sem stage, commit, push, PR, troca de branch ou alteração de main.
+
+
+**Revisão final T028:** revisados os quatro testes corrigidos e seus diffs, o acréscimo documental, as justificativas de colaboração, fontes novas recebidas por preservação/whitespace e os cinco links locais/âncoras acrescentados. `git diff --check` retornou 0; os 19 Java não rastreados não apresentaram whitespace no modo no-index (exit1 significa diferença de arquivo novo, não erro Maven). Somente seis arquivos foram alterados nesta tarefa: quatro testes existentes e quickstart/tasks009. Nenhum Java novo; as outras 391 entradas recebidas permanecem idênticas por SHA-256, incluindo toda produção e C/V-base/M. Os quatro testes atuais correspondem por hash à revisão executada; somente os documentos mudaram depois do Maven.
+
+Prefixo anterior do quickstart de 340.258 bytes preservado integralmente; tasks recupera exatamente o recebido desfazendo somente T028. T001–T028 marcadas e 79 tarefas T029–T107 abertas. Relatórios somam 1.130 arquivos, sem nomes extras/omitidos além dos oito novos identificados; preservação dos 1.122 anteriores e seus ZIPs verificada após a execução. T027 continua com seu exit1/498passes/5falhas/86erros original, sem reclassificação. Aprovação presente é somente dos 95 casos afetados; checkpoint conjunto e aceite do cadastro continuam pendentes. Os avisos de depreciação/unchecked durante testCompile referem-se a fontes anteriores; não foram erros de compilação ou execuções adicionais de testes dessas classes.
+
+Git final: mesma raiz, branch, HEAD, main e seleção009; 11 rastreados modificados e 19 Java não rastreados, nada staged. Extensões ausentes, sem pós-hook aplicável. Sem stage, commit, push, PR, alteração de main ou antecipação de T029+. D009-01 e exceção histórica do Gate IV005 preservadas.
+
+
+## T029 — autoria do suporte HTTP isolado, sem execução de testes (2026-10-26)
+
+### Entrada, dependências e decisão de execução
+
+Confirmados inicialmente raiz `C:/Users/ronal/dscommerce-speckit`, branch real `009-cadastrar-cliente`, HEAD `ea820352fa1d1947132cc568a21c791ad4775c27`, main `de1d8ffb91f4c73d8ee2d10912d56c244164084b` e seleção local009. Recebidos **11 rastreados modificados, 19 Java não rastreados e nada staged**, conforme o fechamento da T028. Skill speckit-implement aplicada exclusivamente a T029. Executado `.\.specify\scripts\powershell\check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks`, exit0, FEATURE_DIR absoluto009; requirements.md16/16, zero abertos, somente leitura. Ignore existente suficiente para Java/Maven; nenhuma outra tecnologia detectada que exigisse novo ignore. Extensões ausentes antes/depois, sem hooks aplicáveis.
+
+Lidos a descrição integral da T029, a ordem/dependências da fundação, tasks, constituição, plano, spec, research, modelo, contrato e procedimentos pertinentes do quickstart. T006–T010 fornecem initializer, anotações dos dois contextos, fixture, probe e instrumentação opt-in; T023–T028 fornecem o limite de login e o diagnóstico/correção já registrados. O suporte reutiliza essas APIs sem modificá-las. **T029 é autoria de infraestrutura de teste**, não checkpoint conjunto: T030 escreve os oráculos próprios do suporte; T031 executa H/M/V-base/C/B após T028–T030. Nenhum Maven, Java/JUnit, compilação, servidor, conexão JDBC ou request HTTP foi executado nesta tarefa. Não selecionados H-HTTP inexistente, grupos antigos, baseline ou suíte completa.
+
+### Arquivo criado e fronteiras
+
+Criado somente [CustomerRegistrationHttpTestSupport.java](../../src/test/java/com/devsuperior/dscommerce/controllers/CustomerRegistrationHttpTestSupport.java), base abstrata sem métodos de teste, endpoint, substituto de serviço ou registro de configuração Spring. As futuras classes concretas devem usar explicitamente `CustomerRegistrationTestConfig.RootHttpContext` ou `ApiHttpContext` e implementar `expectedContextPath()` com vazio ou `/api`. Essas anotações existentes fornecem RANDOM_PORT, aplicação/filtros/JWT reais, perfil test e bancos UUID separados; o suporte não cria uma terceira configuração global, mock de segurança ou MockMvc.
+
+| Necessidade T029 | Implementação escrita; comprovação de runtime pendente |
+| --- | --- |
+| Porta, perfil e URLs próprios | `@LocalServerPort`; preparação confere identidade raiz/api, servlet context, initializer explícito, create-drop, SQL/imports desabilitados, OSIVfalse e Clock local. |
+| HTTP real e diagnóstico seguro | HttpClient com conexão10s/request30s, sem redirects/cookie handler; builders permitem método, bearer, headers e corpo raw. `send` devolve status/headers/bytes reais, inclusive erros, sem presumir status de sucesso. URI limitada ao servidor/contexto local. Nenhuma impressão de request, resposta, senha, hash ou JWT; falhas de transporte/JSON/decoder usam mensagens fixas sem causa sensível. Interrupção restaura o flag da thread. |
+| Login explícito e JWT real | `realHttpLogin` só quando o cenário chamar: POST /login com senha original serializada pelo mapper real,200 obrigatório, Bearer e subject conferidos pelo JwtDecoder real. Aceita Account da fixture ou id/name/password de conta já commitada; não autentica automaticamente a preparação/cadastro. |
+| Fixture e probe009 | Probe construído com URL UUID exata; conexão física nova do driver, sem EntityManager/cache. Preparação compara sessões simultâneas pool/probe e observa H2 2.2.224/READ_COMMITTED sem ajustar o isolamento para passar. Uma fixture por caso, criada antes do setup da subclasse, com REQUIRES_NEW já existente. |
+| Ciclo de vida e transações | `@BeforeEach` repõe Clock e cria fixture; `@AfterEach` chama limpeza seletiva da fixture mesmo após falha do caso; `@AfterAll` fecha o cliente. Nenhum @Transactional, transação envolvendo requests/workers ou limpeza global. Antes/depois de enviar, exige ausência de transação/sincronização/recurso DataSource na thread chamadora. |
+
+O cenário continua responsável por encerrar/join dos seus workers no finally **antes** do cleanup herdado. A fixture limpa somente IDs que ela própria criou; o suporte não apaga automaticamente contas cadastradas pelo endpoint nem compensa resultado perdido/indeterminado. A verificação de ausência de transação no chamador não comprova transação/commit no servidor: observar os workers, commit JDBC e snapshots nas tarefas próprias permanece obrigatório. Instrumentação/failpoints T009 continuam opt-in pelos testes que deles precisarem; nenhuma configuração é importada globalmente por esta base.
+
+Não escrito `CustomerRegistrationHttpSupportTest`, filhas concretas/casos HTTP, parser/controller/serviço cadastral, V-referência ou endpoint fake. O suporte não consulta nem exige POST /customers durante a preparação. Não alterados produção, POM, perfis, seeds, helpers anteriores, quatro correções da T028, asserções e arquivos C/V-base/M.
+
+### Verificações, preservação e limites
+
+Conferidos Git/seleção, inventário por `git ls-files --cached --others --exclude-standard`, fontes/APIs via `Get-Content`/`rg`, arquivo novo integral, diff e whitespace. `git diff --check` exit0; conferência `git diff --no-index --check -- NUL <arquivo>` dos20Java não rastreados sem diagnóstico de whitespace. O modo no-index admite exit1 por diferença de arquivo novo; isso não é exit Maven. Referências locais acrescentadas resolvidas. Validação estática auxiliar e comparação SHA-256 registradas por `review.py`/`review.json` no diretório exclusivo `target/feature009-evidence/T029-http-support-20261026T1616133082452Z-f395adc4/`; invocação pelo Python externo existente, sem instalar dependência no projeto:
+
+~~~powershell
+& 'C:/Users/ronal/AppData/Local/uv/cache/archive-v0/In_Ay6QzfEkllxlV/Scripts/python.exe' -B -I -X utf8 'target/feature009-evidence/T029-http-support-20261026T1616133082452Z-f395adc4/review.py'
+~~~
+
+Das397entradas recebidas,395 conservadas byte a byte por SHA-256; somente quickstart/tasks009 alterados, além do novo Java. Prefixo recebido do quickstart de356.129bytes preservado integralmente; desfazendo somente `[X] T029` em tasks, recupera-se exatamente o arquivo recebido. Conferidos também os quatro hashes da revisão aprovada na T028 contra os arquivos atuais. Os1.130relatórios Surefire e ZIPs anteriores conservaram nomes, bytes, tamanhos e timestamps aplicáveis; nenhum relatório criado, sobrescrito, limpo ou arquivado de novo. Backups/manifestos locais ficam em target ignorado; este acréscimo é o resumo durável. O snapshot de workspace precede a criação do suporte; os metadados auxiliares finalizados depois dessa criação distinguem19Java iniciais de20 após a autoria.
+
+Duas consultas auxiliares tentaram ler preflight.json antes do fim do inventário e receberam arquivo ainda inexistente; a leitura posterior confirmou sua conclusão. Uma consulta `rg` usou glob Windows no argumento de caminho e recebeu erro123; a consulta com diretório e `-g '*.ps1'` resolveu o comando. Foram consultas de leitura, sem execução Maven/teste, alteração do projeto ou perda de evidência.
+
+Evidências anteriores permanecem com seus alcances: **T027 reprovada**, Maven1,589casos/498passes/5falhas/86erros; **T028 aprovação focal**, Maven0,95casos/zero falhas/erros/ignorados, incluindo resolução focal dos91casos antes problemáticos. Essas execuções não foram somadas nem reclassificadas como aprovação conjunta atual. Nenhuma nova prova compilada/executável da base HTTP é atribuída à T029. Compilação, wiring HTTP, URLs em runtime e transações independentes do suporte aguardam T030/T031; a reconciliação conjunta e conferência dos problemas da T027 no conjunto completo pertencem à T031, conforme [procedimentos aprovados](tasks.md#seletores-focais-e-evidência--procedimentos-futuros). Aceite funcional do cadastro/US1–US5 continua pendente.
+
+**Conclusão de autoria:** T029 atendida e somente sua caixa marcada nesta tarefa; T001–T028 preservadas e **T030–T107 abertas** (78 tarefas). D009-01, seleção009 e **Gate IV005 como EXCEÇÃO DOCUMENTADA, sem PASS estrito** preservados. Estado final: mesma raiz/branch/HEAD/main/seleção,11rastreados modificados e20Java não rastreados, nada staged. Alterações desta tarefa somente o Java acima e quickstart/tasks009; sem stage, commit, push, PR, troca de branch ou alteração de main. Nenhum impedimento estático identificado; nenhuma aprovação de runtime, checkpoint conjunto ou aceite funcional concedida.
+
+
+## T030 — autoria dos oráculos HTTP do suporte, execução pendente (2026-10-26)
+
+### Estado recebido, dependências e escopo
+
+Confirmados inicialmente raiz `C:/Users/ronal/dscommerce-speckit`, branch real `009-cadastrar-cliente`, HEAD `ea820352fa1d1947132cc568a21c791ad4775c27`, main `de1d8ffb91f4c73d8ee2d10912d56c244164084b` e seleção local009. Estado recebido conforme T029: **11 rastreados modificados,20Java não rastreados e nada staged**. Skill speckit-implement aplicada somente a T030; `.\.specify\scripts\powershell\check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks` exit0, FEATURE_DIR absoluto009 e documentos disponíveis conferidos. Checklist requirements.md16/16, zero abertos, somente lida. Ignore Java/Maven suficiente, nenhuma nova tecnologia detectada; extensões ausentes antes/depois, sem hooks aplicáveis.
+
+Lidas integralmente T030/T029, suas dependências e regras de autoria/descoberta/preservação em tasks, suporte HTTP recebido e APIs reais de initializer/fixture/probe, segurança, token e consultas. Contexto de constituição/spec/plano/modelo/research/contrato e evidências anteriores preservado. Conforme [critérios de conclusão](tasks.md#implementation-strategy-e-critérios-de-conclusão), tarefa de autoria termina com casos escritos: **T030 não exige execução nem checkpoint**. T031 é a execução conjunta H/M/V-base/C/B depois de T028–T030. Nenhum Maven/Wrapper, compilador, Java/JUnit, servidor, JDBC ou HTTP foi executado nesta tarefa. Não antecipados seletores futuros, diagnóstico, correção de produto, suíte completa ou aceite do cadastro.
+
+### Arquivo e oráculos escritos
+
+Criado somente [CustomerRegistrationHttpSupportTest.java](../../src/test/java/com/devsuperior/dscommerce/config/CustomerRegistrationHttpSupportTest.java). Contém outer organizador e duas classes concretas `@Nested`, `RootHttpTest` e `ApiHttpTest`, com `@NestedTestConfiguration(OVERRIDE)` e as anotações opt-in existentes RootHttpContext/ApiHttpContext. Ambas herdam quatro casos de `HttpCases`, que estende o [suporte T029](../../src/test/java/com/devsuperior/dscommerce/controllers/CustomerRegistrationHttpTestSupport.java) sem modificá-lo. `PER_CLASS` mantém o registro dos dois contextos; `SAME_THREAD` limita a execução JUnit deste arquivo, sem alterar configuração global. O worker controlado é uma thread explícita do próprio caso, não build Maven concorrente.
+
+| Método compartilhado | Oráculo escrito, ainda não executado |
+| --- | --- |
+| `usesTheOptInProfileRealWiringAndContextRelativeUrls` | Perfil test/identidade/servlet path; server.port0 e porta efetiva positiva; URI localhost/porta/contexto/query exatos; URL H2 UUID; create-drop/sem seeds/imports/OSIV; Clock próprio; único BCrypt e encoder/decoder Nimbus reais; FilterChainProxy existente; fixture/probe não registrados globalmente; oito tabelas inicialmente vazias; conexões pool/driver simultâneas com sessões distintas, autocommit e H2/READ_COMMITTED observados. |
+| `committedFixtureSupportsRealLoginAndRealSecurityFilters` | Fixture CLIENT BCrypt fixa já commitada; login HTTP pelo suporte e JWT real com subject/name corretos; GET /orders sem bearer e com bearer inválido retorna401/challenge/envelope exatos; bearer real retorna200/página vazia exata; nova chamada sem bearer continua401. Snapshot completo não muda com login/leituras, sem Set-Cookie na consulta autorizada. |
+| `httpAndProbeSeeOnlyCommittedChangesFromAnIndependentWorker` | Produto próprio commitado10.00; outra thread abre REQUIRES_NEW/READ_COMMITTED real, observa transação nova/ativa, conexão transacional sem autocommit e sessão própria, atualiza para12.00 e aguarda latch. Probe/conexão externa e GET real do produto observam10.00 antes do commit; após liberar e aguardar retorno da TransactionTemplate/Future, observam12.00. Snapshots confirmam preservação das demais tabelas. |
+| `rejectsAnEnclosingCallerTransactionBeforeHttpOrProbeAccess` | Controle negativo deliberado: dentro de TransactionTemplate, os helpers devem lançar AssertionError com mensagem fixa e sem causa **antes** de enviar request/abrir probe. Fora dela, nenhum estado alterado nem recurso/transação remanescente. Não há request HTTP real dentro dessa transação negativa. |
+
+O caso de worker usa latches/tempos limitados, sem sleep. O finally libera o latch, solicita interrupção/encerramento e exige término do executor antes da limpeza herdada da fixture; o sucesso só é aceito após Future concluído e leituras independentes. Se o join falhar ou for interrompido, o teste reprova e retém os dados próprios sem acionar cleanup sobre writer ainda ativo; a interrupção é restaurada. Essa falha de harness não pode ser aprovada como resultado funcional. Esta é uma prova futura de infraestrutura com atualização controlada de produto, **não** prova de worker/commit/concorrência do cadastro009 ou de duas tentativas cadastrais.
+
+O gate de lifecycle `requiresBothContextsWithDifferentResources`, em `@AfterAll` do outer, exige que **ambos** os contextos tenham sido observados; compara instâncias, portas, URLs/bancos, DataSources, Clocks e chaves JWT descartáveis distintas, e verifica que avançar o Clock raiz não altera o de /api. Restaura o Clock em finally. Comparações de chaves/JWT/corpos potencialmente sensíveis usam booleanos/mensagens fixas sem imprimir material. Esse gate é obrigação de container, não um nono caso; falha de lifecycle/preparação não pode desaparecer na reconciliação futura.
+
+Preparação temporal explícita no smoke protegido: `JwtTokenService` legado emite com Instant.now e o decoder real valida a hora do sistema; o converter protegido usa o Clock009. Depois do login real, o caso fixa somente seu Clock controlado em issuedAt+1s do token recebido para estar na janela válida. Não substitui token/decoder, não desativa validação de expiração e não altera relógios de produção, initializer ou reset da T029. Essa preparação não comprova captura/referência civil do cadastro, reservada aos casos futuros.
+
+Utilizados somente endpoints existentes `/login`, `/orders` e `/products/{id}`. Nenhum teste exige, invoca ou substitui POST /customers; nenhum endpoint fake, @MockBean, cadeia JWT alternativa ou alteração de produção foi criado. O suporte T029, as quatro correções T028, C/V-base/M, POM, seeds, perfis e demais asserções foram preservados.
+
+### Inventário previsto e procedimento posterior
+
+Inventário estático: **um Java novo, duas classes concretas aninhadas, quatro declarações de @Test herdadas por ambas, oito casos previstos**. Sem parametrizações, factories dinâmicas ou disabled. Identidades de execução esperadas:
+
+- `com.devsuperior.dscommerce.config.CustomerRegistrationHttpSupportTest$RootHttpTest`: quatro métodos da tabela, contexto raiz.
+- `com.devsuperior.dscommerce.config.CustomerRegistrationHttpSupportTest$ApiHttpTest`: os mesmos quatro métodos, contexto /api.
+- Outer `CustomerRegistrationHttpSupportTest`: organização/gate @AfterAll, sem método @Test direto. `HttpCases` e o suporte T029 são abstratos, não classes concretas adicionais.
+
+O seletor aprovado H-HTTP continua `CustomerRegistrationHttpSupportTest*`; selecionar o outer permite descoberta Jupiter dos nested. **Descoberta real e gate ainda não verificados**. Na T031, aplicar os [procedimentos aprovados](tasks.md#seletores-focais-e-evidência--procedimentos-futuros): conferir processos/resultados aplicáveis e relatórios preservados, inventariar a união H/M/V-base/C/B atual, executar uma única invocação Wrapper sequencial com sufixo/destino exclusivo, capturar exit Maven antes do arquivamento e reconciliar console/XML/TXT por classe/método/contexto, incluindo estes nested e o lifecycle do outer. Ausência/duplicação não se resolve por total global; falha de preparação/compilação não equivale a RED funcional. Nenhum desses passos executáveis foi antecipado aqui.
+
+### Validação atual, preservação e conclusão
+
+Executados os comandos de Git/seleção/pré-requisitos acima, leituras/inventários com Get-Content/rg e validação estática auxiliar via Python externo existente, sem instalar dependências. Preflight exclusivo e cópias anteriores dos dois documentos em `target/feature009-evidence/T030-http-tests-20261026T1630413423177Z-4cb7ea07/`; o inventário precede a criação do teste e registra398entradas de workspace,1.130relatórios e600arquivos de evidência anterior. Comandos auxiliares executados a partir da raiz:
+
+~~~powershell
+& 'C:/Users/ronal/AppData/Local/uv/cache/archive-v0/In_Ay6QzfEkllxlV/Scripts/python.exe' -B -I -X utf8 'target/feature009-evidence/T030-http-tests-20261026T1630413423177Z-4cb7ea07/preflight.py'
+& 'C:/Users/ronal/AppData/Local/uv/cache/archive-v0/In_Ay6QzfEkllxlV/Scripts/python.exe' -B -I -X utf8 'target/feature009-evidence/T030-http-tests-20261026T1630413423177Z-4cb7ea07/review.py'
+git diff --check
+~~~
+
+Preflight/review e git diff --check com exit0. Revisados conteúdo integral do novo teste, APIs e esperado independente, diff dos documentos, referências/links e whitespace de todos os21Java não rastreados por `git diff --no-index --check -- NUL <arquivo>`; sem diagnóstico de whitespace. Exit1 no modo no-index pode representar arquivo diferente, nunca exit Maven. `review.json` registra inventário esperado, preservação, whitespace e Git. Duas leituras auxiliares de candidatos inexistentes (suporte HTTP008 e probe no pacote config) foram corrigidas por inventário/caminho real em fixtures; foram consultas de leitura, sem build/teste ou alteração de projeto.
+
+Das398entradas recebidas,396 permaneceram idênticas por SHA-256, incluindo toda produção, T029 e os quatro hashes da revisão T028. Somente quickstart/tasks009 alterados, além do novo Java. Prefixo recebido do quickstart de364.887bytes preservado integralmente; desfazendo somente a marcação T030, tasks volta exatamente ao recebido. Os1.130relatórios e600arquivos anteriores de evidência conservaram bytes/hashes, tamanhos e timestamps; nenhum relatório foi criado, sobrescrito, limpo ou arquivado novamente. Target é evidência local ignorada; este acréscimo constitui o resumo durável.
+
+**Estados separados:** T027 permanece diagnóstico conjunto reprovado, Maven1/589casos/498passes/5falhas/86erros; T028 permanece aprovação focal dos95casos afetados, Maven0/zero falhas/erros/ignorados. T029 e T030 são autoria/preparação sem resultado executável novo; nenhum desses estados aprova a união atual. Resolução dos problemas da T027 no conjunto completo, aprovação conjunta da fundação e aceite funcional do cadastro seguem pendentes. Compilação, descoberta, wiring em runtime e os oito casos acima aguardam T031; nenhuma verificação executável bloqueada foi ocultada como PASS.
+
+**Conclusão somente de autoria:** T030 atendida e somente sua caixa marcada nesta tarefa; T001–T029 preservadas, **T031–T107 abertas** (77tarefas). Sem impedimento estático identificado, sem declaração de aprovação focal/conjunta nova ou aceite funcional. Git final: mesma raiz/branch/HEAD/main/seleção009;11rastreados modificados,21Java não rastreados e nada staged. Alterações desta tarefa somente o Java da T030 e quickstart/tasks009. D009-01 e **Gate IV005 como EXCEÇÃO DOCUMENTADA, sem PASS estrito** preservados. Sem stage, commit, push, PR, troca de branch ou alteração de main.
+
+
+## T031 — checkpoint conjunto impedido em testCompile, tarefa aberta (2026-10-26)
+
+### Entrada e preparação
+
+Confirmados inicialmente raiz `C:/Users/ronal/dscommerce-speckit`, branch real `009-cadastrar-cliente`, HEAD `ea820352fa1d1947132cc568a21c791ad4775c27`, main `de1d8ffb91f4c73d8ee2d10912d56c244164084b`, seleção local009, **11 rastreados modificados,21Java não rastreados e nada staged**, conforme T030. Skill speckit-implement aplicada exclusivamente a T031. Pré-requisitos `.\.specify\scripts\powershell\check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks` exit0, FEATURE_DIR absoluto009/documentos disponíveis conferidos. Checklist requirements.md16/16, zero abertos, somente lida. Ignore Java/Maven suficiente; extensões ausentes antes/depois, sem hooks aplicáveis.
+
+Lidas integralmente T031, dependências T028–T030, regras de execução/descoberta e evidência de [tasks](tasks.md#seletores-focais-e-evidência--procedimentos-futuros), suporte/casos recebidos e manifestos anteriores, mantendo contexto de constituição/spec/plano/research/modelo/contrato. Git log confirmou CP-H já registrado em `a99819c`/`ea82035`; o trabalho local da fundação posterior ainda não está commitado. Nenhuma correção em produção/testes autorizada nesta tarefa: o pedido exige preservar T029/T030, T028 e asserções. Ausência de aprovação conjunta não pode ser substituída por soma de resultados anteriores.
+
+Antes da preparação e imediatamente antes da invocação test, conferidos processos Maven/Surefire/Wrapper e resultados locais aplicáveis: **nenhum build concorrente ativo e nenhuma execução T031 concluída**. T029/T030 são somente autoria; T027 reprovada e T028 focal não cobrem a união atual. Os1.130relatórios recebidos foram comparados por nome/tamanho/SHA-256 com os11ZIPs anteriores: zero descoberto sem preservação, sem repetir arquivamento antigo. Manifestos de399entradas de workspace,1.130relatórios e611arquivos anteriores de evidência, cópias dos dois documentos e diff testado ficaram em `target/feature009-evidence/T031-H-M-Vbase-C-B-20261026T1645067896600Z-70382cf8/`.
+
+### Seleção atual e inventário previsto
+
+Usada exatamente a união H/M/V-base/C/B vigente, com H-base e H-HTTP já escritos. Cada um dos17padrões encontra fonte existente; inventário estático completo em class-inventory.json/selector-matches.json/expected-methods.json/expected-cases.json: **22fontes,23classes concretas,110combinações classe/método e621casos previstos**. Fontes/casos C/V-base/M/B foram confrontados com manifestos e revisão corrigida T028; H-base com autoria/relatórios T011 e hashes atuais; H-HTTP com autoria T030 e hash preservado. Estes dados definem o esperado, não comprovam descoberta ou aprovação nesta execução.
+
+| Grupo | Classes concretas previstas | Casos previstos | Resultado executável T031 |
+| --- | ---: | ---: | --- |
+| H-base | 3 | 24 | Não alcançado |
+| H-HTTP | 2 nested | 8 | Não alcançado |
+| M | 1 | 18 | Não alcançado |
+| V-base | 1 | 359 | Não alcançado |
+| C | 3 | 57 | Não alcançado |
+| B | 13 | 155 | Não alcançado |
+| União | 23 | 621 | Impedida antes do Surefire |
+
+H-HTTP prevê quatro métodos herdados de `CustomerRegistrationHttpSupportTest$HttpCases` por cada classe concreta `$RootHttpTest` e `$ApiHttpTest`; lifecycle herdado de T029 e gate @AfterAll do outer são obrigações adicionais, sem contá-los como casos extras. O outer não tem @Test direto; seu gate `requiresBothContextsWithDifferentResources` precisa ser conferido na futura execução aplicável. B inclui `OrderPublicRegressionIntegrationTest`, com lifecycle herdado de OrderHttpTestSupport; parametrizações de todas as famílias estão individualizadas nos manifestos por classe/método/nome/índice, sem filtros de método. Não incluídos V-referência, histórias futuras, F/R completos ou suíte completa.
+
+### Única tentativa de execução conjunta
+
+`.\mvnw.cmd --version` exit0 confirmou Maven3.9.16/Java21.0.12.1 Azul, Windows10 amd64/UTF-8. O run.ps1 conferiu novamente os399hashes de entrada, branch/HEAD e ausência de build concorrente. **Uma única invocação com goal test**, sem clean, exclusões, filtros #, -e/-X, tentativa focal substitutiva ou repetição:
+
+~~~powershell
+.\mvnw.cmd '-Dtest=CustomerRegistrationSupportTest*,CustomerRegistrationFixtureTest*,CustomerRegistrationProbeTest*,CustomerRegistrationHttpSupportTest*,CustomerRegistrationSchemaTest*,CustomerRegistrationValidationTest*,CustomerRegistrationCryptoTest*,CustomerRegistrationFormatTest*,CustomerRegistrationLoginValidationTest*,Login*Test*,Authentication*Test*,AuthenticatedAccount*Test*,Jwt*Test*,PasswordEncoderConfigurationTest*,UserAccount*Test*,AdminProductTestSupportTest*,OrderPublicRegressionIntegrationTest*' '-Dsurefire.failIfNoSpecifiedTests=true' '-DfailIfNoTests=true' '-Dsurefire.reportNameSuffix=T031-H-M-Vbase-C-B-20261026T1645067896600Z-70382cf8' test
+~~~
+
+Captura via ProcessStartInfo/ComSpec com janela suprimida, stdout/stderr em console-T031.log. Início UTC `2026-10-26T16:47:46.6044475Z`, término UTC `2026-10-26T16:51:27.1901494Z`; console `Total time: 03:27 min`, `BUILD FAILURE`. **Exit numérico Maven1**, capturado de Process.ExitCode e persistido em execution.json e execution-before-archive.json com ReportsArchived=false **antes de arquivar**. O auxiliar run.ps1 retornou0 por ter concluído a captura; isso não substitui Maven1.
+
+A produção foi informada como up to date; não atribuir nova compilação de produção a esta tentativa. O Maven iniciou recompilação das163fontes de teste em release21 e falhou no `maven-compiler-plugin:3.13.0:testCompile`. Compilar fontes de outras famílias é preparação do Maven, não execução dessas famílias ou da suíte completa.
+
+### Causa observada e reconciliação bloqueada
+
+**Um erro único de compilação**, listado no diagnóstico e repetido no resumo Maven:
+
+~~~text
+src/test/java/com/devsuperior/dscommerce/controllers/CustomerRegistrationHttpTestSupport.java:[66,28] cannot find symbol
+  symbol:   method getPropertySources()
+  location: variable environment of type org.springframework.core.env.Environment
+~~~
+
+O [suporte T029 recebido](../../src/test/java/com/devsuperior/dscommerce/controllers/CustomerRegistrationHttpTestSupport.java) declara o campo context como WebApplicationContext; por essa API, `var environment = context.getEnvironment()` tem tipo estático Environment, que não oferece o método chamado na linha66. A revisão estática da autoria não detectou essa incompatibilidade. Nenhum fonte foi corrigido, nenhuma asserção enfraquecida, nenhum arquivo excluído da compilação e nenhum workaround de seletor aplicado. Resolver o acesso pela API configurável exige autorização própria de correção do suporte preservado; não se declara correção validada a partir deste diagnóstico.
+
+Os cinco warnings de SecurityManager/depreciação pertencem a fontes anteriores; avisos de unchecked também foram emitidos. Eles não são a causa do impedimento. **Falha de compilação é preparação impedida, não RED comportamental do cadastro.**
+
+O goal Surefire **não iniciou**: nenhum Running, resumo JUnit global, XML/TXT novo ou caso executado. A reconciliação possível é console→falha testCompile→ausência de relatórios novos, registrada como `BLOCKED_BEFORE_SUREFIRE` em reconciliation.json. Os621casos/110métodos estão **não alcançados**, sem passes, falhas de asserção, erros JUnit ou ignorados atribuíveis a esta tentativa; os zeros do inventário observado não são um resumo JUnit aprovado. Não reutilizados XML/TXT antigos para preencher a execução nova. Não há duplicação de contagem ou descoberta validada.
+
+Distribuição efetiva da T030 **não observada**: zero caso alcançado em raiz e zero em /api, em vez dos quatro previstos em cada; contextos/gate não foram executados. Os91casos problemáticos da T027 também não foram alcançados nesta união. T028 conserva aprovação focal dos95casos afetados, mas não permite afirmar aqui resolução conjunta dos91. A T027 permanece com Maven1/589casos/498passes/5falhas/86erros original; nenhum resultado histórico foi reclassificado. Funcionamento executável de T029/T030, aprovação da fundação e aceite funcional do cadastro são estados distintos e permanecem pendentes na revisão atual.
+
+### Evidências e revisão final
+
+Como não há relatórios novos, não foi criado ZIP vazio de Surefire. Criado uma vez `run-diagnostic.zip` com oito entradas (console, exit anterior ao arquivamento, versão/resultado Wrapper, preflight e inventários de casos/métodos/classes), todas conferidas por nome/tamanho/SHA-256. SHA-256 do ZIP `4C5812B5243E3408556A0EF0E57289C11DA495DB993EDF73868DA9F74911135E`; execution-before-archive `761ED44E3314F23A001AA708E22C9F28C8EFC66A6603A542212A3EBD594E17C0`. Releitura do reconciliador verificou o mesmo arquivo existente sem regravá-lo ou repetir arquivamento. Nenhuma segunda invocação Maven/teste.
+
+Os1.130relatórios anteriores e611arquivos anteriores de evidência conservaram nomes, bytes/hashes, tamanhos e timestamps. Nenhum relatório criado, sobrescrito, excluído ou limpo; console e metadados novos estão separados no run exclusivo. Há expected-cases/methods, selector-matches, class-inventory, registros de processos antes/depois, inventários de preservação, blocked-details.json, reconciliação com casos não alcançados, verificação do arquivo e revisão final. Target é local/ignorado; este acréscimo é o resumo durável.
+
+Auxiliares de preflight/reconciliação/revisão executados pelo Python externo existente com `-B -I -X utf8`, sem instalar dependência no projeto; o reconciliador retornou0 por concluir o registro, com `CheckpointApproved=false`, sem converter Maven1 em aprovação. Uma consulta rg inicial usou glob Windows no caminho e recebeu erro123; foi corrigida com diretório e `-g 'CustomerRegistration*Test.java'`, sem impacto no comando Maven. `git diff --check` exit0; arquivo acrescentado ao quickstart, diff, referências/links e21Java não rastreados revisados, inclusive whitespace no modo no-index. Saída1 de comparação no-index representa diferença, não exit Maven. Extensões seguem ausentes, sem pós-hook aplicável.
+
+**Somente quickstart.md foi alterado nesta tarefa.** Das399entradas recebidas,398 ficaram idênticas por SHA-256, incluindo tasks.md, produção/POM, quatro correções T028, T029/T030 e todas as demais asserções. Prefixo recebido do quickstart de376.369bytes preservado integralmente. T001–T030 conservam suas marcações; **T031 permanece aberta**, assim como **T032–T107**. Nenhum build Maven/Surefire ativo ao final.
+
+### CP-F e pendências
+
+**CP-F bloqueada, sem proposta apta a commit:** falta compilação e aprovação conjunta na revisão pertinente. Escopo candidato permanece o conjunto local da fundação posterior a CP-H, identificado por working-tree-tested.diff/manifesto: pom.xml; produção de DTO/entidade/repositories/validation/security/autenticação/referência/web009; testes de modelo/validação/cripto/login, correções T028 e suporte HTTP T029/T030; quickstart/tasks009. Uma mensagem candidata futura é `feat: add customer registration foundation`, condicionada à correção revisada e a um novo checkpoint conjunto aprovado. Os32caminhos candidatos estão em cp-f-proposal.json no run, com status bloqueado; isso não autoriza stage/commit nem declara o estado atual aceitável.
+
+Pendências concretas: corrigir pontualmente o acesso à API Environment no suporte T029 sob autorização separada, preservar esta falha e obter nova execução conjunta identificada com os mesmos grupos, reconciliação nominal e gate dos dois contextos. Nenhuma autoria T032+, suite completa, publicação, PR ou integração pode ser deduzida desta tentativa. D009-01, seleção009 e **Gate IV005 como EXCEÇÃO DOCUMENTADA, sem PASS estrito** preservados. Git final: mesma raiz/branch/HEAD/main/seleção,11rastreados modificados e21Java não rastreados, nada staged. Sem stage, commit, push, PR, troca de branch ou alteração de main.
+
+
+## T031 — retomada: tipagem corrigida e fundação aprovada em conjunto (2026-10-26)
+
+### Estado recebido e correção mínima autorizada
+
+Confirmados inicialmente raiz `C:/Users/ronal/dscommerce-speckit`, branch real `009-cadastrar-cliente`, HEAD `ea820352fa1d1947132cc568a21c791ad4775c27`, main `de1d8ffb91f4c73d8ee2d10912d56c244164084b`, seleção local009, **11 rastreados modificados,21Java não rastreados e nada staged**. Skill speckit-implement limitada à retomada T031. Pré-requisitos `check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks` exit0/FEATURE_DIR absoluto009, requirements.md16/16 e zero abertos, somente leitura. Ignore Java/Maven suficiente; extensões ausentes antes/depois, sem hooks aplicáveis. T031/dependências e diagnóstico anterior lidos integralmente; regras de [execução/descoberta](tasks.md#seletores-focais-e-evidência--procedimentos-futuros), constituição, plano e D009-01 preservados.
+
+Esta solicitação autoriza corrigir apenas a tipagem/preparação necessária no [suporte HTTP T029](../../src/test/java/com/devsuperior/dscommerce/controllers/CustomerRegistrationHttpTestSupport.java). A chamada da antiga linha66 falhava porque WebApplicationContext.getEnvironment fornecia estaticamente Environment. O campo injetado agora é **ConfigurableWebApplicationContext**, interface configurável compatível com o contexto servlet real. Seu getEnvironment fornece ConfigurableEnvironment, permitindo consultar legitimamente getPropertySources. A chamada e o require que exige o property source do initializer permanecem intactos; nenhum fallback ou inspeção removida.
+
+Delta único de código: substituir import/tipo do contexto por ConfigurableWebApplicationContext; remover import ConfigurableApplicationContext e seu cast redundante na construção da fixture, passando context diretamente. **Nenhum cast inseguro introduzido**, novo bean/contexto/perfil, alteração de segurança/Clock/URL/transação, tolerância a erro ou asserção relaxada. Autowiring real e os casos HTTP abaixo passaram com essa interface. Produção/POM, T030, correções T028, C/V-base/M e demais asserções foram preservados. correction.diff/correction-verification.json conferem por transformação exata dos bytes recebidos que somente esses pontos mudaram.
+
+| Revisão do suporte | SHA-256 |
+| --- | --- |
+| Recebida, antes da correção | `063E9E7D9CC110846E8B1C3A66DEF7F7C8977A8B0D137F6D79F0DA9A0F94F354` |
+| Corrigida e executada nesta retomada | `4C2B2BAA90E936F9B2DC495AB557B063CD672874B3A11B7D685B57DBA1F673C0` |
+
+A tentativa `T031-H-M-Vbase-C-B-20261026T1645067896600Z-70382cf8` conserva **Maven1/testCompile/zero testes executados**, seu console, diagnóstico, ZIP e registro anterior completos. Continua sendo impedimento de preparação, **não RED funcional**. A aprovação abaixo pertence a uma revisão posterior, identificada separadamente; não reclassifica a tentativa anterior nem a T027.
+
+### Preparação e nova execução conjunta
+
+Conferidos processos ativos e resultados aplicáveis antes de iniciar e novamente após o --version: nenhum Maven/Wrapper/Surefire concorrente e nenhum resultado aprovado aplicável ao suporte corrigido. Capturado primeiro o workspace recebido (399entradas) e depois o testado. Inventário reconfirmado por fonte/hash/método/provider:17padrões com fontes existentes,22fontes selecionadas,23classes concretas,110combinações classe/método e621casos previstos, incluindo os oito H-HTTP da T030. Os1.130relatórios anteriores estavam cobertos por ZIPs verificados; nenhum arquivo antigo foi arquivado outra vez. Os651arquivos anteriores de evidência, incluindo toda a tentativa T031 impedida, foram inventariados por hash/tamanho/timestamp.
+
+Diretório exclusivo: `target/feature009-evidence/T031-resume-H-M-Vbase-C-B-20261026T1701059487704Z-afee30b9/`. `.\mvnw.cmd --version` exit0 confirmou Maven3.9.16 e Java21.0.12.1 Azul, Windows10 amd64/UTF-8. **Uma única nova invocação com goal test**, depois da correção; sem clean, exclusões, #, seleção focal substitutiva, V-referência, histórias posteriores, suíte completa ou replay da falha antiga:
+
+~~~powershell
+.\mvnw.cmd '-Dtest=CustomerRegistrationSupportTest*,CustomerRegistrationFixtureTest*,CustomerRegistrationProbeTest*,CustomerRegistrationHttpSupportTest*,CustomerRegistrationSchemaTest*,CustomerRegistrationValidationTest*,CustomerRegistrationCryptoTest*,CustomerRegistrationFormatTest*,CustomerRegistrationLoginValidationTest*,Login*Test*,Authentication*Test*,AuthenticatedAccount*Test*,Jwt*Test*,PasswordEncoderConfigurationTest*,UserAccount*Test*,AdminProductTestSupportTest*,OrderPublicRegressionIntegrationTest*' '-Dsurefire.failIfNoSpecifiedTests=true' '-DfailIfNoTests=true' '-Dsurefire.reportNameSuffix=T031-resume-H-M-Vbase-C-B-20261026T1701059487704Z-afee30b9' test
+~~~
+
+Captura por run.ps1/ProcessStartInfo/ComSpec sem janela visível, stdout/stderr em console-T031.log. Início UTC `2026-10-26T17:03:18.3130650Z`; término UTC `2026-10-26T17:12:38.7745347Z`. Console `Total time: 09:02 min`, `BUILD SUCCESS`. **Exit numérico Maven0**, obtido de Process.ExitCode e persistido em execution.json e execution-before-archive.json com ReportsArchived=false **antes do arquivamento**. Exit0 do auxiliar de captura é um resultado separado. Produção informada como up to date; recompiladas163fontes de teste em release21, desta vez com compilação concluída e Surefire iniciado. Compilar fontes de outras famílias não significa executar esses testes. Warnings históricos de SecurityManager/depreciação e unchecked não causaram falha.
+
+### Reconciliação efetiva e distribuição
+
+**621/621 casos aprovados,0falhas,0erros,0ignorados.** Console com24Running/24resumos de suites e resumo global,24XML e24TXT concordam. São23classes concretas com casos e um container outer com zero casos, sem erro de lifecycle. Os621elementos testcase são621identidades classe+nome distintas; nenhum registro agregado/duplicado no outer. Todas as110combinações classe/método correspondem ao inventário:88simples e22parametrizados, totalizando88casos simples+533invocações parametrizadas. Nomes/assinaturas/índices1..N e cardinalidades confrontados integralmente; não inferidos só do total. Omitted/Extra/Duplicates/BadMethods vazios em reconciliation.json; herança/lifecycle e nested considerados.
+
+| Grupo | Classes concretas | Esperados | Aprovados atuais | Falhas/erros/ignorados |
+| --- | ---: | ---: | ---: | --- |
+| H-base | 3 | 24 | 24 |0/0/0 |
+| H-HTTP | 2 nested | 8 | 8 |0/0/0 |
+| M | 1 | 18 | 18 |0/0/0 |
+| V-base | 1 | 359 | 359 |0/0/0 |
+| C | 3 | 57 | 57 |0/0/0 |
+| B | 13 | 155 | 155 |0/0/0 |
+| União | 23 | 621 | 621 |0/0/0 |
+
+As duas classes da T030 herdam os mesmos quatro métodos de HttpCases/T029 e foram efetivamente descobertas por seus nomes binários, com cada caso conferido uma única vez em cada contexto:
+
+- `usesTheOptInProfileRealWiringAndContextRelativeUrls`;
+- `committedFixtureSupportsRealLoginAndRealSecurityFilters`;
+- `httpAndProbeSeeOnlyCommittedChangesFromAnIndependentWorker`;
+- `rejectsAnEnclosingCallerTransactionBeforeHttpOrProbeAccess`.
+
+| Classe concreta T030 | Contexto servlet | Porta observada no XML | Banco observado no XML | Casos aprovados |
+| --- | --- | ---: | --- | ---: |
+| `CustomerRegistrationHttpSupportTest$RootHttpTest` | raiz, path vazio; log Tomcat representa `/` |53390| `jdbc:h2:mem:customer-registration-test-de3e1638-c8f7-4d1d-868a-3e39f572f98f` |4|
+| `CustomerRegistrationHttpSupportTest$ApiHttpTest` | `/api` |53384| `jdbc:h2:mem:customer-registration-test-6d736259-349b-47d0-a0c6-0b4f31e6e3f0` |4|
+
+O outer CustomerRegistrationHttpSupportTest tem **0testes/0failures/0errors/0skipped e0elementos testcase**; seu @AfterAll exige ambos os contextos e recursos distintos e terminou sem erro. Não foi somado como nono caso nem omitido da verificação de lifecycle. As asserções executadas conferiram fixtures commitadas, conexão/sessão independente, READ_COMMITTED, visibilidade HTTP/JDBC antes/depois do commit controlado e rejeição de transação envolvente antes de enviar requests, além de perfil/URLs, Clock, JWT real e filtros. O controle negativo não executa request dentro da transação rejeitada. Nenhum endpoint de cadastro ou fake foi necessário; o worker controlado de produto comprova infraestrutura, não transação/concorrência de cadastro futura.
+
+### Casos antes problemáticos e limites do checkpoint
+
+Os91casos reprovados/impedidos na T027 foram encontrados **pelas mesmas identidades** e passaram nesta invocação conjunta, sem somar a execução focal T028:
+
+| Classe | Casos problemáticos T027 | Esses casos aprovados agora | Total atual da classe |
+| --- | ---: | ---: | ---: |
+| LoginControllerTest |83|83|83|
+| AuthenticationInternalFailureTest |3|3|4|
+| AuthenticationSensitiveLoggingTest |2|2|4|
+| AuthenticationServiceTest |3|3|4|
+| Total das quatro classes |91|91|95|
+
+Os quatro casos dessas classes que já passavam também passaram agora. As correções T028 permanecem byte a byte; os casos alcançaram seus oráculos nesta seleção, sem falha de preparação/mocks/contexto nos resultados correspondentes. C/B preservam prova local de despacho/cripto, único bean BCrypt, hashes legados e orquestração de autenticação. Não alterar classificação histórica da T027: continua Maven1/498passes/5falhas/86erros; T028 continua aprovação focal dos95casos. A T031 impedida continua compilação falha/zero testes. Esta retomada é **aprovação conjunta atual da fundação**, não soma desses históricos.
+
+Suporte e componentes compartilhados estão utilizáveis na revisão testada, cumprindo T031. **Aceite funcional da Feature009/US1–US5 permanece pendente**: POST /customers, parser/advice/serviço/worker cadastral, dados HTTP de cadastro, V-referência, vetores ampliados/segredos, disputa/rollback/entrega e regressões completas têm tarefas próprias. Não executados F/R completos, suíte completa, CI/Linux/macOS/PostgreSQL, migração/deploy ou benchmark. Não atribuir à aprovação do suporte o compromisso de produção/32cenários/23FR/7SC.
+
+### Preservação e revisão
+
+Somente48relatórios novos com sufixo exclusivo (24XML+24TXT), arquivados uma vez em after-surefire-reports.zip e verificados por nome/tamanho/SHA-256. ZIP `4D8D53C8257AAD82098880C697C95E595797527879FCBDC4CE4BC9F368AF4C8F`; console `6FCA65E0660F019E650B21E01E96C4625A5410F8936ED1BA75E79F38F45D9A61`; execution-before-archive `B67F1931502AA469EFDE83A7DF90806EDCED168964EC77D382E04102C0CE0485`. Os1.130relatórios anteriores e651arquivos anteriores de evidência conservaram nomes/bytes/hashes/tamanhos/timestamps; total Surefire agora1.178arquivos. Nenhuma limpeza, substituição ou arquivamento repetido do histórico, incluindo o ZIP diagnóstico da T031 anterior.
+
+O run guarda workspace recebido/testado, cópia do suporte anterior, correction.diff, comandos/versões/exit/processos, manifestos de seleção/classes/métodos/casos, reconciliação bruta/canônica, detalhes por contexto, comparação dos91casos, arquivo de relatórios e revisão final. Target é ignorado e local; este acréscimo é o resumo durável. Preflight/reconciliação/details/revisão via Python externo existente com `-B -I -X utf8`, sem instalar dependências no projeto. Uma tentativa auxiliar de preparar cópias por Python inline recebeu SyntaxError de quoting antes de executar; substituída por prepare-run.py em arquivo, exit0, sem Maven/teste nessa falha auxiliar. Uma consulta exploratória PowerShell contou array de null como1 no outer; a conferência final usou elementos XML reais e confirmou0testcase, sem fabricar um caso adicional. Consulta Get-Process sem Python ativo retornou1; não é exit Maven.
+
+Diff mínimo do Java e conteúdo acrescentado ao quickstart revisados, com caminhos/links/comandos/whitespace e21Java não rastreados conferidos. `git diff --check` exit0; modo no-index sem diagnóstico de whitespace (exit1 de diferença não é falha Maven). Dos399arquivos recebidos,396 permanecem byte a byte; somente suporte T029, quickstart/tasks009 mudaram nesta retomada. Prefixo recebido do quickstart de388.552bytes preservado integralmente; tasks volta exatamente ao recebido desfazendo apenas a marcação T031. Nenhum Java novo e nenhuma mudança de produção. Nenhum build Maven/Surefire ativo ao final. Extensões continuam ausentes, sem pós-hook aplicável.
+
+### Proposta CP-F, sem execução de Git mutável
+
+Proposta revisável de commit da fundação posterior a CP-H: mensagem **`feat: add customer registration foundation`**. Revisão testada = HEAD acima mais os hashes/diff registrados neste run, incluindo a correção mínima do suporte. Os32caminhos locais de fundação estão listados em cp-f-proposal.json; incluem19arquivos de produção/POM já trabalhados nas tarefas anteriores,11testes/suportes e2documentos009. Não incluir artefatos target nem caminhos alheios. A proposta registra621casos aprovados e os limites acima; não representa aceite das histórias ou autorização para stage/commit/publicação. Seu escopo exato consta abaixo.
+
+~~~text
+pom.xml
+specs/009-cadastrar-cliente/quickstart.md
+specs/009-cadastrar-cliente/tasks.md
+src/main/java/com/devsuperior/dscommerce/config/CustomerRegistrationWebConfig.java
+src/main/java/com/devsuperior/dscommerce/dto/CustomerRegistrationConfirmationDTO.java
+src/main/java/com/devsuperior/dscommerce/dto/CustomerRegistrationRequestDTO.java
+src/main/java/com/devsuperior/dscommerce/dto/LoginRequestDTO.java
+src/main/java/com/devsuperior/dscommerce/entities/UserAccount.java
+src/main/java/com/devsuperior/dscommerce/repositories/UserAccountInsertRepository.java
+src/main/java/com/devsuperior/dscommerce/repositories/UserAccountInsertRepositoryImpl.java
+src/main/java/com/devsuperior/dscommerce/repositories/UserAccountRepository.java
+src/main/java/com/devsuperior/dscommerce/security/AccountPasswordVerifier.java
+src/main/java/com/devsuperior/dscommerce/security/RegistrationPasswordHasher.java
+src/main/java/com/devsuperior/dscommerce/services/AuthenticationService.java
+src/main/java/com/devsuperior/dscommerce/services/CustomerRegistrationCommand.java
+src/main/java/com/devsuperior/dscommerce/services/RegistrationAttemptReference.java
+src/main/java/com/devsuperior/dscommerce/validation/CustomerRegistrationValidator.java
+src/main/java/com/devsuperior/dscommerce/validation/LoginPasswordValidator.java
+src/main/java/com/devsuperior/dscommerce/validation/RegistrationInputRules.java
+src/main/java/com/devsuperior/dscommerce/validation/ValidCustomerRegistration.java
+src/main/java/com/devsuperior/dscommerce/validation/ValidLoginPassword.java
+src/test/java/com/devsuperior/dscommerce/config/CustomerRegistrationHttpSupportTest.java
+src/test/java/com/devsuperior/dscommerce/controllers/CustomerRegistrationHttpTestSupport.java
+src/test/java/com/devsuperior/dscommerce/controllers/LoginControllerTest.java
+src/test/java/com/devsuperior/dscommerce/repositories/CustomerRegistrationSchemaTest.java
+src/test/java/com/devsuperior/dscommerce/security/CustomerRegistrationCryptoTest.java
+src/test/java/com/devsuperior/dscommerce/security/CustomerRegistrationFormatTest.java
+src/test/java/com/devsuperior/dscommerce/services/AuthenticationInternalFailureTest.java
+src/test/java/com/devsuperior/dscommerce/services/AuthenticationSensitiveLoggingTest.java
+src/test/java/com/devsuperior/dscommerce/services/AuthenticationServiceTest.java
+src/test/java/com/devsuperior/dscommerce/validation/CustomerRegistrationLoginValidationTest.java
+src/test/java/com/devsuperior/dscommerce/validation/CustomerRegistrationValidationTest.java
+~~~
+
+**Conclusão da retomada:** correção mínima e checkpoint conjunto T031 atendidos; marcar somente T031. T001–T030 preservadas e **T032–T107 abertas** (76tarefas). Sem impedimento remanescente no conjunto executado; fundação aprovada no escopo descrito, com aceite funcional do cadastro ainda pendente. Git final: mesma raiz/branch/HEAD/main/seleção009,11rastreados modificados e21Java não rastreados, nada staged. Somente suporte T029 e quickstart/tasks009 alterados nesta solicitação. D009-01 e **Gate IV005 como EXCEÇÃO DOCUMENTADA, sem PASS estrito** preservados. Sem stage, commit, push, PR, troca de branch ou alteração de main.

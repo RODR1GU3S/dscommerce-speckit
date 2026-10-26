@@ -3,10 +3,11 @@ package com.devsuperior.dscommerce.services;
 import com.devsuperior.dscommerce.dto.TokenResponseDTO;
 import com.devsuperior.dscommerce.entities.UserAccount;
 import com.devsuperior.dscommerce.repositories.UserAccountRepository;
+import com.devsuperior.dscommerce.security.AccountPasswordVerifier;
 import com.devsuperior.dscommerce.services.exceptions.InvalidCredentialsException;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -49,15 +50,23 @@ class AuthenticationServiceTest {
     @Mock
     private JwtTokenService jwtTokenService;
 
-    @InjectMocks
+    @Mock
+    private AccountPasswordVerifier accountPasswordVerifier;
+
     private AuthenticationService authenticationService;
+
+    @BeforeEach
+    void prepareExplicitVerificationBoundary() {
+        authenticationService = new AuthenticationService(
+                userAccountRepository, passwordEncoder, jwtTokenService, accountPasswordVerifier);
+    }
 
     @Test
     void loginShouldAuthenticateWithOneExactLookupAndBcryptBeforeIssuingToken() {
         var account = new UserAccount(ACCOUNT_ID, EXACT_NAME, STORED_HASH);
         var expectedResponse = new TokenResponseDTO("signed-access-token", "Bearer");
         when(userAccountRepository.findByName(EXACT_NAME)).thenReturn(Optional.of(account));
-        when(passwordEncoder.matches(RAW_PASSWORD, STORED_HASH)).thenReturn(true);
+        when(accountPasswordVerifier.matches(RAW_PASSWORD, STORED_HASH)).thenReturn(true);
         when(jwtTokenService.issueToken(ACCOUNT_ID, EXACT_NAME)).thenReturn(expectedResponse);
 
         TokenResponseDTO result = authenticationService.login(EXACT_NAME, RAW_PASSWORD);
@@ -67,15 +76,16 @@ class AuthenticationServiceTest {
 
         InOrder authenticationOrder = inOrder(
                 userAccountRepository,
-                passwordEncoder,
+                accountPasswordVerifier,
                 jwtTokenService);
         authenticationOrder.verify(userAccountRepository, times(1)).findByName(EXACT_NAME);
-        authenticationOrder.verify(passwordEncoder, times(1)).matches(RAW_PASSWORD, STORED_HASH);
+        authenticationOrder.verify(accountPasswordVerifier, times(1)).matches(RAW_PASSWORD, STORED_HASH);
         authenticationOrder.verify(jwtTokenService, times(1)).issueToken(ACCOUNT_ID, EXACT_NAME);
 
         verify(userAccountRepository, never()).save(any(UserAccount.class));
         verify(passwordEncoder, never()).encode(anyString());
-        verifyNoMoreInteractions(userAccountRepository, passwordEncoder, jwtTokenService);
+        verifyNoInteractions(passwordEncoder);
+        verifyNoMoreInteractions(userAccountRepository, accountPasswordVerifier, passwordEncoder, jwtTokenService);
     }
 
     @Test
@@ -99,7 +109,7 @@ class AuthenticationServiceTest {
         verify(userAccountRepository, times(1)).findByName(UNKNOWN_NAME);
         verify(passwordEncoder, times(1)).matches(RAW_PASSWORD, DUMMY_BCRYPT_HASH);
         verify(passwordEncoder, never()).encode(anyString());
-        verifyNoInteractions(jwtTokenService);
+        verifyNoInteractions(accountPasswordVerifier, jwtTokenService);
         verifyNoMoreInteractions(userAccountRepository, passwordEncoder);
     }
 
@@ -107,7 +117,7 @@ class AuthenticationServiceTest {
     void loginShouldRejectWrongPasswordWithoutIssuingToken() {
         var account = new UserAccount(ACCOUNT_ID, EXACT_NAME, STORED_HASH);
         when(userAccountRepository.findByName(EXACT_NAME)).thenReturn(Optional.of(account));
-        when(passwordEncoder.matches(RAW_PASSWORD, STORED_HASH)).thenReturn(false);
+        when(accountPasswordVerifier.matches(RAW_PASSWORD, STORED_HASH)).thenReturn(false);
 
         Throwable failure = catchThrowable(
                 () -> authenticationService.login(EXACT_NAME, RAW_PASSWORD));
@@ -118,10 +128,10 @@ class AuthenticationServiceTest {
         assertGenericInvalidCredentialsMessage(failure);
 
         verify(userAccountRepository, times(1)).findByName(EXACT_NAME);
-        verify(passwordEncoder, times(1)).matches(RAW_PASSWORD, STORED_HASH);
+        verify(accountPasswordVerifier, times(1)).matches(RAW_PASSWORD, STORED_HASH);
         verify(passwordEncoder, never()).encode(anyString());
-        verifyNoInteractions(jwtTokenService);
-        verifyNoMoreInteractions(userAccountRepository, passwordEncoder);
+        verifyNoInteractions(passwordEncoder, jwtTokenService);
+        verifyNoMoreInteractions(userAccountRepository, accountPasswordVerifier, passwordEncoder);
     }
 
     @Test
@@ -130,7 +140,7 @@ class AuthenticationServiceTest {
         when(userAccountRepository.findByName(UNKNOWN_NAME)).thenReturn(Optional.empty());
         when(userAccountRepository.findByName(EXACT_NAME)).thenReturn(Optional.of(account));
         when(passwordEncoder.matches(RAW_PASSWORD, DUMMY_BCRYPT_HASH)).thenReturn(false);
-        when(passwordEncoder.matches(RAW_PASSWORD, STORED_HASH)).thenReturn(false);
+        when(accountPasswordVerifier.matches(RAW_PASSWORD, STORED_HASH)).thenReturn(false);
 
         Throwable unknownNameFailure = catchThrowable(
                 () -> authenticationService.login(UNKNOWN_NAME, RAW_PASSWORD));
@@ -147,9 +157,12 @@ class AuthenticationServiceTest {
         assertGenericInvalidCredentialsMessage(wrongPasswordFailure);
 
         verify(passwordEncoder, times(1)).matches(RAW_PASSWORD, DUMMY_BCRYPT_HASH);
-        verify(passwordEncoder, times(1)).matches(RAW_PASSWORD, STORED_HASH);
+        verify(accountPasswordVerifier, times(1)).matches(RAW_PASSWORD, STORED_HASH);
         verify(passwordEncoder, never()).encode(anyString());
         verifyNoInteractions(jwtTokenService);
+        verify(userAccountRepository, times(1)).findByName(UNKNOWN_NAME);
+        verify(userAccountRepository, times(1)).findByName(EXACT_NAME);
+        verifyNoMoreInteractions(userAccountRepository, passwordEncoder, accountPasswordVerifier, jwtTokenService);
     }
 
     private static void assertGenericInvalidCredentialsMessage(Throwable failure) {

@@ -3,6 +3,7 @@ package com.devsuperior.dscommerce.services;
 import com.devsuperior.dscommerce.dto.TokenResponseDTO;
 import com.devsuperior.dscommerce.entities.UserAccount;
 import com.devsuperior.dscommerce.repositories.UserAccountRepository;
+import com.devsuperior.dscommerce.security.AccountPasswordVerifier;
 import com.devsuperior.dscommerce.services.exceptions.AuthenticationProcessingException;
 import com.devsuperior.dscommerce.services.exceptions.InvalidCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -20,14 +21,17 @@ public class AuthenticationService {
     private final UserAccountRepository userAccountRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenService jwtTokenService;
+    private final AccountPasswordVerifier accountPasswordVerifier;
 
     public AuthenticationService(
             UserAccountRepository userAccountRepository,
             PasswordEncoder passwordEncoder,
-            JwtTokenService jwtTokenService) {
+            JwtTokenService jwtTokenService,
+            AccountPasswordVerifier accountPasswordVerifier) {
         this.userAccountRepository = userAccountRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenService = jwtTokenService;
+        this.accountPasswordVerifier = accountPasswordVerifier;
     }
 
     public TokenResponseDTO login(String name, String password) {
@@ -49,7 +53,7 @@ public class AuthenticationService {
 
         boolean passwordMatches;
         try {
-            passwordMatches = passwordEncoder.matches(
+            passwordMatches = accountPasswordVerifier.matches(
                     password,
                     userAccount.getPasswordHash());
         } catch (RuntimeException cause) {

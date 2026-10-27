@@ -16,6 +16,8 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import jakarta.validation.constraints.NotBlank;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDate;
 import java.util.HashSet;
@@ -54,6 +56,7 @@ public class UserAccount {
     private String phone;
 
     @Column(name = "birth_date", nullable = true)
+    @JdbcTypeCode(SqlTypes.LOCAL_DATE)
     private LocalDate birthDate;
 
     @ElementCollection(fetch = FetchType.LAZY)

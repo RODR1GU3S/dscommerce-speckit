@@ -1,9 +1,13 @@
 package com.devsuperior.dscommerce.validation;
 
+import com.devsuperior.dscommerce.config.CustomerRegistrationRequestJsonConfig.CustomerRegistrationRequestDeserializer;
 import com.devsuperior.dscommerce.dto.CustomerRegistrationRequestDTO;
 import com.devsuperior.dscommerce.repositories.UserAccountRepository;
 import com.devsuperior.dscommerce.services.AuthenticationService;
 import com.devsuperior.dscommerce.services.RegistrationAttemptReference;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
@@ -30,6 +34,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -104,8 +109,127 @@ class CustomerRegistrationValidationTest {
 
     static Stream<Vector> validationVectors() {
         return Stream.of(presenceVectors(), nameVectors(), fullNameVectors(), emailVectors(), phoneVectors(),
-                birthDateVectors(), passwordVectors(), closedWhitespaceVectors(), malformedUnicodeVectors())
+                birthDateVectors(), passwordVectors(), closedWhitespaceVectors(), malformedUnicodeVectors(),
+                t046BoundaryVectors())
                 .flatMap(List::stream);
+    }
+
+    /** T046 authorship only; T049 owns execution after the other US2 test sources exist. */
+    @ParameterizedTest(name = "{index}: {0}")
+    @MethodSource("requiredFieldDocuments")
+    void missingNullAndEmptyFieldsReachRealLocalValidationWithoutChangingOtherFields(RequiredFieldDocument vector) {
+        var module = new SimpleModule().addDeserializer(CustomerRegistrationRequestDTO.class,
+                new CustomerRegistrationRequestDeserializer());
+        // Exercise the actual scoped reader locally; no Boot context or shared mapper is changed.
+        var reader = new ObjectMapper().registerModule(module);
+        CustomerRegistrationRequestDTO request;
+        try {
+            request = reader.readValue(vector.json(), CustomerRegistrationRequestDTO.class);
+        } catch (JsonProcessingException | RuntimeException preparationFailure) {
+            throw new AssertionError("Required-field document did not reach local validation");
+        }
+        assertThat(request != null).as("required-field document produces a DTO").isTrue();
+        var expected = rawValues(base());
+        expected[vector.field().ordinal()] = vector.state() == RequiredState.EMPTY ? "" : null;
+        assertRawValuesUnchanged(vector.toString(), expected, request);
+        try (var local = new LocalValidation(REFERENCE)) {
+            try {
+                assertThat(local.validator.validate(base()).isEmpty()).as("complete valid control").isTrue();
+                assertThat(local.validator.validate(request).isEmpty())
+                        .as("required-field rejection for %s", vector).isFalse();
+            } finally {
+                assertRawValuesUnchanged(vector.toString(), expected, request);
+            }
+        }
+    }
+
+    static Stream<RequiredFieldDocument> requiredFieldDocuments() {
+        return Arrays.stream(Field.values()).flatMap(field -> Arrays.stream(RequiredState.values())
+                .map(state -> new RequiredFieldDocument(field, state, requiredFieldDocument(field, state))));
+    }
+
+    private static String requiredFieldDocument(Field field, RequiredState state) {
+        String[] names = {"name", "fullName", "email", "phone", "birthDate", "password"};
+        String[] values = rawValues(base()); // Fixed ASCII fixtures need no JSON escaping.
+        var properties = new ArrayList<String>();
+        for (int index = 0; index < names.length; index++) {
+            boolean changed = index == field.ordinal();
+            if (changed && state == RequiredState.MISSING) { continue; }
+            String token = changed && state == RequiredState.NULL ? "null"
+                    : "\"" + (changed && state == RequiredState.EMPTY ? "" : values[index]) + "\"";
+            properties.add("\"" + names[index] + "\":" + token);
+        }
+        return "{" + String.join(",", properties) + "}";
+    }
+
+    private static List<Vector> t046BoundaryVectors() {
+        var vectors = new ArrayList<Vector>();
+        add(vectors, "us2-name-only-digits", Field.NAME, "000", true);
+        add(vectors, "us2-name-lowercase-start", Field.NAME, "az0", true);
+        add(vectors, "us2-name-repeated-dots", Field.NAME, "A..", true);
+        add(vectors, "us2-name-repeated-underscores", Field.NAME, "A__", true);
+        add(vectors, "us2-name-repeated-hyphens", Field.NAME, "A--", true);
+        add(vectors, "us2-name-plus", Field.NAME, "A+b", false);
+        add(vectors, "us2-name-at", Field.NAME, "A@b", false);
+        add(vectors, "us2-name-backslash", Field.NAME, "A\\b", false);
+        add(vectors, "us2-name-nul", Field.NAME, "A\u0000b", false);
+        add(vectors, "us2-name-interior-tab", Field.NAME, "A\tb", false);
+
+        // Extend the existing 2/1 trim cases to 120/121 for every member of the closed set.
+        for (int codePoint : CLOSED_SPACES) {
+            String space = new String(Character.toChars(codePoint));
+            String label = Integer.toHexString(codePoint);
+            add(vectors, "us2-full-name-trim-max120-" + label, Field.FULL_NAME,
+                    space + EMOJI.repeat(120) + space, true);
+            add(vectors, "us2-full-name-trim-long121-" + label, Field.FULL_NAME,
+                    space + EMOJI.repeat(121) + space, false);
+            add(vectors, "us2-email-trim-total254-" + label, Field.EMAIL,
+                    space + emailAtLimit() + space, true);
+            add(vectors, "us2-email-trim-total255-" + label, Field.EMAIL,
+                    space + emailAboveLimit() + space, false);
+        }
+        String padding = allClosedSpaces();
+        add(vectors, "us2-full-name-mixed-trim-min2", Field.FULL_NAME, padding + "Al" + padding, true);
+        add(vectors, "us2-full-name-mixed-trim-short1", Field.FULL_NAME, padding + "A" + padding, false);
+        add(vectors, "us2-full-name-mixed-trim-max120", Field.FULL_NAME,
+                padding + EMOJI.repeat(120) + padding, true);
+        add(vectors, "us2-full-name-mixed-trim-long121", Field.FULL_NAME,
+                padding + EMOJI.repeat(121) + padding, false);
+        // These three characters are deliberately outside the trim list and count at an edge.
+        for (String edge : List.of("\u001C", "\u200B", "\uFEFF")) {
+            String label = Integer.toHexString(edge.charAt(0));
+            add(vectors, "us2-full-name-untrimmed-edge-max120-" + label, Field.FULL_NAME,
+                    edge + EMOJI.repeat(119), true);
+            add(vectors, "us2-full-name-untrimmed-edge-long121-" + label, Field.FULL_NAME,
+                    edge + EMOJI.repeat(120), false);
+        }
+
+        add(vectors, "us2-email-provider-unicode-local64", Field.EMAIL, "\u00E9".repeat(64) + "@example.test", true);
+        add(vectors, "us2-email-provider-unicode-local65", Field.EMAIL, "\u00E9".repeat(65) + "@example.test", false);
+        add(vectors, "us2-email-provider-domain-label63", Field.EMAIL, "a@" + "b".repeat(63) + ".test", true);
+        add(vectors, "us2-email-provider-domain-trailing-hyphen", Field.EMAIL, "a@example-.test", false);
+        add(vectors, "us2-email-provider-local-leading-dot", Field.EMAIL, ".ana@example.test", false);
+        add(vectors, "us2-email-provider-local-trailing-dot", Field.EMAIL, "ana.@example.test", false);
+        add(vectors, "us2-email-provider-unclosed-quote", Field.EMAIL, "\"ana@example.test", false);
+        add(vectors, "us2-email-provider-interior-newline", Field.EMAIL, "an\na@example.test", false);
+
+        add(vectors, "us2-phone-zero-digits-min8", Field.PHONE, "+00000000", true);
+        add(vectors, "us2-phone-zero-digits-max15", Field.PHONE, "+000000000000000", true);
+        add(vectors, "us2-phone-double-plus", Field.PHONE, "++12345678", false);
+        add(vectors, "us2-phone-final-newline", Field.PHONE, "+12345678\n", false);
+        add(vectors, "us2-phone-minus-sign", Field.PHONE, "-12345678", false);
+        add(vectors, "us2-phone-letter", Field.PHONE, "+1234567A", false);
+
+        add(vectors, "us2-date-final-newline", Field.BIRTH_DATE, "2024-02-29\n", false);
+        add(vectors, "us2-date-final-nul", Field.BIRTH_DATE, "2024-02-29\u0000", false);
+        add(vectors, "us2-date-unicode-hyphen", Field.BIRTH_DATE, "2024\u201002-29", false);
+        add(vectors, "us2-date-basic-iso", Field.BIRTH_DATE, "20240229", false);
+        add(vectors, "us2-date-day-first", Field.BIRTH_DATE, "29-02-2024", false);
+        add(vectors, "us2-date-five-digit-year", Field.BIRTH_DATE, "02024-02-29", false);
+        add(vectors, "us2-date-interior-space", Field.BIRTH_DATE, "2024- 2-29", false);
+        add(vectors, "us2-date-january32", Field.BIRTH_DATE, "2024-01-32", false);
+        add(vectors, "us2-date-century-common-february28", Field.BIRTH_DATE, "1900-02-28", true);
+        return vectors;
     }
 
     private static List<Vector> presenceVectors() {
@@ -359,6 +483,12 @@ class CustomerRegistrationValidationTest {
     }
 
     private enum Field { NAME, FULL_NAME, EMAIL, PHONE, BIRTH_DATE, PASSWORD }
+
+    private enum RequiredState { MISSING, NULL, EMPTY }
+
+    private record RequiredFieldDocument(Field field, RequiredState state, String json) {
+        @Override public String toString() { return field + "-" + state; }
+    }
 
     private record Vector(String id, CustomerRegistrationRequestDTO request, boolean accepted, Instant reference) {
         @Override public String toString() { return id; }

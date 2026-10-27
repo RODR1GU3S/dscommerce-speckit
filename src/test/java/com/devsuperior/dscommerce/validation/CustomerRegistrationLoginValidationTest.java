@@ -10,6 +10,7 @@ import com.devsuperior.dscommerce.services.JwtTokenService;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
+import jakarta.validation.constraints.NotBlank;
 import org.hibernate.validator.HibernateValidator;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -146,11 +147,88 @@ class CustomerRegistrationLoginValidationTest {
     }
 
     static Stream<DomainCase> rawForwardingCases() {
-        return Stream.of(new DomainCase("raw-a-outer-spaces", " legacy ", true),
-                new DomainCase("raw-b-nul12", "\u0000".repeat(12), true));
+        return Stream.concat(Stream.of(new DomainCase("raw-a-outer-spaces", " legacy ", true),
+                new DomainCase("raw-b-nul12", "\u0000".repeat(12), true)),
+                unionCases().filter(vector -> vector.historical() || vector.registration())
+                        .map(vector -> new DomainCase("raw-union-" + vector.id(), vector.password(), true)));
+    }
+
+    /** T061 authorship only. Fixed truth-table flags are independent of every production rule helper. */
+    @ParameterizedTest(name = "{index}: {0}")
+    @MethodSource("unionCases")
+    void realProviderSeparatesAOnlyBOnlyOverlapAndNeither(UnionCase vector) {
+        var historical = new HistoricalPassword(vector.password());
+        var current = new LoginRequestDTO("ExactName", vector.password());
+        try {
+            boolean acceptedA = validator.validate(historical).isEmpty();
+            // B is an actual result under test, never the expected union or the forwarding filter.
+            boolean acceptedB = RegistrationInputRules.isValidPassword(vector.password());
+            boolean acceptedLogin = validator.validate(current).isEmpty();
+            assertThat(acceptedA).as("historical provider A: %s", vector.id()).isEqualTo(vector.historical());
+            assertThat(acceptedB).as("registration domain B: %s", vector.id()).isEqualTo(vector.registration());
+            assertThat(acceptedLogin).as("literal A union B: %s", vector.id())
+                    .isEqualTo(vector.historical() || vector.registration());
+        } finally {
+            assertThat(Objects.equals(historical.password(), vector.password())
+                    && Objects.equals(current.password(), vector.password()) && "ExactName".equals(current.name()))
+                    .as("both raw passwords and the login name retained: %s", vector.id()).isTrue();
+        }
+    }
+
+    static Stream<UnionCase> unionCases() {
+        return Stream.of(
+                new UnionCase("a-only-one-character", "x", true, false),
+                new UnionCase("a-only-eleven-characters", "a".repeat(11), true, false),
+                new UnionCase("a-only-ascii65bytes", "a".repeat(65), true, false),
+                new UnionCase("a-only-acute33-66bytes", "\u00E1".repeat(33), true, false),
+                new UnionCase("a-only-emoji17-68bytes", "\uD83D\uDE00".repeat(17), true, false),
+                new UnionCase("a-only-nbsp-single", "\u00A0", true, false),
+                new UnionCase("a-only-nbsp12", "\u00A0".repeat(12), true, false),
+                new UnionCase("a-only-em-space12", "\u2003".repeat(12), true, false),
+                new UnionCase("a-only-ideographic-space12", "\u3000".repeat(12), true, false),
+                new UnionCase("a-only-narrow-nbsp12", "\u202F".repeat(12), true, false),
+                new UnionCase("a-only-isolated-high", "\uD800", true, false),
+                new UnionCase("a-only-isolated-low", "\uDC00", true, false),
+                new UnionCase("a-only-broken-pair-interior", "legacy\uD800X", true, false),
+                new UnionCase("a-only-reversed-pair", "\uDE00\uD83D", true, false),
+                new UnionCase("a-only-malformed-with-outer-spaces", " \uD800 ", true, false),
+                new UnionCase("a-only-short-with-outer-spaces", " x ", true, false),
+                new UnionCase("overlap-ascii12", "AbCdEfGhIjKl", true, true),
+                new UnionCase("overlap-ascii64bytes", "a".repeat(64), true, true),
+                new UnionCase("overlap-acute32-64bytes", "\u00E1".repeat(32), true, true),
+                new UnionCase("overlap-emoji12-48bytes", "\uD83D\uDE00".repeat(12), true, true),
+                new UnionCase("overlap-emoji16-64bytes", "\uD83D\uDE00".repeat(16), true, true),
+                new UnionCase("overlap-leading-space", " abcdefghijkl", true, true),
+                new UnionCase("overlap-trailing-space", "abcdefghijkl ", true, true),
+                new UnionCase("overlap-interior-space", "abcdef ghijkl", true, true),
+                new UnionCase("overlap-composed", "\u00E9".repeat(12), true, true),
+                new UnionCase("overlap-decomposed", "e\u0301".repeat(12), true, true),
+                new UnionCase("overlap-embedded-nul", "abcdefghijkl\0abcdefghijkl", true, true),
+                new UnionCase("b-only-nul12", "\0".repeat(12), false, true),
+                new UnionCase("b-only-control001c12", "\u001C".repeat(12), false, true),
+                new UnionCase("b-only-bell12", "\u0007".repeat(12), false, true),
+                new UnionCase("b-only-mixed-controls12", "\0\u001C".repeat(6), false, true),
+                new UnionCase("neither-null", null, false, false),
+                new UnionCase("neither-empty", "", false, false),
+                new UnionCase("neither-single-nul", "\0", false, false),
+                new UnionCase("neither-nul11", "\0".repeat(11), false, false),
+                new UnionCase("neither-control001c11", "\u001C".repeat(11), false, false),
+                new UnionCase("neither-nul65bytes", "\0".repeat(65), false, false),
+                new UnionCase("neither-ascii-spaces12", " ".repeat(12), false, false),
+                new UnionCase("neither-ascii-tabs12", "\t".repeat(12), false, false),
+                new UnionCase("neither-mixed-ascii-spaces", " \t\r\n\f\u000B".repeat(2), false, false));
     }
 
     private record DomainCase(String id, String password, boolean accepted) {
         @Override public String toString() { return id; }
+    }
+
+    private record UnionCase(String id, String password, boolean historical, boolean registration) {
+        @Override public String toString() { return id; }
+    }
+
+    /** Real old @NotBlank provider predicate; no copied trim expression defines this test's oracle. */
+    private record HistoricalPassword(@NotBlank String password) {
+        @Override public String toString() { return "HistoricalPassword[redacted]"; }
     }
 }

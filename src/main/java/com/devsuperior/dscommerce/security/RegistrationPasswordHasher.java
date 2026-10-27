@@ -44,7 +44,32 @@ public class RegistrationPasswordHasher {
     /** Package-local verification path; registration rules must never restrict a login candidate. */
     boolean matches(String rawPassword, String encodedPassword) {
         if (rawPassword == null || !supports(encodedPassword)) { return false; }
-        return encoder.matches(rawPassword, encodedPassword);
+        try {
+            return encoder.matches(rawPassword, encodedPassword);
+        } catch (IllegalStateException failure) {
+            // A accepts malformed UTF-16, but it cannot match a valid registration password.
+            // Classify only BC 1.86's conversion signal; other encoder failures must propagate.
+            if (isMalformedCandidateFailure(rawPassword, failure)) { return false; }
+            throw failure;
+        }
+    }
+
+    private static boolean isMalformedCandidateFailure(String rawPassword, IllegalStateException failure) {
+        if (RegistrationInputRules.hasValidUnicode(rawPassword)
+                || failure.getClass() != IllegalStateException.class
+                || failure.getCause() != null || failure.getSuppressed().length != 0) {
+            return false;
+        }
+        var trace = failure.getStackTrace();
+        if (trace.length == 0 || !"org.bouncycastle.util.Strings".equals(trace[0].getClassName())
+                || !"toUTF8ByteArray".equals(trace[0].getMethodName())) {
+            return false;
+        }
+        // Match fixed library literals only; never log or retain diagnostic material.
+        String message = failure.getMessage();
+        return "invalid UTF-16 high surrogate".equals(message)
+                || "invalid UTF-16 low surrogate".equals(message)
+                || "invalid UTF-16 codepoint (truncated surrogate pair)".equals(message);
     }
 
     static boolean supports(String encodedPassword) {

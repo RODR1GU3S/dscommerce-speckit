@@ -7,6 +7,8 @@ import com.devsuperior.dscommerce.fixtures.CustomerRegistrationTestFixture.Legac
 import com.devsuperior.dscommerce.repositories.UserAccountRepository;
 import com.devsuperior.dscommerce.services.AuthenticationService;
 import com.devsuperior.dscommerce.services.JwtTokenService;
+import org.bouncycastle.crypto.generators.Argon2BytesGenerator;
+import org.bouncycastle.crypto.params.Argon2Parameters;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -22,6 +24,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.HexFormat;
 import java.util.Optional;
 import java.util.stream.Stream;
 
@@ -113,6 +116,103 @@ class CustomerRegistrationCryptoTest {
                 new RoundTripCase("unicode", "Senha-\uD83D\uDE00-\u00E1-009", "Senha-\uD83D\uDE00-A-009"));
     }
 
+    /** T059: algorithm-only known answer, not the registration profile or an HTTP/Spring context test. */
+    @Test
+    void bouncyCastleMatchesThePublishedRfc9106Argon2idVector() {
+        // RFC 9106 section 5.3: https://www.rfc-editor.org/rfc/rfc9106.html#section-5.3
+        // These published binary inputs and costs belong only to the algorithm vector.
+        byte[] password = HexFormat.of().parseHex("01".repeat(32));
+        var parameters = new Argon2Parameters.Builder(Argon2Parameters.ARGON2_id)
+                .withVersion(0x13).withMemoryAsKB(32).withIterations(3).withParallelism(4)
+                .withSalt(HexFormat.of().parseHex("02".repeat(16)))
+                .withSecret(HexFormat.of().parseHex("03".repeat(8)))
+                .withAdditional(HexFormat.of().parseHex("04".repeat(12))).build();
+        byte[] expected = HexFormat.of().parseHex(
+                "0d640df58d78766c08c037a34a8b53c9d01ef0452d75b65eb52520e96b01e659");
+
+        byte[] actual = deriveBouncyCastleTag(password, parameters);
+
+        assertThat(Arrays.equals(expected, actual)).as("published RFC 9106 Argon2id tag").isTrue();
+    }
+
+    @ParameterizedTest(name = "{index}: {0}")
+    @MethodSource("wrapperByteSequences")
+    void registrationWrapperUsesTheApprovedProfileAndLiteralUtf8Bytes(WrapperCase vector) {
+        assertInputUnits(vector.id(), vector.password(), vector.points(), vector.bytes());
+        byte[] expectedUtf8 = HexFormat.of().parseHex(vector.utf8Hex());
+        assertThat(expectedUtf8.length == vector.bytes()
+                && Arrays.equals(expectedUtf8, vector.password().getBytes(StandardCharsets.UTF_8)))
+                .as("independent literal UTF-8 fixture without added BOM: %s", vector.id()).isTrue();
+
+        String encoded = hasher.hash(vector.password());
+        byte[] salt = assertProfileAndReadSalt(encoded);
+        // Independent adapter check: explicit approved costs and literal input bytes, not product constants.
+        var parameters = new Argon2Parameters.Builder(Argon2Parameters.ARGON2_id)
+                .withVersion(0x13).withMemoryAsKB(19456).withIterations(2).withParallelism(1)
+                .withSalt(salt).build();
+        byte[] expectedDigest = deriveBouncyCastleTag(expectedUtf8, parameters);
+        byte[] actualDigest = Base64.getDecoder().decode(encoded.split("\\$", -1)[5]);
+        assertThat(Arrays.equals(expectedDigest, actualDigest))
+                .as("wrapper encodes the exact fixture bytes at the approved profile: %s", vector.id()).isTrue();
+        assertThat(verifier.matches(vector.password(), encoded)).as("wrapper verification: %s", vector.id()).isTrue();
+        assertThat(mockingDetails(bcrypt).getInvocations().isEmpty()).as("no BCrypt fallback").isTrue();
+    }
+
+    static Stream<WrapperCase> wrapperByteSequences() {
+        return Stream.of(
+                new WrapperCase("ascii12", "abcdefghijkl", 12, 12, "6162636465666768696a6b6c"),
+                new WrapperCase("ascii64", "a".repeat(64), 64, 64, "61".repeat(64)),
+                new WrapperCase("acute32-bytes64", "\u00E1".repeat(32), 32, 64, "c3a1".repeat(32)),
+                new WrapperCase("emoji12-bytes48", "\uD83D\uDE00".repeat(12), 12, 48, "f09f9880".repeat(12)),
+                new WrapperCase("emoji16-bytes64", "\uD83D\uDE00".repeat(16), 16, 64, "f09f9880".repeat(16)),
+                new WrapperCase("outer-spaces", " abcdefghijkl ", 14, 14, "206162636465666768696a6b6c20"),
+                new WrapperCase("composed", "\u00E9".repeat(12), 12, 24, "c3a9".repeat(12)),
+                new WrapperCase("decomposed", "e\u0301".repeat(12), 24, 36, "65cc81".repeat(12)),
+                new WrapperCase("nul12", "\0".repeat(12), 12, 12, "00".repeat(12)),
+                new WrapperCase("control1c12", "\u001C".repeat(12), 12, 12, "1c".repeat(12)));
+    }
+
+    @ParameterizedTest(name = "{index}: {0}")
+    @MethodSource("exactNulPairs")
+    void pQAndPPlusNulAuthenticateOnlyTheirOwnHashesInBothDirections(ExactPair pair) {
+        assertInputUnits(pair.id() + "-first", pair.first(), pair.firstPoints(), pair.firstBytes());
+        assertInputUnits(pair.id() + "-second", pair.second(), pair.secondPoints(), pair.secondBytes());
+        String firstHash = hasher.hash(pair.first());
+        String secondHash = hasher.hash(pair.second());
+        assertProfileAndReadSalt(firstHash);
+        assertProfileAndReadSalt(secondHash);
+
+        assertThat(verifier.matches(pair.first(), firstHash)).as("own first sequence: %s", pair.id()).isTrue();
+        assertThat(verifier.matches(pair.second(), firstHash)).as("reject second against first: %s", pair.id()).isFalse();
+        assertThat(verifier.matches(pair.second(), secondHash)).as("own second sequence: %s", pair.id()).isTrue();
+        assertThat(verifier.matches(pair.first(), secondHash)).as("reject first against second: %s", pair.id()).isFalse();
+        assertThat(mockingDetails(bcrypt).getInvocations().isEmpty()).as("no BCrypt fallback").isTrue();
+        // No equality/inequality requirement on independently salted PHC strings.
+    }
+
+    static Stream<ExactPair> exactNulPairs() {
+        String p = "abcdefghijkl";
+        String q = p + "\0" + p;
+        String pPlusNul = p + "\0";
+        return Stream.of(
+                new ExactPair("p-q", p, q, 12, 12, 25, 25),
+                new ExactPair("p-p-plus-nul", p, pPlusNul, 12, 12, 13, 13),
+                new ExactPair("q-p-plus-nul", q, pPlusNul, 25, 25, 13, 13));
+    }
+
+    private static byte[] deriveBouncyCastleTag(byte[] password, Argon2Parameters parameters) {
+        var generator = new Argon2BytesGenerator();
+        generator.init(parameters);
+        byte[] tag = new byte[32];
+        assertThat(generator.generateBytes(password, tag)).as("complete Argon2 tag length").isEqualTo(32);
+        return tag;
+    }
+
+    private static void assertInputUnits(String id, String password, int points, int bytes) {
+        assertThat(password.codePointCount(0, password.length())).as("literal code points: %s", id).isEqualTo(points);
+        assertThat(password.getBytes(StandardCharsets.UTF_8).length).as("literal UTF-8 bytes: %s", id).isEqualTo(bytes);
+    }
+
     private static byte[] assertProfileAndReadSalt(String encoded) {
         assertThat(encoded != null).as("generated PHC present").isTrue();
         assertThat(encoded.length()).as("whole PHC length").isEqualTo(97);
@@ -141,6 +241,15 @@ class CustomerRegistrationCryptoTest {
     }
 
     private record RoundTripCase(String id, String password, String different) {
+        @Override public String toString() { return id; }
+    }
+
+    private record WrapperCase(String id, String password, int points, int bytes, String utf8Hex) {
+        @Override public String toString() { return id; }
+    }
+
+    private record ExactPair(String id, String first, String second,
+                             int firstPoints, int firstBytes, int secondPoints, int secondBytes) {
         @Override public String toString() { return id; }
     }
 }

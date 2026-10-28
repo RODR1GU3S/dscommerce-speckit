@@ -57,6 +57,7 @@ public class UserAccountInsertRepositoryImpl implements UserAccountInsertReposit
                 Types.VARCHAR, 255, DatabaseMetaData.columnNoNulls);
         var emailKey = identityKey(columns, constraints, indexes, "EMAIL_KEY", "UK_USER_ACCOUNT_EMAIL_KEY",
                 Types.VARBINARY, 1016, DatabaseMetaData.columnNullable);
+        require(!name.indexName().equals(emailKey.indexName()));
         return new RegistrationIdentityMetadata(product, version, catalog, schema, TABLE, name, emailKey);
     }
 
@@ -79,11 +80,12 @@ public class UserAccountInsertRepositoryImpl implements UserAccountInsertReposit
         return columns;
     }
 
-    private static Map<String, List<KeyColumn>> readUniqueConstraints(Connection connection, String catalog,
-                                                                      String schema) throws SQLException {
-        var constraints = new LinkedHashMap<String, List<KeyColumn>>();
+    private static Map<String, ConstraintDefinition> readUniqueConstraints(Connection connection, String catalog,
+                                                                          String schema) throws SQLException {
+        var constraints = new LinkedHashMap<String, ConstraintDefinition>();
         try (var statement = connection.prepareStatement(
-                "select tc.CONSTRAINT_NAME, kcu.COLUMN_NAME, kcu.ORDINAL_POSITION "
+                "select tc.CONSTRAINT_NAME, tc.INDEX_CATALOG, tc.INDEX_SCHEMA, tc.INDEX_NAME, "
+                        + "tc.ENFORCED, tc.NULLS_DISTINCT, kcu.COLUMN_NAME, kcu.ORDINAL_POSITION "
                         + "from INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc "
                         + "join INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu "
                         + "on kcu.CONSTRAINT_CATALOG = tc.CONSTRAINT_CATALOG "
@@ -97,10 +99,19 @@ public class UserAccountInsertRepositoryImpl implements UserAccountInsertReposit
             try (var rows = statement.executeQuery()) {
                 while (rows.next()) {
                     String name = rows.getString("CONSTRAINT_NAME");
+                    String index = rows.getString("INDEX_NAME");
                     String column = rows.getString("COLUMN_NAME");
                     int position = rows.getInt("ORDINAL_POSITION");
-                    require(name != null && !name.isBlank() && column != null && position > 0);
-                    constraints.computeIfAbsent(name, ignored -> new ArrayList<>()).add(new KeyColumn(column, position));
+                    require(name != null && !name.isBlank() && column != null && position > 0
+                            && index != null && !index.isBlank()
+                            && catalog.equals(rows.getString("INDEX_CATALOG"))
+                            && schema.equals(rows.getString("INDEX_SCHEMA"))
+                            && "YES".equals(rows.getString("ENFORCED"))
+                            && "YES".equals(rows.getString("NULLS_DISTINCT")));
+                    var constraint = constraints.computeIfAbsent(name,
+                            ignored -> new ConstraintDefinition(index, new ArrayList<>()));
+                    require(index.equals(constraint.indexName()));
+                    constraint.columns().add(new KeyColumn(column, position));
                 }
             }
         }
@@ -129,27 +140,33 @@ public class UserAccountInsertRepositoryImpl implements UserAccountInsertReposit
     }
 
     private static IdentityKey identityKey(Map<String, ColumnDefinition> columns,
-                                           Map<String, List<KeyColumn>> constraints, Map<String, List<KeyColumn>> indexes,
+                                           Map<String, ConstraintDefinition> constraints, Map<String, List<KeyColumn>> indexes,
                                            String column, String expectedConstraint, int jdbcType, int capacity,
                                            int nullability) throws SQLException {
         var definition = columns.get(column);
         require(definition != null);
         require(definition.jdbcType() == jdbcType && definition.capacity() == capacity
-                && definition.nullability() == nullability && definition.typeName() != null
-                && !definition.typeName().isBlank());
-        var constraintNames = matchingKeys(constraints, column);
+                && definition.nullability() == nullability
+                && (jdbcType == Types.VARCHAR ? "CHARACTER VARYING" : "BINARY VARYING").equals(definition.typeName()));
+        var constraintNames = constraints.entrySet().stream()
+                .filter(entry -> singleColumnKey(entry.getValue().columns(), column)).map(Map.Entry::getKey).toList();
         var indexNames = matchingKeys(indexes, column);
         require(constraintNames.size() == 1 && constraintNames.getFirst().equals(expectedConstraint));
         require(indexNames.size() == 1);
+        // The index must actually back this constraint, not merely have a similar name or column list.
+        require(constraints.get(expectedConstraint).indexName().equals(indexNames.getFirst()));
         return new IdentityKey(column, definition.jdbcType(), definition.typeName(), definition.capacity(),
                 nullability == DatabaseMetaData.columnNullable, constraintNames.getFirst(), indexNames.getFirst());
     }
 
     private static List<String> matchingKeys(Map<String, List<KeyColumn>> keys, String column) {
-        var expected = List.of(new KeyColumn(column, 1));
-        return keys.entrySet().stream().filter(entry -> entry.getValue().stream()
-                        .sorted(Comparator.comparingInt(KeyColumn::position)).toList().equals(expected))
+        return keys.entrySet().stream().filter(entry -> singleColumnKey(entry.getValue(), column))
                 .map(Map.Entry::getKey).toList();
+    }
+
+    private static boolean singleColumnKey(List<KeyColumn> columns, String column) {
+        return columns.stream().sorted(Comparator.comparingInt(KeyColumn::position)).toList()
+                .equals(List.of(new KeyColumn(column, 1)));
     }
 
     private static void require(boolean condition) throws SQLException {
@@ -157,5 +174,6 @@ public class UserAccountInsertRepositoryImpl implements UserAccountInsertReposit
     }
 
     private record ColumnDefinition(int jdbcType, String typeName, int capacity, int nullability) { }
+    private record ConstraintDefinition(String indexName, List<KeyColumn> columns) { }
     private record KeyColumn(String column, int position) { }
 }

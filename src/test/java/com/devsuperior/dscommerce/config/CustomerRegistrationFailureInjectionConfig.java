@@ -41,15 +41,25 @@ public class CustomerRegistrationFailureInjectionConfig {
 
         /** The chosen boundary must actually be reached; assertReached after awaitFinished. */
         public Fault failOnce(Attempt attempt, Point point) {
+            return failOnce(attempt, point, false);
+        }
+
+        public Fault failOnceInWorker(Attempt attempt, Point point) {
+            return failOnce(attempt, point, true);
+        }
+
+        private Fault failOnce(Attempt attempt, Point point, boolean workerOnly) {
             observation.requireOwned(attempt);
             requireInjectable(point);
             var fault = new Fault();
-            attempt.on(point, () -> {
+            Runnable inject = () -> {
                 if (fault.hits.incrementAndGet() == 1) {
                     fault.injected.set(true);
                     throw fault.sentinel;
                 }
-            });
+            };
+            if (workerOnly) { attempt.onWorker(point, inject); }
+            else { attempt.on(point, inject); }
             return fault;
         }
 

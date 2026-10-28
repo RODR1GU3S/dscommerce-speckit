@@ -1,5 +1,6 @@
 package com.devsuperior.dscommerce.config;
 
+import com.devsuperior.dscommerce.repositories.UserAccountRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -129,6 +130,7 @@ public class CustomerRegistrationObservationConfig {
     }
 
     public enum Point {
+        METADATA_ENTRY, METADATA_RETURNED, METADATA_FAILED,
         PROXY_ENTRY, WORKER_ENTRY, WORKER_RETURNED, PROXY_RETURNED, PROXY_FAILED,
         SQL_BEFORE, SQL_RETURNED, SQL_FAILED,
         ACCOUNT_INSERT_BEFORE, ACCOUNT_INSERT_RETURNED, ROLE_INSERT_BEFORE, ROLE_INSERT_RETURNED,
@@ -162,6 +164,8 @@ public class CustomerRegistrationObservationConfig {
         private Advised worker;
         private MethodInterceptor outside;
         private MethodInterceptor inside;
+        private Advised accounts;
+        private MethodInterceptor metadata;
 
         private Observation(ConfigurableEnvironment environment) {
             this.environment = environment;
@@ -209,6 +213,27 @@ public class CustomerRegistrationObservationConfig {
                 source = new ObservedDataSource(delegate, this);
                 return source;
             }
+            if (bean instanceof UserAccountRepository && bean instanceof Advised advised) {
+                if (accounts != null || advised.isFrozen()) { throw broken(); }
+                metadata = invocation -> {
+                    var attempt = current.get();
+                    if (attempt == null || !invocation.getMethod().getName().equals("registrationIdentityMetadata")) {
+                        return invocation.proceed();
+                    }
+                    hit(Point.METADATA_ENTRY);
+                    try {
+                        var result = invocation.proceed(); // Includes the original read-only transaction completion.
+                        hit(Point.METADATA_RETURNED);
+                        return result;
+                    } catch (Throwable failure) {
+                        hit(Point.METADATA_FAILED);
+                        throw failure;
+                    }
+                };
+                advised.addAdvice(0, metadata);
+                accounts = advised;
+                return bean;
+            }
             if (!WORKER.equals(AopUtils.getTargetClass(bean).getName())) { return bean; }
             if (worker != null || !(bean instanceof Advised advised) || advised.isFrozen()) { throw broken(); }
             int index = -1;
@@ -228,6 +253,7 @@ public class CustomerRegistrationObservationConfig {
                         || TransactionSynchronizationManager.hasResource(source) || ++attempt.proxyEntries != 1) {
                     throw broken();
                 }
+                attempt.workerActive = true;
                 hit(Point.PROXY_ENTRY);
                 try {
                     var result = invocation.proceed(); // Original Spring transaction interceptor commits here.
@@ -237,6 +263,7 @@ public class CustomerRegistrationObservationConfig {
                     hit(Point.PROXY_FAILED);
                     throw failure;
                 } finally {
+                    attempt.workerActive = false;
                     if (TransactionSynchronizationManager.isActualTransactionActive()
                             || TransactionSynchronizationManager.hasResource(source)) { throw broken(); }
                 }
@@ -277,6 +304,7 @@ public class CustomerRegistrationObservationConfig {
         @Override
         public void destroy() {
             if (worker != null) { worker.removeAdvice(outside); worker.removeAdvice(inside); }
+            if (accounts != null) { accounts.removeAdvice(metadata); }
             if (!attempts.isEmpty()) { throw broken(); }
         }
     }
@@ -292,6 +320,7 @@ public class CustomerRegistrationObservationConfig {
         private boolean closed;
         private long owner;
         private int proxyEntries;
+        private boolean workerActive;
         private ConnectionObserver connection;
         private ConnectionObserver activeConnection;
         private boolean synchronizationBound;
@@ -305,11 +334,18 @@ public class CustomerRegistrationObservationConfig {
             if (started || closed) { throw broken(); }
             switch (Objects.requireNonNull(point)) {
                 case JDBC_COMMIT_DELEGATED, JDBC_COMMIT_FAILED, JDBC_ROLLBACK_FAILED,
-                        AFTER_COMPLETION, PROXY_FAILED, SQL_FAILED -> throw broken();
+                        AFTER_COMPLETION, PROXY_FAILED, SQL_FAILED,
+                        METADATA_ENTRY, METADATA_RETURNED, METADATA_FAILED -> throw broken();
                 default -> { }
             }
             actions.computeIfAbsent(Objects.requireNonNull(point), ignored -> new ArrayList<>())
                     .add(Objects.requireNonNull(action));
+        }
+
+        /** Target the original worker, while still recording preceding metadata transactions unchanged. */
+        public void onWorker(Point point, Runnable action) {
+            Objects.requireNonNull(action);
+            on(point, () -> { if (workerActive) { action.run(); } });
         }
 
         public <T> T call(Callable<T> operation) throws Exception {

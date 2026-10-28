@@ -2,6 +2,7 @@ package com.devsuperior.dscommerce.services;
 
 import com.devsuperior.dscommerce.dto.CustomerRegistrationConfirmationDTO;
 import com.devsuperior.dscommerce.dto.CustomerRegistrationRequestDTO;
+import com.devsuperior.dscommerce.repositories.UserAccountInsertRepository.RegistrationIdentityMetadata;
 import com.devsuperior.dscommerce.repositories.UserAccountRepository;
 import com.devsuperior.dscommerce.security.RegistrationPasswordHasher;
 import com.devsuperior.dscommerce.services.exceptions.CustomerRegistrationException;
@@ -79,12 +80,25 @@ public class CustomerRegistrationService {
             throw new CustomerRegistrationException(CONFLICT);
         }
 
+        RegistrationIdentityMetadata metadata;
+        try {
+            // Capture while healthy, before entering the write transaction; never recover after failure.
+            metadata = accounts.registrationIdentityMetadata();
+        } catch (RuntimeException metadataFailure) {
+            throw new CustomerRegistrationException(PROCESSING_FAILURE);
+        }
+        if (!CustomerRegistrationPersistenceFailureClassifier.hasValidIdentityMetadata(metadata)) {
+            throw new CustomerRegistrationException(PROCESSING_FAILURE);
+        }
+
         try {
             // The injected worker is a separate Spring bean: this call includes transaction completion.
             return Objects.requireNonNull(transaction.register(command), "Registration confirmation is required");
         } catch (RuntimeException transactionFailure) {
-            // No recovery lookup or inferred conflict. Constraint classification belongs to the later US4 tasks.
-            throw new CustomerRegistrationException(PROCESSING_FAILURE);
+            // The proxy has finished: classify only its proven identity diagnosis, using the earlier snapshot.
+            throw new CustomerRegistrationException(
+                    CustomerRegistrationPersistenceFailureClassifier.isRecognizedConflict(transactionFailure, metadata)
+                            ? CONFLICT : PROCESSING_FAILURE);
         }
     }
 }

@@ -15,8 +15,11 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.Marker;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.server.RequestPath;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.util.pattern.PathPattern;
+import org.springframework.web.util.pattern.PathPatternParser;
 
 import java.io.IOException;
 
@@ -26,6 +29,7 @@ import java.io.IOException;
 public class CustomerRegistrationDiagnosticLoggingFilter extends OncePerRequestFilter {
 
     private static final ThreadLocal<Boolean> REGISTRATION_REQUEST = new ThreadLocal<>();
+    private static final PathPattern REGISTRATION_PATH = PathPatternParser.defaultInstance.parse("/customers");
     private LoggerContext logging;
     private TurboFilter diagnosticAdapter;
 
@@ -73,8 +77,7 @@ public class CustomerRegistrationDiagnosticLoggingFilter extends OncePerRequestF
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
-        String path = request.getRequestURI().substring(request.getContextPath().length());
-        if (!"POST".equals(request.getMethod()) || !"/customers".equals(path)) {
+        if (!"POST".equals(request.getMethod()) || !isRegistrationPath(request)) {
             chain.doFilter(request, response);
             return;
         }
@@ -84,6 +87,18 @@ public class CustomerRegistrationDiagnosticLoggingFilter extends OncePerRequestF
         finally {
             if (previous == null) { REGISTRATION_REQUEST.remove(); }
             else { REGISTRATION_REQUEST.set(previous); }
+        }
+    }
+
+    private static boolean isRegistrationPath(HttpServletRequest request) {
+        try {
+            // Match decoded segments with the same HTTP path parser used by MVC. Each parse starts
+            // from the raw URI; never decode a String twice or change MVC's request-path cache.
+            return REGISTRATION_PATH.matches(RequestPath.parse(request.getRequestURI(), request.getContextPath())
+                    .pathWithinApplication());
+        } catch (IllegalArgumentException malformedPath) {
+            // Leave malformed-path rejection to the existing server/firewall/MVC boundaries.
+            return false;
         }
     }
 }

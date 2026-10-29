@@ -63,8 +63,12 @@ class CustomerRegistrationSecretDiagnosticFilterTest {
     static Stream<Arguments> routes() {
         return Stream.of("", "/api").flatMap(context -> Stream.of(
                 Arguments.of(context, "POST", "/customers", true),
+                Arguments.of(context, "POST", "/%63ustomers", true),
                 Arguments.of(context, "GET", "/customers", false),
+                Arguments.of(context, "GET", "/%63ustomers", false),
                 Arguments.of(context, "POST", "/customers/extra", false),
+                Arguments.of(context, "POST", "/%63ustomers/extra", false),
+                Arguments.of(context, "POST", "/%2563ustomers", false),
                 Arguments.of(context, "POST", "/login", false),
                 Arguments.of(context, "POST", "/admin/products", false)));
     }

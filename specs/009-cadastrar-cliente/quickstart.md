@@ -7263,3 +7263,71 @@ A **FINAL local T104 com7.310aprovados** permanece evidência histórica da revi
 Produção/binding DATE, workflow, contratos/políticas, tasks, planejamento e históricos anteriores intactos. D009-01, proteção delimitada dos logs, seleção009 e **Gate IV005: EXCEÇÃO DOCUMENTADA, sem PASS estrito** preservados. Nenhum segredo/hash/canário ou SQL com valores foi transcrito. Artefatos novos restritos a target ignorado; este resumo é o registro durável, não transporte dos relatórios brutos a outro checkout.
 
 Revisados diff, conteúdo dos dois arquivos autorizados, referências/links e whitespace; `git diff --check` sem erro. O prefixo recebido deste quickstart foi preservado por SHA-256, e tasks mantém o hash de entrada. Git final: somente a classe focal e quickstart009 modificados, nada staged/não rastreado; branch/HEAD local/remoto, main e seleção009 preservados. **Sem stage, commit, push, atualização do PR, retirada de Draft, merge, workflow manual ou alteração de main.** Pendência remota: a correção ainda não foi publicada nem testada em nova CI Ubuntu/H2.
+
+<a id="pos-t107-p2-caminho-codificado"></a>
+
+## Tratamento adicional após T107 — P2: logs e caminho codificado — 2026-10-29
+
+### Entrada, autorização e diagnóstico real
+
+Solicitação restrita ao achado P2 da revisão técnica final, somente leitura, do PR #9 nesta conversa: possível contorno do filtro de diagnósticos por URI codificada. Aquela revisão era estática, sem reprodução HTTP. Este tratamento adicional não reabre nem altera as107tasks ou seus históricos. Entrada confirmada: raiz `C:/Users/ronal/dscommerce-speckit`, branch real `009-cadastrar-cliente`, seleção009, HEAD local/publicado `70d580ca198a4124d334d15cefe22da8921d8a52`, base `de1d8ffb91f4c73d8ee2d10912d56c244164084b`, Git limpo/sincronizado0/0, índice vazio e nenhum não rastreado. PR #9 aberto em Draft para main, sem alteração de estado nesta solicitação.
+
+Lidos filtro, reader/interceptor/controlador009, configuração Security existente, suporte HTTP/Logback, testes de diagnóstico/segredos, constituição e condições dos artefatos009. Nenhum Maven/Surefire ativo nas verificações antes de cada execução. Não alterados firewall, servidor, segurança global, contrato, políticas, senha, DATE, transações ou classificador. As execuções abaixo são sequenciais pelo Wrapper, com seletores explícitos; não houve suíte completa.
+
+Criado [CustomerRegistrationEncodedPathTest](../../src/test/java/com/devsuperior/dscommerce/security/CustomerRegistrationEncodedPathTest.java), com contextos reais raiz e `/api`, HttpClient sem redirects e URI construída conservando `%63` em `getRawPath()`. Um filtro de teste transparente observa a URI bruta antes da cadeia e sinaliza sua conclusão; um spy chama o serviço original, sem substituir entrada/resultado, e observa servletPath e o atributo de mapeamento do MVC. O teste exige201, chamada única e conta+CLIENT visíveis em conexão JDBC independente antes da limpeza dos IDs próprios.
+
+O [diagnóstico aprovado](../../target/feature009-evidence/P2-PATH-DIAG-20261029T231753Z-a5f6a34d/reconciliation.json) executou4casos:2grafias em cada contexto. O [console](../../target/feature009-evidence/P2-PATH-DIAG-20261029T231753Z-a5f6a34d/console.log) registra:
+
+| Contexto | URI bruta recebida pelo servidor, igual ao rawPath do cliente | servletPath / padrão MVC | Serviço | HTTP / persistência |
+| --- | --- | --- | --- | --- |
+| Raiz | `/customers` | `/customers` / `/customers` |1chamada original|201, conta e CLIENT |
+| Raiz | `/%63ustomers` | `/customers` / `/customers` |1chamada original|201, conta e CLIENT |
+| `/api` | `/api/customers` | `/customers` / `/customers` |1chamada original|201, conta e CLIENT |
+| `/api` | `/api/%63ustomers` | `/customers` / `/customers` |1chamada original|201, conta e CLIENT |
+
+Logo, neste ambiente o caminho codificado não foi rejeitado pelo servidor/firewall antes do cadastro. A comparação literal da URI bruta no filtro anterior deixava o mesmo endpoint reconhecido pelo MVC fora do escopo de sanitização. O achado P2 é aplicável; nenhuma rejeição existente foi flexibilizada para reproduzi-lo.
+
+### Regressão antes da correção e mudança delimitada
+
+Antes de tocar produção, acrescentadas regressões no novo teste HTTP e no [CustomerRegistrationSecretDiagnosticFilterTest](../../src/test/java/com/devsuperior/dscommerce/security/CustomerRegistrationSecretDiagnosticFilterTest.java). Mantidos todos os controles anteriores; adicionados POST codificado protegido, GET codificado não protegido, caminho codificado com segmento extra não protegido e `%2563` não tratado como segunda decodificação. Os27casos do filtro incluem mensagem fixa, severidades TRACE/DEBUG/INFO/WARN/ERROR, escopo exclusivo, argumentos/marker/exceções, conclusão excepcional e limiar de logging.
+
+Os8novos casos HTTP de logs combinam2contextos ×2grafias ×WARN/ERROR. Na thread real da requisição, um diagnóstico sintético no canal Logback `org.hibernate.engine.jdbc.spi.SqlExceptionHelper` carrega canário em argumento/marker/SQLException/causa/suppressed. Um LoggerContext privado instala a fábrica original do TurboFilter e um ListAppender real; não remove appenders ou muda níveis da aplicação, e os canários deliberados ficam fora do console/appenders de produção. O detector tem controle positivo anterior; no appender protegido exige logger de substituição, mensagem/formatted fixos, mesma severidade, ausência de argumento/marker/throwable/canário. Um segundo evento, depois da cadeia na mesma thread do servidor, exige observabilidade original, comprovando restauração do escopo. O serviço e o cadastro continuam reais.
+
+[RED P2-LOG-RED-20261029T232219Z-5936f3d3](../../target/feature009-evidence/P2-LOG-RED-20261029T232219Z-5936f3d3/reconciliation.json): **39casos,33aprovados,6falhas de asserção, zero erros/ignorados**. As4falhas HTTP são somente os índices3/4 de `ormDiagnosticsAreSanitizedBeforeAppendersForBothRawSpellings` em cada filha raiz/API: POST codificado, WARN/ERROR. Falham na asserção de mensagem/severidade/ausência de segredos após o cadastro real201. Os2outros casos são os índices2/11 de `onlySignupReplacesMessagesArgumentsMarkersAndThrowableChains`, POST codificado em cada contexto. As grafias literais e demais controles passaram. Produção ainda idêntica ao HEAD nessa execução; isso é RED comportamental, separado da falha de compilação inicial descrita abaixo.
+
+Alterado somente [CustomerRegistrationDiagnosticLoggingFilter](../../src/main/java/com/devsuperior/dscommerce/security/CustomerRegistrationDiagnosticLoggingFilter.java) em produção: `RequestPath.parse` recebe URI bruta/contexto, e `PathPattern` compara os segmentos conforme o parser HTTP usado pelo MVC no projeto. Não se usa URLDecoder, substituição textual ou decodificação de String já decodificada. Cada parser parte da URI original; o filtro não modifica o cache de caminho do MVC. Parser inválido não antecipa nova resposta: a requisição segue para as rejeições existentes. O guard POST, TurboFilter anterior aos appenders, mensagem fixa, severidades, canais delimitados e finally de restauração permanecem. A correção não modifica quais requests o firewall/MVC aceitam.
+
+### Execuções, exits e reconciliação
+
+Cada diretório tem preflight/identificação própria, comando exato, hashes dos inputs, inventário dos relatórios anteriores, console e processos observados. `execution-before-archive.json` captura o **Process.ExitCode do comando nativo do Wrapper imediatamente após WaitForExit**, antes de qualquer cópia/conferência. `runner-result.json` captura separadamente o exit do processo PowerShell executor. Sem somar ou substituir uma fonte pela outra. ReportNameSuffix exclusivo evita sobrescrita; somente os XML/TXT da execução são copiados uma vez após os dois exits.
+
+| Etapa / RunId | Seletor `-Dtest` | Resultado executado | Maven / runner | XML / TXT exclusivos |
+| --- | --- | --- | --- | --- |
+| `P2-PATH-DIAG-20261029T231436Z-e771dfa0` | `CustomerRegistrationEncodedPathTest` | Falha de compilação do novo teste;0casos executados |1/1|0/0, sem arquivamento |
+| `P2-PATH-DIAG-20261029T231753Z-a5f6a34d` | `CustomerRegistrationEncodedPathTest` |4aprovados;0falhas/erros/ignorados|0/0|3/3 |
+| `P2-LOG-RED-20261029T232219Z-5936f3d3` | `CustomerRegistrationEncodedPathTest,CustomerRegistrationSecretDiagnosticFilterTest` |39casos;33aprovados;6falhas;0erros/ignorados|1/1|4/4 |
+| `P2-LOG-GREEN-20261029T232532Z-5be4abb3` | `CustomerRegistrationEncodedPathTest,CustomerRegistrationSecretDiagnosticFilterTest,CustomerRegistrationSecretLoggingTest` |**82aprovados;0falhas/erros/ignorados**|**0/0**|**7/7** |
+
+Comando GREEN efetivamente executado na raiz Windows/PowerShell:
+
+```powershell
+.\mvnw.cmd --batch-mode --no-transfer-progress '-Dtest=CustomerRegistrationEncodedPathTest,CustomerRegistrationSecretDiagnosticFilterTest,CustomerRegistrationSecretLoggingTest' '-Dsurefire.reportNameSuffix=P2-LOG-GREEN-20261029T232532Z-5be4abb3' test
+```
+
+[GREEN: reconciliação](../../target/feature009-evidence/P2-LOG-GREEN-20261029T232532Z-5be4abb3/reconciliation.json), [console](../../target/feature009-evidence/P2-LOG-GREEN-20261029T232532Z-5be4abb3/console.log), [Maven antes da cópia](../../target/feature009-evidence/P2-LOG-GREEN-20261029T232532Z-5be4abb3/execution-before-archive.json) e [runner independente](../../target/feature009-evidence/P2-LOG-GREEN-20261029T232532Z-5be4abb3/runner-result.json). São **6classes concretas,16pares classe/método,82identidades**, sem omissões, extras ou duplicatas. O catálogo usa classname/método/índice de cada testcase, inclusive outer distribuído em suite nested; não atribui identidade pela suite nem soma outer novamente. Os7XML têm TXT irmãos; totais por suite concordam entre console/XML/TXT, e o total é82. Na comparação com o console remove-se somente o sufixo final exato `(P2-LOG-GREEN-20261029T232532Z-5be4abb3)` dos nomes XML, conservando os relatórios originais.
+
+A seleção GREEN reúne os39casos RED, com os dois fontes de teste inalterados por SHA-256, mais43casos da família SecretLogging existente, cujo fonte/inventário T104 também permanece inalterado. Não houve redução de expectativa ou exclusão de caso. Essa família preserva, entre outros, a injeção ORM/JDBC real anterior e seus oráculos nos caminhos literais, complementando o diagnóstico sintético privado dos caminhos codificados.
+
+[Asserções e inputs](../../target/feature009-evidence/P2-LOG-GREEN-20261029T232532Z-5be4abb3/assertion-and-input-checks.json):441inputs iguais antes/depois da execução,8marcadores `P2_LOG_ASSERT` e8`P2_LOG_PROTECTED`, com todas as verificações de proteção e restauração alcançadas. Nenhum canário privado no console. A aprovação também confirma os controles finais posteriores às asserções, sem inferir alcance de asserções de outro teste pelo total global.
+
+[Preservação dos relatórios anteriores](../../target/feature009-evidence/P2-LOG-GREEN-20261029T232532Z-5be4abb3/prior-report-checks.json):2.656arquivos anteriores inalterados por caminho/tamanho/SHA-256; zero rearquivado. O [arquivo de conferência da cópia](../../target/feature009-evidence/P2-LOG-GREEN-20261029T232532Z-5be4abb3/archive-checks.json) registra14arquivos exclusivos copiados uma vez, iguais aos originais. Diagnóstico e RED têm suas reconciliações/arquivos próprios, separados.
+
+Falhas de preparação e dos auxiliares conservadas: a primeira compilação errou a inferência genérica do FilterRegistrationBean do novo teste; foi corrigida para tipo explícito antes de repetir somente o diagnóstico, e não é evidência RED. A primeira conferência auxiliar do diagnóstico encapsulou o array JSON como um único elemento e acusou alteração de relatórios indevidamente; saída original preservada em `prior-report-checks-helper-error.json`, corrigida a leitura e confirmados2.642arquivos realmente intactos, antes da primeira cópia. Uma conferência adicional por suite inicialmente comparou o nome XML com seu reportNameSuffix ao nome de console sem o sufixo; foi corrigida somente a canonicalização exata descrita acima. Esses erros auxiliares não mudaram testes, relatórios, resultados Maven ou runner; nenhum Maven ou arquivamento foi repetido por eles.
+
+### Alcance, preservações e entrega local
+
+Resultado novo restrito a **Windows/H2, Java21.0.12.1**, aplicação HTTP real nos dois contextos e canais de logging observados. O diagnóstico sensível novo é sintético no canal ORM privado com o adapter de produção; não é uma falha física do driver, banco, rede ou crash. A família anterior de falha ORM/JDBC real tem seu próprio alcance. Não há promessa universal sobre outros backends, níveis/configurações, threads assíncronas, outros servlet mappings ou todos os caminhos possíveis. PostgreSQL, produção, crash recovery e commit indeterminado continuam fora da comprovação adicional.
+
+A correção70d580c do diagnóstico DATE e a CI automática40929882504 (pull_request/tentativa1/success,7.310aprovados em Ubuntu/H2, merge temporário2589588b sobre base de1d8ff/HEAD70d580c) são fatos anteriores a esta alteração. A pendência de publicação descrita na seção anterior deste quickstart é histórica daquele checkpoint. A nova alteração local do filtro/testes **não foi publicada nem validada pela CI anterior**, e não recebe aprovação remota por herança. Históricos de reprovação e validação local/remota permanecem preservados, sem reclassificação.
+
+Alterações versionáveis restritas ao filtro, ao teste de filtro existente, ao novo teste HTTP e a este acréscimo no quickstart009. Tasks/107marcações e prefixo histórico do quickstart preservados. D009-01 e **Gate IV005: EXCEÇÃO DOCUMENTADA, sem PASS estrito** intactos. Revisados diff completo, conteúdo novo, referências/links e whitespace; `git diff --check` sem erro. Estado de entrega:3arquivos rastreados modificados e1teste novo não rastreado; nada staged, HEAD/branch/seleção/base preservados. Sem suíte completa, stage, commit, push, alteração do PR/Draft, workflow, merge ou alteração de main.

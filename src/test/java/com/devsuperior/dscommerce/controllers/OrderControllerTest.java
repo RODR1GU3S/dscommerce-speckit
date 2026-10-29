@@ -10,6 +10,7 @@ import com.devsuperior.dscommerce.entities.UserRole;
 import com.devsuperior.dscommerce.fixtures.OrderTestFixture;
 import com.devsuperior.dscommerce.security.AuthenticatedAccountPrincipal;
 import com.devsuperior.dscommerce.services.OrderService;
+import com.devsuperior.dscommerce.services.RegistrationAttemptReference;
 import com.devsuperior.dscommerce.services.exceptions.AuthenticationProcessingException;
 import com.devsuperior.dscommerce.services.exceptions.InvalidCredentialsException;
 import com.devsuperior.dscommerce.services.exceptions.InvalidOrderException;
@@ -33,10 +34,12 @@ import org.springframework.boot.test.autoconfigure.web.servlet.MockMvcPrint;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -60,7 +63,9 @@ import org.springframework.transaction.TransactionSystemException;
 
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -160,11 +165,21 @@ class OrderControllerTest {
         }
     }
 
+    /** Explicitly imported only by the input slice; retains the real request-scoped reference. */
+    @TestConfiguration(proxyBeanMethods = false)
+    static class InputBoundaryConfig {
+        @Bean
+        Clock inputBoundaryClock() {
+            return Clock.fixed(Instant.parse("2030-01-01T12:00:00Z"), ZoneOffset.UTC);
+        }
+    }
+
     /** No filters, repositories or real service: proves only MVC reading/validation/delegation. */
     @Nested
     @WebMvcTest(controllers = OrderController.class, excludeAutoConfiguration = SecurityAutoConfiguration.class)
     @AutoConfigureMockMvc(addFilters = false, print = MockMvcPrint.NONE)
     @ExtendWith(OutputCaptureExtension.class)
+    @Import({InputBoundaryConfig.class, RegistrationAttemptReference.class})
     class InputBoundary {
 
         @Autowired private MockMvc inputMvc;

@@ -5,6 +5,7 @@ import com.devsuperior.dscommerce.config.OrderClockConfig;
 import com.devsuperior.dscommerce.config.OrderSecuritySliceTestConfig;
 import com.devsuperior.dscommerce.services.AuthenticationService;
 import com.devsuperior.dscommerce.services.ProductCatalogService;
+import com.devsuperior.dscommerce.services.RegistrationAttemptReference;
 import com.devsuperior.dscommerce.services.exceptions.AuthenticationProcessingException;
 import com.devsuperior.dscommerce.services.exceptions.InvalidCredentialsException;
 import com.devsuperior.dscommerce.services.exceptions.ProductNotFoundException;
@@ -57,6 +58,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         SecurityConfig.class,
         OrderClockConfig.class,
         OrderSecuritySliceTestConfig.class,
+        RegistrationAttemptReference.class,
         GlobalExceptionHandlerRegressionTest.ValidationProbeController.class
 })
 class GlobalExceptionHandlerRegressionTest {

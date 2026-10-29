@@ -7182,3 +7182,84 @@ Revisto o diff completo, incluindo as alterações documentais recebidas e o del
 Atualizados nesta tarefa apenas a nota editorial de estado/leitura histórica no plan, este acréscimo no quickstart e a checkbox T107 em tasks. Os estados de “T107 aberta/sem aceite completo” registrados em T106 e etapas anteriores continuam como história daqueles checkpoints, sucedidos por este fechamento. Constituição/spec/research/modelo/contratos históricos, produção, testes, asserções e evidências brutas permanecem intactos; seleção009 preservada. Extensions.yml ausente em pré/pós-hooks, sem hook a executar.
 
 **T107 satisfeita e marcada somente T107; 107/107 tarefas concluídas, zero abertas. Feature009 concluída no escopo autorizado de implementação, validação e fechamento local Windows/H2.** Nenhum impedimento ao fechamento local identificado; limites externos acima não são declarados atendidos nem ocultados. Proposta CP-FINAL preparada e não executada. Git de saída: somente plan/quickstart/tasks009 modificados, nada staged/não rastreado; raiz/branch/HEAD/main/seleção009 preservados, sem integração/publicação.
+
+<a id="ci9-date-tempdir-fix"></a>
+
+## Correção adicional após T107 — auxiliar DATE independente de propriedade externa — 2026-10-29
+
+### Escopo, entrada e causa confirmada
+
+Solicitação restrita ao impedimento de CI do PR#9: alterar somente [CustomerRegistrationDateDiagnosisTest.java](../../src/test/java/com/devsuperior/dscommerce/validation/CustomerRegistrationDateDiagnosisTest.java) e este quickstart. Entrada confirmada: raiz `C:/Users/ronal/dscommerce-speckit`, branch `009-cadastrar-cliente`, HEAD local/remoto `eeff7a5bd3b9031992472f218cce14086a52f2f6`, Git limpo, seleção009; [PR#9](https://github.com/RODR1GU3S/dscommerce-speckit/pull/9) aberto em Draft, base/main local/remota `de1d8ffb91f4c73d8ee2d10912d56c244164084b`. T001–T107 permanecem marcadas; esta é uma correção adicional posterior ao fechamento histórico, sem alterar tasks ou reescrever T100–T107.
+
+Consultado o diagnóstico existente da [primeira CI](https://github.com/RODR1GU3S/dscommerce-speckit/actions/runs/40921570373), evento pull_request/tentativa1, failure:7.310 casos únicos,7.287 aprovados,23 erros, zero falhas de asserção/ignorados, Maven exit1. O checkout testou `cf8c4591b9686ef372f2f86c97b76300ff9cde36`, merge temporário da base e do HEAD acima; não continha esta correção. Seus logs e o [artefato Surefire](https://github.com/RODR1GU3S/dscommerce-speckit/actions/runs/40921570373/artifacts/12919167521) conservam o diagnóstico remoto anterior.
+
+**Causa confirmada no código antes de alterar:** o antigo save chamava `Path.of(System.getProperty("feature009.date-diagnosis-dir"))` sem alternativa para propriedade ausente. Sem essa opção no comando da CI, o valor era null e os23casos terminaram em NullPointerException na antiga linha266. Nos20casos parametrizados, save vinha antes das quatro verificações finais; essas asserções não foram executadas naquela CI. Não se atribui o erro ao binding de produção DATE nem se reclassifica a execução remota como aprovada.
+
+### Correção delimitada e preservação dos oráculos
+
+Acrescentados somente o import de `org.junit.jupiter.api.io.TempDir`, um campo estático Path anotado com `@TempDir` e a seleção do destino dentro de save. **Propriedade ausente usa o diretório temporário gerenciado pelo JUnit**; propriedade presente continua usando o caminho explícito normalizado, exigindo que esteja sob `target/feature009-evidence` antes de criar/gravar. Valor presente inválido não vira fallback silencioso. Files.createDirectories, escrita JSON e propagação de IOException permanecem, sem catch genérico.
+
+O destino temporário não é transformado em requisito do workflow; o modo explícito continua disponível para diagnósticos persistentes pertinentes. A preservação do ramo explícito e de sua proteção foi conferida estaticamente; a execução nova abaixo exercita somente o ramo de propriedade ausente. O ciclo de vida/limpeza do destino padrão fica a cargo do JUnit. Os JSON desse modo temporário não são apresentados como arquivo de evidência persistente; console/XML/TXT desta execução são preservados separadamente.
+
+Comparação do conteúdo anterior a save, retirando somente o novo import/campo, confirmou **todos os corpos de teste, providers, controles, cleanup e asserções existentes idênticos** ao HEAD. Nenhuma exclusão, skip, expectativa, binding DATE, produção, contrato, workflow ou política foi alterada. Hash SHA-256 da classe executada: `87128076F42EC1BCDD8742E3E10E34E6CFD9026B39CEA8AEBED00928F2C4B530`.
+
+### Execução focal única, sem a propriedade
+
+Run exclusivo **`CI9-DATE-FIX-20261029T175644Z-9246278f`**, local Windows/H2. Antes da preparação e imediatamente antes do Wrapper: **zero processos Maven/Surefire ativos**. MAVEN_ARGS/MAVEN_OPTS/JAVA_TOOL_OPTIONS/JDK_JAVA_OPTIONS/_JAVA_OPTIONS ausentes; sem maven.config/jvm.config. O esperado foi fixado antes do Maven por identidades já registradas em T104 e pela leitura do provider de dez datas, sem executar providers à parte.
+
+Uma primeira consulta auxiliar do JSON não expandiu o array no pipeline PowerShell e foi descartada; a consulta corrigida enumerou os23casos abaixo. Isso não foi mudança de inventário real, falha de teste ou execução Maven. O inventário efetivo é [expected-cases.json](../../target/feature009-evidence/CI9-DATE-FIX-20261029T175644Z-9246278f/expected-cases.json); o [preflight](../../target/feature009-evidence/CI9-DATE-FIX-20261029T175644Z-9246278f/preflight.json) registra revisão, argumentos, hashes e propriedades. Não foi necessário repetir localmente o RED já demonstrado pela CI.
+
+Comando único, na raiz, **sem `feature009.date-diagnosis-dir`**, sem exclusões/skip e selecionando somente o outer focal e seus nested:
+
+~~~powershell
+.\mvnw.cmd '--batch-mode' '--no-transfer-progress' '--show-version' '-Dtest=CustomerRegistrationDateDiagnosisTest*' '-Dsurefire.failIfNoSpecifiedTests=true' '-DfailIfNoTests=true' '-Dsurefire.reportNameSuffix=CI9-DATE-FIX-20261029T175644Z-9246278f' 'test'
+~~~
+
+O Maven recompilou os testes necessários ao build, mas a seleção executou somente esta família focal. Não houve suíte completa ou segunda invocação. [Console completo stdout/stderr](../../target/feature009-evidence/CI9-DATE-FIX-20261029T175644Z-9246278f/console.log),15.174bytes: Java21.0.12.1 Azul Zulu, Maven3.9.16 pelo Wrapper, `BUILD SUCCESS` e `Total time: 01:59 min`. Início do processo nativo UTC2026-10-29T17:58:53.9791574Z; fim18:01:05.7420781Z.
+
+**Maven exit numérico0 capturado imediatamente após WaitForExit, antes de copiar/arquivar relatórios**, em [execution-before-archive.json](../../target/feature009-evidence/CI9-DATE-FIX-20261029T175644Z-9246278f/execution-before-archive.json), com `ReportsArchived=false`. O original permanece intacto. [Runner exit0 separado](../../target/feature009-evidence/CI9-DATE-FIX-20261029T175644Z-9246278f/runner-result.json), capturado às18:01:05.8045765Z, não foi inferido do Maven. execution.json foi posteriormente atualizado apenas quanto ao arquivamento novo.
+
+### Conferência nominal dos23casos antes afetados
+
+Prefixo de pacote comum: `com.devsuperior.dscommerce.validation`. **R** = `CustomerRegistrationDateDiagnosisTest$RootHttpTest`, contexto raiz; **A** = `CustomerRegistrationDateDiagnosisTest$ApiHttpTest`, contexto `/api`. Ambos herdam os métodos de DateCases no mesmo arquivo. **T[i]** significa o método completo `tracesInputCommandEntitySqlAndBothJdbcRepresentations(String)[i]`, índice Surefire do provider abaixo. Cada combinação R/A+método+índice é uma identidade concreta distinta, não soma duplicada de herança.
+
+| Casos simples nominais | Quantidade | Resultado |
+| --- | ---: | --- |
+| `CustomerRegistrationDateDiagnosisTest.observesTheActualHibernateLegacyConversionWithoutReplacingTheDateOracle`, sem HTTP |1| Aprovado; observação da conversão legada preservada e save concluído. |
+| `R.dateStorageRemainsNullableAndLegacyNullSurvivesJpaExtraction` |1| Aprovado; metadados DATE/nullable, NULL JDBC/JPA e snapshot legado preservados. |
+| `A.dateStorageRemainsNullableAndLegacyNullSurvivesJpaExtraction` |1| Aprovado; mesmos controles em `/api`. |
+
+| Data literal do provider | Caso raiz | Caso /api | Resultado |
+| --- | --- | --- | --- |
+|0001-01-01|R.T[1]|A.T[1]| Ambos aprovados |
+|1582-10-04|R.T[2]|A.T[2]| Ambos aprovados |
+|1582-10-15|R.T[3]|A.T[3]| Ambos aprovados |
+|2000-02-29|R.T[4]|A.T[4]| Ambos aprovados |
+|0001-12-31|R.T[5]|A.T[5]| Ambos aprovados |
+|1500-02-28|R.T[6]|A.T[6]| Ambos aprovados |
+|1600-02-29|R.T[7]|A.T[7]| Ambos aprovados |
+|1900-02-28|R.T[8]|A.T[8]| Ambos aprovados |
+|1970-01-01|R.T[9]|A.T[9]| Ambos aprovados |
+|9999-12-31|R.T[10]|A.T[10]| Ambos aprovados |
+
+Nos20casos T[i], save terminou e as quatro verificações posteriores, mantidas e incondicionais, foram alcançadas sem interrupção: (1) demais campos/emailKey exatos, uma conta e exatamente CLIENT; (2) data raw/conversão/comando/entidade; (3) **data SQL exata e JDBC4.2 LocalDate independente**; (4) **extração JPA nova preservando a data civil exata**. Os dois casos simples de nulabilidade também completaram suas verificações e save. Essa conclusão é apoiada pelos corpos preservados e pelos casos terminados aprovados, sem afirmar cobertura de todo ramo possível da aplicação.
+
+[Catálogo observado](../../target/feature009-evidence/CI9-DATE-FIX-20261029T175644Z-9246278f/case-inventory.json) e [conferência focal](../../target/feature009-evidence/CI9-DATE-FIX-20261029T175644Z-9246278f/reconciliation.json): **23esperados/23aprovados; zero falhas, erros ou ignorados;3classes,5pares classe/método,20invocações parametrizadas e3casos simples; zero omissões, extras ou duplicatas**. Os três XML não contêm a propriedade `feature009.date-diagnosis-dir`, confirmando a condição ausente no fork JVM. Console, XML e TXT concordam.
+
+Relatórios exclusivos, copiados uma única vez para o diretório reports deste run, com XML/TXT irmãos:
+
+- [Outer:1caso](../../target/feature009-evidence/CI9-DATE-FIX-20261029T175644Z-9246278f/reports/TEST-com.devsuperior.dscommerce.validation.CustomerRegistrationDateDiagnosisTest-CI9-DATE-FIX-20261029T175644Z-9246278f.xml).
+- [R/raiz:11casos](../../target/feature009-evidence/CI9-DATE-FIX-20261029T175644Z-9246278f/reports/TEST-com.devsuperior.dscommerce.validation.CustomerRegistrationDateDiagnosisTest$RootHttpTest-CI9-DATE-FIX-20261029T175644Z-9246278f.xml).
+- [A/api:11casos](../../target/feature009-evidence/CI9-DATE-FIX-20261029T175644Z-9246278f/reports/TEST-com.devsuperior.dscommerce.validation.CustomerRegistrationDateDiagnosisTest$ApiHttpTest-CI9-DATE-FIX-20261029T175644Z-9246278f.xml).
+
+São **3XML/3TXT**, não os186/186da suíte completa. A distribuição focal1+11+11 difere do agrupamento outer/nested observado na FINAL sem seletor, mas as23identidades correspondem exatamente ao subconjunto T104 antes afetado na CI. Nenhuma diferença de inventário funcional foi identificada.
+
+### Preservação, limites e estado de entrega
+
+[Conferência dos relatórios anteriores](../../target/feature009-evidence/CI9-DATE-FIX-20261029T175644Z-9246278f/prior-report-checks.json): **2.636 XML/TXT anteriores inalterados por nome/tamanho/SHA-256, zero rearquivado**. Apenas os seis relatórios novos foram copiados após os exits, conforme [archive-checks.json](../../target/feature009-evidence/CI9-DATE-FIX-20261029T175644Z-9246278f/archive-checks.json). Os440inputs rastreados permaneceram idênticos durante a execução/conferência, antes deste acréscimo documental; o hash da classe e o diff identificam a alteração não commitada executada.
+
+A **FINAL local T104 com7.310aprovados** permanece evidência histórica da revisão então executada com destino DATE explícito; não foi repetida ou promovida a validação completa desta alteração. A **primeira CI Ubuntu/H2,7310/7287aprovados/23erros**, permanece reprovada, com os20casos interrompidos então registrados. O novo resultado é somente **focal Windows/H2,23aprovados, propriedade ausente**. Não substitui a futura CI Ubuntu/H2 nem aprova PostgreSQL/produção, capacidade, incidente físico ou todos os caminhos. O ramo explícito desta versão não recebeu segunda execução; sua proteção foi revisada estaticamente.
+
+Produção/binding DATE, workflow, contratos/políticas, tasks, planejamento e históricos anteriores intactos. D009-01, proteção delimitada dos logs, seleção009 e **Gate IV005: EXCEÇÃO DOCUMENTADA, sem PASS estrito** preservados. Nenhum segredo/hash/canário ou SQL com valores foi transcrito. Artefatos novos restritos a target ignorado; este resumo é o registro durável, não transporte dos relatórios brutos a outro checkout.
+
+Revisados diff, conteúdo dos dois arquivos autorizados, referências/links e whitespace; `git diff --check` sem erro. O prefixo recebido deste quickstart foi preservado por SHA-256, e tasks mantém o hash de entrada. Git final: somente a classe focal e quickstart009 modificados, nada staged/não rastreado; branch/HEAD local/remoto, main e seleção009 preservados. **Sem stage, commit, push, atualização do PR, retirada de Draft, merge, workflow manual ou alteração de main.** Pendência remota: a correção ainda não foi publicada nem testada em nova CI Ubuntu/H2.

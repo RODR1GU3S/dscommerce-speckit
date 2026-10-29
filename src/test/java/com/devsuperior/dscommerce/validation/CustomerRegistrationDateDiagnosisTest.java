@@ -21,6 +21,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -58,6 +59,9 @@ import static org.mockito.Mockito.mockingDetails;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Execution(ExecutionMode.SAME_THREAD)
 class CustomerRegistrationDateDiagnosisTest {
+
+    @TempDir
+    static Path temporaryEvidenceDirectory;
 
     @Test
     void observesTheActualHibernateLegacyConversionWithoutReplacingTheDateOracle() throws IOException {
@@ -262,9 +266,13 @@ class CustomerRegistrationDateDiagnosisTest {
     }
 
     private static void save(String name, Object evidence) throws IOException {
-        var root = Path.of("").toAbsolutePath().normalize().resolve("target/feature009-evidence");
-        var destination = Path.of(System.getProperty("feature009.date-diagnosis-dir")).toAbsolutePath().normalize();
-        if (!destination.startsWith(root)) { throw new AssertionError("Use the owned ignored date evidence directory"); }
+        var destination = temporaryEvidenceDirectory;
+        var configuredDirectory = System.getProperty("feature009.date-diagnosis-dir");
+        if (configuredDirectory != null) {
+            var root = Path.of("").toAbsolutePath().normalize().resolve("target/feature009-evidence");
+            destination = Path.of(configuredDirectory).toAbsolutePath().normalize();
+            if (!destination.startsWith(root)) { throw new AssertionError("Use the owned ignored date evidence directory"); }
+        }
         Files.createDirectories(destination);
         new ObjectMapper().writerWithDefaultPrettyPrinter().writeValue(destination.resolve(name).toFile(), evidence);
     }

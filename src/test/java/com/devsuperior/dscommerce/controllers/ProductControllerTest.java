@@ -9,6 +9,7 @@ import com.devsuperior.dscommerce.dto.ProductDetailDTO;
 import com.devsuperior.dscommerce.entities.Product;
 import com.devsuperior.dscommerce.fixtures.ProductFactory;
 import com.devsuperior.dscommerce.services.ProductCatalogService;
+import com.devsuperior.dscommerce.services.RegistrationAttemptReference;
 import com.devsuperior.dscommerce.services.exceptions.ProductNotFoundException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Tag;
@@ -42,7 +43,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(controllers = ProductController.class, properties = "test.order-security.public-mvc-slice=true")
-@Import({SecurityConfig.class, OrderClockConfig.class, OrderSecuritySliceTestConfig.class})
+@Import({SecurityConfig.class, OrderClockConfig.class, OrderSecuritySliceTestConfig.class,
+        RegistrationAttemptReference.class})
 class ProductControllerTest {
 
     @Autowired

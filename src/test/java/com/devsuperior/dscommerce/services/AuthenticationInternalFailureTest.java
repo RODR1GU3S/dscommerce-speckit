@@ -2,11 +2,12 @@ package com.devsuperior.dscommerce.services;
 
 import com.devsuperior.dscommerce.entities.UserAccount;
 import com.devsuperior.dscommerce.repositories.UserAccountRepository;
+import com.devsuperior.dscommerce.security.AccountPasswordVerifier;
 import com.devsuperior.dscommerce.services.exceptions.AuthenticationProcessingException;
 import com.devsuperior.dscommerce.services.exceptions.InvalidCredentialsException;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -41,8 +42,16 @@ class AuthenticationInternalFailureTest {
     @Mock
     private JwtTokenService jwtTokenService;
 
-    @InjectMocks
+    @Mock
+    private AccountPasswordVerifier accountPasswordVerifier;
+
     private AuthenticationService authenticationService;
+
+    @BeforeEach
+    void prepareExplicitVerificationBoundary() {
+        authenticationService = new AuthenticationService(
+                userAccountRepository, passwordEncoder, jwtTokenService, accountPasswordVerifier);
+    }
 
     @Test
     void loginShouldConvertUnexpectedRepositoryFailureWithoutCallingLaterStages() {
@@ -54,27 +63,28 @@ class AuthenticationInternalFailureTest {
                 () -> authenticationService.login(EXACT_NAME, RAW_PASSWORD));
 
         assertSafeProcessingFailure(failure, originalCause);
+        assertThat(failure.getMessage()).doesNotContain(originalCause.getMessage());
         verify(userAccountRepository, times(1)).findByName(EXACT_NAME);
-        verifyNoInteractions(passwordEncoder, jwtTokenService);
+        verifyNoInteractions(passwordEncoder, accountPasswordVerifier, jwtTokenService);
         verifyNoMoreInteractions(userAccountRepository);
     }
 
     @Test
     void loginShouldConvertUnexpectedPasswordEncoderFailureWithoutIssuingToken() {
         var account = new UserAccount(ACCOUNT_ID, EXACT_NAME, STORED_HASH);
-        RuntimeException originalCause = new RuntimeException(
-                "encoder failure exposed " + RAW_PASSWORD + " and " + STORED_HASH);
+        // The real verifier sanitizes encoder failures; this service test starts at that boundary.
+        RuntimeException originalCause = new IllegalStateException(GENERIC_PROCESSING_MESSAGE);
         when(userAccountRepository.findByName(EXACT_NAME)).thenReturn(Optional.of(account));
-        when(passwordEncoder.matches(RAW_PASSWORD, STORED_HASH)).thenThrow(originalCause);
+        when(accountPasswordVerifier.matches(RAW_PASSWORD, STORED_HASH)).thenThrow(originalCause);
 
         Throwable failure = catchThrowable(
                 () -> authenticationService.login(EXACT_NAME, RAW_PASSWORD));
 
         assertSafeProcessingFailure(failure, originalCause);
         verify(userAccountRepository, times(1)).findByName(EXACT_NAME);
-        verify(passwordEncoder, times(1)).matches(RAW_PASSWORD, STORED_HASH);
-        verifyNoInteractions(jwtTokenService);
-        verifyNoMoreInteractions(userAccountRepository, passwordEncoder);
+        verify(accountPasswordVerifier, times(1)).matches(RAW_PASSWORD, STORED_HASH);
+        verifyNoInteractions(passwordEncoder, jwtTokenService);
+        verifyNoMoreInteractions(userAccountRepository, accountPasswordVerifier);
     }
 
     @Test
@@ -84,24 +94,26 @@ class AuthenticationInternalFailureTest {
                 "token-sensitive-sentinel secret-key-sentinel jwt-key-sentinel "
                         + RAW_PASSWORD + " " + STORED_HASH);
         when(userAccountRepository.findByName(EXACT_NAME)).thenReturn(Optional.of(account));
-        when(passwordEncoder.matches(RAW_PASSWORD, STORED_HASH)).thenReturn(true);
+        when(accountPasswordVerifier.matches(RAW_PASSWORD, STORED_HASH)).thenReturn(true);
         when(jwtTokenService.issueToken(ACCOUNT_ID, EXACT_NAME)).thenThrow(originalCause);
 
         Throwable failure = catchThrowable(
                 () -> authenticationService.login(EXACT_NAME, RAW_PASSWORD));
 
         assertSafeProcessingFailure(failure, originalCause);
+        assertThat(failure.getMessage()).doesNotContain(originalCause.getMessage());
         verify(userAccountRepository, times(1)).findByName(EXACT_NAME);
-        verify(passwordEncoder, times(1)).matches(RAW_PASSWORD, STORED_HASH);
+        verify(accountPasswordVerifier, times(1)).matches(RAW_PASSWORD, STORED_HASH);
         verify(jwtTokenService, times(1)).issueToken(ACCOUNT_ID, EXACT_NAME);
-        verifyNoMoreInteractions(userAccountRepository, passwordEncoder, jwtTokenService);
+        verifyNoInteractions(passwordEncoder);
+        verifyNoMoreInteractions(userAccountRepository, accountPasswordVerifier, jwtTokenService);
     }
 
     @Test
     void loginShouldKeepInvalidCredentialsDistinctFromInternalProcessingFailure() {
         var account = new UserAccount(ACCOUNT_ID, EXACT_NAME, STORED_HASH);
         when(userAccountRepository.findByName(EXACT_NAME)).thenReturn(Optional.of(account));
-        when(passwordEncoder.matches(RAW_PASSWORD, STORED_HASH)).thenReturn(false);
+        when(accountPasswordVerifier.matches(RAW_PASSWORD, STORED_HASH)).thenReturn(false);
 
         Throwable failure = catchThrowable(
                 () -> authenticationService.login(EXACT_NAME, RAW_PASSWORD));
@@ -110,7 +122,10 @@ class AuthenticationInternalFailureTest {
                 .isExactlyInstanceOf(InvalidCredentialsException.class)
                 .isNotInstanceOf(AuthenticationProcessingException.class)
                 .hasMessage("Invalid credentials");
-        verifyNoInteractions(jwtTokenService);
+        verify(userAccountRepository, times(1)).findByName(EXACT_NAME);
+        verify(accountPasswordVerifier, times(1)).matches(RAW_PASSWORD, STORED_HASH);
+        verifyNoInteractions(passwordEncoder, jwtTokenService);
+        verifyNoMoreInteractions(userAccountRepository, accountPasswordVerifier);
     }
 
     private static void assertSafeProcessingFailure(
@@ -124,7 +139,6 @@ class AuthenticationInternalFailureTest {
         String exposedMessage = failure.getMessage().toLowerCase(Locale.ROOT);
         assertThat(exposedMessage)
                 .doesNotContain(
-                        originalCause.getMessage().toLowerCase(Locale.ROOT),
                         "repository-sensitive-detail-sentinel",
                         RAW_PASSWORD.toLowerCase(Locale.ROOT),
                         STORED_HASH.toLowerCase(Locale.ROOT),

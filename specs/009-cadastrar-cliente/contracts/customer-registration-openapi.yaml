@@ -1,0 +1,373 @@
+openapi: 3.0.3
+info:
+  title: DSCommerce Customer Registration - Feature 009
+  version: 0.2.0
+  description: >-
+    Proposed design only. Not implemented or functionally validated.
+    Public creation of a new CLIENT account; no automatic authentication.
+    D009-01 is approved for planning: Argon2id exclusively for new Feature 009
+    accounts, legacy BCrypt preservation and additive login password validation.
+    Other signup policies and historical API contract files remain unchanged.
+servers:
+  - url: /
+    description: Root servlet context
+  - url: /api
+    description: Servlet context /api; do not duplicate /api in controller mappings
+security: []
+x-status: design-D009-01-approved-not-functionally-validated
+x-specification: ../spec.md
+x-plan: ../plan.md
+x-research: ../research.md
+x-data-model: ../data-model.md
+x-quickstart: ../quickstart.md
+x-source-separation: >-
+  The requirements PDF supports public signup and personal/contact fields with
+  CLIENT by default. Field limits, identity separation, uniqueness, password,
+  concurrency and replay policies are approved project decisions. Unicode,
+  whitespace and UTC conventions are explicit specification assumptions.
+x-login-evolution: >-
+  Approved D009-01, 2026-10-24. Only new Feature 009 signup passwords use Argon2id;
+  existing unprefixed BCrypt hashes and the sole BCrypt PasswordEncoder bean
+  remain unchanged. Verify by the entire recognized stored hash format, never
+  by password content. No conversion, rehash or retrospective signup limits.
+  Login password validation accepts A union B: A is the prior accepted domain
+  (non-null password with Java String.trim().length() > 0 under Validator 8.0.1.Final);
+  B is every valid Feature 009 signup password. The trim expression defines the
+  old predicate only; pass the original password unchanged to verification.
+  Do not impose new Unicode, whitespace or 12-codepoint/64-byte limits on A.
+  NUL/control-only valid signup passwords can now reach authentication; NBSP-only
+  values previously accepted by A remain accepted by A. Null, empty and ASCII
+  whitespace-only inputs remain 400. Newly admitted inputs can yield 200/401/500
+  under the existing login outcomes. Name validation, exact case-sensitive lookup,
+  parser, input fields, token and messages remain. Email/fullName are not aliases.
+  Historical Feature 003 contract remains intact; this Feature 009 extension is
+  the explicit approved delta, not a replacement login schema or endpoint.
+x-password-storage:
+  dependency: org.bouncycastle:bcprov-jdk18on:1.86
+  dependency-status: planned-only-not-added-to-project
+  rationale: See research R4 for official release/tag and OWASP profile justification; binary integration remains future.
+  new-accounts:
+    algorithm: argon2id
+    version: 19
+    memory-kib: 19456
+    iterations: 2
+    parallelism: 1
+    random-salt-bytes: 16
+    hash-bytes: 32
+    stored-format: '$argon2id$v=19$m=19456,t=2,p=1$<salt>$<hash>'
+    format-validation: >-
+      Entire canonical PHC only, exactly 97 characters, exact version/parameter
+      order and values, canonical standard Base64 without padding, decoded salt
+      16 bytes and hash 32 bytes. Check structure and bounded sizes before
+      decode/allocation/derivation. No unknown profile or additional segments.
+  legacy-bcrypt: >-
+    Entire unprefixed $2$ (59 chars) or $2a$/$2b$/$2y$ (60 chars), two-digit
+    cost 04-31 and 53 characters from [./A-Za-z0-9] after cost/separator.
+    Preserve stored hashes byte-for-byte and use the existing BCrypt verifier;
+    no fixed cost-10-only restriction, migration, upgradeEncoding or rehash.
+  invalid-stored-format: >-
+    Null, empty, unknown, malformed or unsupported format/profile never
+    authenticates. Return existing login 401 Invalid credentials without
+    calling an encoder, falling back, issuing a token or writing a hash.
+    Reject excessive parameters before derivation. Operational failure after
+    recognized-format dispatch retains 500 Authentication could not be completed.
+    Do not log parser causes, passwords or stored hashes. No new HTTP message.
+x-whitespace-codepoints:
+  - U+0009-U+000D
+  - U+0020
+  - U+0085
+  - U+00A0
+  - U+1680
+  - U+2000-U+200A
+  - U+2028
+  - U+2029
+  - U+202F
+  - U+205F
+  - U+3000
+x-validation-boundary: >-
+  Bean Validation at MVC entry before registration service. Reject malformed
+  Unicode rather than replacing it. Count Unicode code points, not UTF-16 units
+  or grapheme clusters. Descriptions and x-rules are normative application rules
+  beyond the expressive power of these OpenAPI schemas; schema acceptance alone
+  does not prove a request is valid. Do not impose normalized lengths on raw
+  fullName/email before trimming the defined external whitespace.
+x-commit-and-replay: >-
+  Account, accepted data and exactly CLIENT commit in one owned transaction.
+  Flush and worker-body return are not commit. Construct HTTP success only after
+  commit completion. Known pre-commit failures leave no partial account/role.
+  Response loss after commit preserves the account; replay is generic conflict,
+  never reused confirmation or automatic authentication. Missing response or 500
+  does not prove rollback; an indeterminate commit must not cause compensation
+  or automatic replay.
+paths:
+  /customers:
+    post:
+      operationId: registerCustomer
+      summary: Create a new account with only CLIENT
+      description: >-
+        Public, stateless operation. No query parameters accepted. Authorization
+        is not required or used to choose identity/profile; an absent, invalid or
+        valid bearer does not change signup rules. Body must be exactly one JSON
+        object containing the six required string properties, without duplicate
+        properties or trailing JSON. Reject every additional property, including
+        id, roles, role, profile, passwordHash, token or existing account data.
+        No update, upsert, ADMIN choice, order/payment/cart mutation or login.
+        Other account data is never returned. Validation errors are safe generic
+        400; both recognized name and email conflicts produce the same 409.
+      x-requirements:
+        - FR-001
+        - FR-002
+        - FR-003
+        - FR-004
+        - FR-005
+        - FR-006
+        - FR-007
+        - FR-008
+        - FR-009
+        - FR-010
+        - FR-011
+        - FR-012
+        - FR-013
+        - FR-014
+        - FR-015
+        - FR-016
+        - FR-017
+        - FR-018
+        - FR-019
+        - FR-020
+        - FR-021
+        - FR-022
+        - FR-023
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerRegistrationRequest'
+            examples:
+              valid:
+                value:
+                  name: Ana.silva-9
+                  fullName: '  Ana da Silva  '
+                  email: ' Ana.Silva@example.com '
+                  phone: '+5511999999999'
+                  birthDate: '2000-02-29'
+                  password: example-password-009
+              unicodePassword:
+                value:
+                  name: cliente_009
+                  fullName: José da Silva
+                  email: jose@example.com
+                  phone: '+12345678'
+                  birthDate: '2001-01-01'
+                  password: '😀😀😀😀😀😀😀😀😀😀😀😀'
+      responses:
+        '201':
+          description: >-
+            New account and exactly CLIENT committed. Exactly id and exact name
+            returned. No token, session, authentication cookie, password, hash,
+            profile or personal/contact data. No Location for a new GET endpoint.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerRegistrationConfirmation'
+              example:
+                id: 105
+                name: Ana.silva-9
+        '400':
+          description: >-
+            Invalid JSON, field, forbidden/duplicate property, query or local
+            validation failure. No partial write; no received value is echoed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvalidInput'
+              example:
+                status: 400
+                error: Bad Request
+                message: Invalid customer registration data
+                path: /customers
+        '409':
+          description: >-
+            Recognized exact-name or equivalent-email uniqueness conflict,
+            including valid concurrent loser or retry after completed signup.
+            Same category and message for name, email or both; never identify
+            which identity/field/account conflicts or return an old confirmation.
+            Do not overwrite or merge fields or profiles. Availability checks
+            alone are not a concurrency guarantee; DB constraints are authoritative.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DuplicateIdentity'
+              example:
+                status: 409
+                error: Conflict
+                message: Customer registration not available
+                path: /api/customers
+        '500':
+          description: >-
+            Safe processing failure. Only recognized identity/email uniqueness
+            violations are 409. Generic integrity, unrelated unique/FK/PK, encoder,
+            availability lookup, timeout, mapping or transaction-completion failure
+            is not inferred input error or duplicate. No SQL, binding value, secret
+            or internal cause returned. No success/rollback inference for an
+            indeterminate commit, no compensation or automatic retry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessingFailure'
+              example:
+                status: 500
+                error: Internal Server Error
+                message: Customer registration could not be completed
+                path: /customers
+        '405':
+          description: Native method rejection, preserving status and Allow; no fixed JSON body promised.
+          headers:
+            Allow:
+              schema:
+                type: string
+              example: POST
+        '406':
+          description: Native unacceptable representation, preserving status/headers without forcing JSON.
+        '415':
+          description: Native unsupported media type, preserving status/headers; no fixed JSON body promised.
+components:
+  schemas:
+    CustomerRegistrationRequest:
+      type: object
+      additionalProperties: false
+      required: [name, fullName, email, phone, birthDate, password]
+      properties:
+        name:
+          type: string
+          minLength: 3
+          maxLength: 40
+          pattern: '^[A-Za-z0-9][A-Za-z0-9._-]{2,39}(?![\s\S])'
+          description: >-
+            Exact case-sensitive unique login; ASCII only, start with letter/digit.
+            No spaces, trimming, case conversion or Unicode normalization.
+            Ana and ana may coexist. fullName and email never replace this login.
+        fullName:
+          type: string
+          minLength: 2
+          x-normalized-codepoint-length: [2, 120]
+          description: >-
+            Personal name, 2-120 valid Unicode code points AFTER removing external
+            whitespace from the closed set. Preserve case, accents, internal spaces
+            and remaining Unicode sequence. Homonyms allowed. No raw maxLength,
+            uniqueness, alphabet restriction or login identity is imposed here.
+        email:
+          type: string
+          minLength: 1
+          x-normalized-codepoint-maximum: 254
+          x-syntax-provider: Hibernate Validator 8.0.1.Final EmailValidator
+          x-comparison: Java 21 code-point lower(upper(cp)), then exact UTF-8 binary key
+          description: >-
+            Required syntactically valid email, nonempty and at most 254 code points
+            AFTER removing external defined whitespace. Preserve trimmed spelling;
+            compare entire local part/domain without case via the defined simple
+            mapping. Do not repair invalid internal spaces, normalize Unicode or
+            remove dots/plus tags. No contact confirmation, existence or email login.
+            Provider syntax is an additional application constraint, not JSON Schema
+            format email; no raw maximum is applied before trimming.
+        phone:
+          type: string
+          minLength: 9
+          maxLength: 16
+          pattern: '^\+[0-9]{8,15}(?![\s\S])'
+          description: Plus followed by 8-15 ASCII digits; no spaces, formatting or ownership check.
+        birthDate:
+          type: string
+          format: date
+          minLength: 10
+          maxLength: 10
+          pattern: '^(?!0000)[0-9]{4}-[0-9]{2}-[0-9]{2}(?![\s\S])'
+          x-reference: One UTC civil date captured before request-body evaluation and all domain IO/waits
+          description: >-
+            Strict valid Gregorian YYYY-MM-DD, year 0001-9999. Must be on or before
+            the immutable attempt reference date, inclusive; no minimum age.
+            Future-date comparison is runtime validation, not established by format.
+        password:
+          type: string
+          format: password
+          writeOnly: true
+          minLength: 12
+          maxLength: 64
+          x-max-utf8-bytes: 64
+          x-min-unicode-codepoints: 12
+          description: >-
+            Minimum 12 valid Unicode code points AND maximum 64 UTF-8 bytes of the
+            exact sequence, without BOM. maxLength64 is only an implied necessary
+            code-point bound; it does not enforce byte length. Reject passwords
+            consisting only of the defined whitespace. No mandatory composition,
+            trimming, case conversion, Unicode normalization, replacement or
+            truncation. NUL is allowed under the approved policy; D009-01 approves
+            the storage and additive login design, with executable proof pending. Never
+            return or log this value or a hash. 32 U+00E1 =64bytes; 12 U+1F600 =48.
+    CustomerRegistrationConfirmation:
+      type: object
+      additionalProperties: false
+      required: [id, name]
+      properties:
+        id:
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 9223372036854775807
+        name:
+          type: string
+          minLength: 3
+          maxLength: 40
+          pattern: '^[A-Za-z0-9][A-Za-z0-9._-]{2,39}(?![\s\S])'
+    InvalidInput:
+      type: object
+      additionalProperties: false
+      required: [status, error, message, path]
+      properties:
+        status:
+          type: integer
+          enum: [400]
+        error:
+          type: string
+          enum: [Bad Request]
+        message:
+          type: string
+          enum: [Invalid customer registration data]
+        path:
+          type: string
+          description: Request URI including servlet context, excluding query; no supplied field values.
+    DuplicateIdentity:
+      type: object
+      additionalProperties: false
+      required: [status, error, message, path]
+      properties:
+        status:
+          type: integer
+          enum: [409]
+        error:
+          type: string
+          enum: [Conflict]
+        message:
+          type: string
+          enum: [Customer registration not available]
+        path:
+          type: string
+          description: Request URI including servlet context, excluding query; no conflicting identity.
+    ProcessingFailure:
+      type: object
+      additionalProperties: false
+      required: [status, error, message, path]
+      properties:
+        status:
+          type: integer
+          enum: [500]
+        error:
+          type: string
+          enum: [Internal Server Error]
+        message:
+          type: string
+          enum: [Customer registration could not be completed]
+        path:
+          type: string
+          description: Request URI including servlet context, excluding query; no internal diagnostics.

@@ -3,9 +3,12 @@ package com.devsuperior.dscommerce.services;
 import com.devsuperior.dscommerce.dto.TokenResponseDTO;
 import com.devsuperior.dscommerce.entities.UserAccount;
 import com.devsuperior.dscommerce.repositories.UserAccountRepository;
+import com.devsuperior.dscommerce.security.AccountPasswordVerifier;
+import com.devsuperior.dscommerce.services.exceptions.AuthenticationProcessingException;
+import com.devsuperior.dscommerce.services.exceptions.InvalidCredentialsException;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.boot.test.system.CapturedOutput;
@@ -17,6 +20,10 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith({MockitoExtension.class, OutputCaptureExtension.class})
@@ -28,6 +35,8 @@ class AuthenticationSensitiveLoggingTest {
     private static final String RAW_PASSWORD =
             "RAW_PASSWORD_LOG_SENTINEL_48_ONLY_FOR_TESTS";
     private static final String STORED_BCRYPT_HASH =
+            "$2a$10$ix7qnD5c6oPLj7LyNGM1uewPu.Cw1FJ39KKMo6nEkTOkQ8q7g60bm";
+    private static final String DUMMY_BCRYPT_HASH =
             "$2a$10$ix7qnD5c6oPLj7LyNGM1uewPu.Cw1FJ39KKMo6nEkTOkQ8q7g60bm";
     private static final String JWT_SECRET_BASE64 =
             "TE9HR0lOR19URVNUX0pXVF9TRUNSRVRfQkFTRTY0X1NFTlRJTkVM";
@@ -47,8 +56,16 @@ class AuthenticationSensitiveLoggingTest {
     @Mock
     private JwtTokenService jwtTokenService;
 
-    @InjectMocks
+    @Mock
+    private AccountPasswordVerifier accountPasswordVerifier;
+
     private AuthenticationService authenticationService;
+
+    @BeforeEach
+    void prepareExplicitVerificationBoundary() {
+        authenticationService = new AuthenticationService(
+                userAccountRepository, passwordEncoder, jwtTokenService, accountPasswordVerifier);
+    }
 
     @Test
     void validLoginShouldNotLogSensitiveAuthenticationData(CapturedOutput output) {
@@ -56,7 +73,7 @@ class AuthenticationSensitiveLoggingTest {
         var expectedResponse = new TokenResponseDTO(ACCESS_TOKEN, "Bearer");
         when(userAccountRepository.findByName(EXISTING_NAME))
                 .thenReturn(Optional.of(account));
-        when(passwordEncoder.matches(RAW_PASSWORD, STORED_BCRYPT_HASH))
+        when(accountPasswordVerifier.matches(RAW_PASSWORD, STORED_BCRYPT_HASH))
                 .thenReturn(true);
         when(jwtTokenService.issueToken(ACCOUNT_ID, EXISTING_NAME))
                 .thenReturn(expectedResponse);
@@ -66,6 +83,12 @@ class AuthenticationSensitiveLoggingTest {
                 RAW_PASSWORD);
 
         assertThat(result).isSameAs(expectedResponse);
+        var order = inOrder(userAccountRepository, accountPasswordVerifier, jwtTokenService);
+        order.verify(userAccountRepository).findByName(EXISTING_NAME);
+        order.verify(accountPasswordVerifier).matches(RAW_PASSWORD, STORED_BCRYPT_HASH);
+        order.verify(jwtTokenService).issueToken(ACCOUNT_ID, EXISTING_NAME);
+        verifyNoInteractions(passwordEncoder);
+        verifyNoMoreInteractions(userAccountRepository, accountPasswordVerifier, jwtTokenService);
         assertNoSensitiveOutput(output);
     }
 
@@ -73,9 +96,15 @@ class AuthenticationSensitiveLoggingTest {
     void unknownNameShouldNotLogSensitiveAuthenticationData(CapturedOutput output) {
         when(userAccountRepository.findByName(UNKNOWN_NAME))
                 .thenReturn(Optional.empty());
+        when(passwordEncoder.matches(RAW_PASSWORD, DUMMY_BCRYPT_HASH)).thenReturn(false);
 
-        catchThrowable(() -> authenticationService.login(UNKNOWN_NAME, RAW_PASSWORD));
+        Throwable failure = catchThrowable(() -> authenticationService.login(UNKNOWN_NAME, RAW_PASSWORD));
 
+        assertThat(failure).isExactlyInstanceOf(InvalidCredentialsException.class).hasMessage("Invalid credentials");
+        verify(userAccountRepository).findByName(UNKNOWN_NAME);
+        verify(passwordEncoder).matches(RAW_PASSWORD, DUMMY_BCRYPT_HASH);
+        verifyNoInteractions(accountPasswordVerifier, jwtTokenService);
+        verifyNoMoreInteractions(userAccountRepository, passwordEncoder);
         assertNoSensitiveOutput(output);
     }
 
@@ -83,11 +112,16 @@ class AuthenticationSensitiveLoggingTest {
     void wrongPasswordShouldNotLogSensitiveAuthenticationData(CapturedOutput output) {
         when(userAccountRepository.findByName(EXISTING_NAME))
                 .thenReturn(Optional.of(account()));
-        when(passwordEncoder.matches(RAW_PASSWORD, STORED_BCRYPT_HASH))
+        when(accountPasswordVerifier.matches(RAW_PASSWORD, STORED_BCRYPT_HASH))
                 .thenReturn(false);
 
-        catchThrowable(() -> authenticationService.login(EXISTING_NAME, RAW_PASSWORD));
+        Throwable failure = catchThrowable(() -> authenticationService.login(EXISTING_NAME, RAW_PASSWORD));
 
+        assertThat(failure).isExactlyInstanceOf(InvalidCredentialsException.class).hasMessage("Invalid credentials");
+        verify(userAccountRepository).findByName(EXISTING_NAME);
+        verify(accountPasswordVerifier).matches(RAW_PASSWORD, STORED_BCRYPT_HASH);
+        verifyNoInteractions(passwordEncoder, jwtTokenService);
+        verifyNoMoreInteractions(userAccountRepository, accountPasswordVerifier);
         assertNoSensitiveOutput(output);
     }
 
@@ -103,8 +137,14 @@ class AuthenticationSensitiveLoggingTest {
         when(userAccountRepository.findByName(EXISTING_NAME))
                 .thenThrow(internalFailure);
 
-        catchThrowable(() -> authenticationService.login(EXISTING_NAME, RAW_PASSWORD));
+        Throwable failure = catchThrowable(() -> authenticationService.login(EXISTING_NAME, RAW_PASSWORD));
 
+        assertThat(failure).isExactlyInstanceOf(AuthenticationProcessingException.class)
+                .hasMessage("Authentication could not be completed");
+        assertThat(failure.getCause()).isSameAs(internalFailure);
+        verify(userAccountRepository).findByName(EXISTING_NAME);
+        verifyNoInteractions(passwordEncoder, accountPasswordVerifier, jwtTokenService);
+        verifyNoMoreInteractions(userAccountRepository);
         assertNoSensitiveOutput(output);
     }
 

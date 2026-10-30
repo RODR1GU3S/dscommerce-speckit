@@ -5,6 +5,7 @@ import com.devsuperior.dscommerce.config.OrderClockConfig;
 import com.devsuperior.dscommerce.config.OrderSecuritySliceTestConfig;
 import com.devsuperior.dscommerce.dto.TokenResponseDTO;
 import com.devsuperior.dscommerce.services.AuthenticationService;
+import com.devsuperior.dscommerce.services.RegistrationAttemptReference;
 import com.devsuperior.dscommerce.services.exceptions.AuthenticationProcessingException;
 import com.devsuperior.dscommerce.services.exceptions.InvalidCredentialsException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -43,7 +44,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(controllers = LoginController.class, properties = "test.order-security.public-mvc-slice=true")
-@Import({SecurityConfig.class, OrderClockConfig.class, OrderSecuritySliceTestConfig.class})
+@Import({SecurityConfig.class, OrderClockConfig.class, OrderSecuritySliceTestConfig.class,
+        RegistrationAttemptReference.class})
 class LoginControllerTest {
 
     private static final String EXACT_NAME = "  Demo.User  ";
